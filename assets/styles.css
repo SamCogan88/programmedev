@@ -1,0 +1,10 @@
+:root{--card-radius:1rem;}
+.card{border-radius:var(--card-radius);}
+.btn, .form-control, .form-select{border-radius:0.8rem;}
+.list-group-item{border-radius:0.8rem !important;margin-bottom:0.35rem;}
+.small-muted{font-size:.85rem;color:#6c757d;}
+.tag{font-size:.75rem;font-weight:700;padding:.25rem .5rem;border-radius:999px;display:inline-block;}
+.tag-error{background:#f8d7da;color:#842029;}
+.tag-warn{background:#fff3cd;color:#664d03;}
+.tag-ok{background:#d1e7dd;color:#0f5132;}
+pre.jsonbox{max-height:340px;overflow:auto;background:#0b1020;color:#d9e2ff;border-radius:1rem;padding:1rem;}

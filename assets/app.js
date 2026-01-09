@@ -1,0 +1,1501 @@
+// NCI Programme Design Studio (Static MVP)
+// - No build tools needed
+// - Stores data as JSON in localStorage
+// - Export/import via file
+// NOTE: For larger datasets, IndexedDB is better, but localStorage is fine for MVP.
+
+const STORAGE_KEY = "nci_pds_mvp_programme_v1";
+
+const steps = [
+  { key: "identity", title: "Identity" },
+  { key: "versions", title: "Programme Versions" },
+  { key: "stages", title: "Stage Structure" },
+  { key: "structure", title: "Credits & Modules" },
+  { key: "outcomes", title: "PLOs" },
+  { key: "mimlos", title: "MIMLOs" },
+  { key: "mapping", title: "Mapping" },
+  { key: "snapshot", title: "QQI Snapshot" },
+];
+
+function defaultPatternFor(mod){
+  if (mod === "F2F") return { syncOnlinePct: 0, asyncDirectedPct: 0, onCampusPct: 100 };
+  if (mod === "ONLINE") return { syncOnlinePct: 40, asyncDirectedPct: 60, onCampusPct: 0 };
+  // BLENDED default
+  return { syncOnlinePct: 30, asyncDirectedPct: 40, onCampusPct: 30 };
+}
+
+
+function sumPattern(pat){
+  return Number(pat.syncOnlinePct||0) + Number(pat.asyncDirectedPct||0) + Number(pat.onCampusPct||0);
+}
+
+function sumStageCredits(allModules, stageModules){
+  const ids = (stageModules||[]).map(x=>x.moduleId);
+  return (allModules||[]).filter(m=>ids.includes(m.id)).reduce((acc,m)=>acc+Number(m.credits||0),0);
+}
+
+const SCHOOL_OPTIONS = ["Computing", "Business", "Psychology", "Education"]; 
+
+const AWARD_TYPE_OPTIONS = [
+  "Higher Certificate",
+  "Ordinary Bachelor Degree",
+  "Honours Bachelor Degree",
+  "Higher Diploma",
+  "Postgraduate Diploma",
+  "Masters",
+  "Micro-credential",
+  "Other",
+];
+
+function bloomsGuidanceHtml(level, contextLabel) {
+  const lvl = Number(level || 0);
+  const title = lvl ? `Bloom helper (aligned to NFQ level ${lvl})` : "Bloom helper (choose NFQ level first)";
+
+  // Keep this simple and practical. Avoid long theory.
+  let focus = "Use measurable action verbs. Avoid: understand, know, learn about, be aware of.";
+  let verbs = ["describe", "explain", "apply", "analyse", "evaluate", "design"]; // fallback
+
+  if (!lvl) {
+    focus = "Pick the programme NFQ level in Identity, then come back here for tailored verb suggestions.";
+    verbs = ["describe", "explain", "apply", "analyse", "evaluate", "design"];
+  } else if (lvl <= 6) {
+    focus = "Emphasise foundational knowledge and applied skills (remember/understand/apply), with some analysis.";
+    verbs = ["identify", "describe", "explain", "apply", "demonstrate", "use", "outline", "compare"];
+  } else if (lvl === 7) {
+    focus = "Balance application and analysis. Show problem-solving and autonomy.";
+    verbs = ["apply", "analyse", "interpret", "solve", "integrate", "evaluate", "justify", "develop"];
+  } else if (lvl === 8) {
+    focus = "Push beyond application: critical analysis, evaluation, and creation/design.";
+    verbs = ["analyse", "evaluate", "synthesise", "design", "develop", "critique", "justify", "implement"];
+  } else if (lvl === 9) {
+    focus = "Emphasise advanced evaluation and creation: originality, research-informed practice.";
+    verbs = ["critically evaluate", "synthesise", "design", "develop", "formulate", "lead", "innovate", "apply research to"];
+  } else {
+    focus = "Emphasise original contribution, research leadership, and creation.";
+    verbs = ["originate", "advance", "formulate", "innovate", "lead", "produce", "contribute", "critically appraise"];
+  }
+
+  const verbChips = verbs.map(v => `<span class="badge text-bg-light border me-1 mb-1">${escapeHtml(v)}</span>`).join("");
+
+  return `
+    <div class="p-3 bg-light border rounded-4 mb-3">
+      <div class="fw-semibold mb-1">${escapeHtml(title)} — for ${escapeHtml(contextLabel)}</div>
+      <div class="small text-secondary mb-2">${escapeHtml(focus)}</div>
+      <div>${verbChips}</div>
+      <div class="small text-secondary mt-2">Tip: start outcomes with a verb + object + standard (e.g., “Analyse X using Y to produce Z”).</div>
+    </div>
+  `;
+}
+
+const defaultProgramme = () => ({
+  schemaVersion: 2,
+  id: "current",
+
+  // Identity
+  title: "",
+  awardType: "", // selected label or custom
+  awardTypeIsOther: false,
+  nfqLevel: null,
+  school: "",
+
+  // Programme-level structure
+  totalCredits: 0,
+  modules: [], // {id, code, title, credits, mimlos:[]}
+  plos: [],    // {id, text}
+  ploToModules: {}, // ploId -> [moduleId]
+
+  // Versions (FT/PT/Online variants)
+  versions: [], // [{id, label, code, duration, intakes[], targetCohortSize, numberOfGroups, deliveryModalities[], deliveryPatterns{}, onlineProctoredExams, onlineProctoredExamsNotes, stages[] }]
+
+  updatedAt: null,
+});
+
+let state = {
+  programme: defaultProgramme(),
+  stepIndex: 0,
+  saving: false,
+  lastSaved: null,
+  selectedVersionId: null,
+};
+
+
+function uid(prefix="id"){
+  if (crypto && crypto.randomUUID) return `${prefix}_${crypto.randomUUID()}`;
+  return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
+}
+
+const defaultVersion = () => ({
+  id: uid("ver"),
+  label: "Full-time",
+  code: "FT",
+  duration: "",
+  intakes: [],
+  targetCohortSize: 0,
+  numberOfGroups: 0,
+
+  deliveryModalities: [], // F2F | BLENDED | ONLINE
+  deliveryPatterns: {},   // modality -> { syncOnlinePct, asyncDirectedPct, onCampusPct }
+  deliveryNotes: "",
+
+  onlineProctoredExams: "TBC", // NO | YES | TBC
+  onlineProctoredExamsNotes: "",
+
+  stages: [], // [{id, name, sequence, creditsTarget, exitAward:{enabled,awardTitle}, modules:[{moduleId, semester}]}]
+});
+
+const defaultStage = (sequence=1) => ({
+  id: uid("stage"),
+  name: `Stage ${sequence}`,
+  sequence,
+  creditsTarget: 0,
+  exitAward: { enabled: false, awardTitle: "" },
+  modules: [], // { moduleId, semester }
+});
+
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    // shallow merge to preserve new defaults if schema evolves
+    state.programme = { ...defaultProgramme(), ...parsed };
+// Migration to schemaVersion 2: programme versions + stages.
+if (!Array.isArray(state.programme.versions)) state.programme.versions = [];
+
+// If coming from older schema where delivery info lived at programme level,
+// create a single default version and move the key fields across.
+if (state.programme.versions.length === 0) {
+  const v = defaultVersion();
+  // Prefer legacy fields if present
+  const legacyModalities = Array.isArray(state.programme.deliveryModalities)
+    ? state.programme.deliveryModalities
+    : (state.programme.deliveryMode ? [state.programme.deliveryMode] : []);
+
+  v.deliveryModalities = legacyModalities;
+  v.deliveryPatterns = (state.programme.deliveryPatterns && typeof state.programme.deliveryPatterns === "object")
+    ? state.programme.deliveryPatterns
+    : {};
+
+  v.deliveryModalities.forEach((mod) => {
+    if (!v.deliveryPatterns[mod]) v.deliveryPatterns[mod] = defaultPatternFor(mod);
+  });
+
+  v.deliveryNotes = state.programme.deliveryNotes || "";
+  v.onlineProctoredExams = state.programme.onlineProctoredExams || "TBC";
+  v.onlineProctoredExamsNotes = state.programme.onlineProctoredExamsNotes || "";
+
+  v.targetCohortSize = Number(state.programme.cohortSize || 0);
+  v.numberOfGroups = Number(state.programme.numberOfGroups || 0);
+  v.duration = state.programme.duration || "";
+  v.intakes = Array.isArray(state.programme.intakeMonths) ? state.programme.intakeMonths : [];
+
+  state.programme.versions = [v];
+}
+
+// Clean up some very old legacy fields if they exist
+delete state.programme.deliveryMode;
+delete state.programme.syncPattern;
+
+        if (!state.selectedVersionId && state.programme.versions && state.programme.versions.length) state.selectedVersionId = state.programme.versions[0].id;
+state.lastSaved = state.programme.updatedAt || null;
+  } catch (e) {
+    console.warn("Failed to load", e);
+  }
+}
+
+function saveNow() {
+  try {
+    state.saving = true;
+    const now = new Date().toISOString();
+    state.programme.updatedAt = now;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.programme));
+    state.lastSaved = now;
+  } finally {
+    state.saving = false;
+  }
+}
+
+let saveTimer = null;
+function saveDebounced() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveNow();
+    renderHeader();
+  }, 400);
+}
+
+function downloadJson(filename, obj) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function validateProgramme(p) {
+  const flags = [];
+  const sumCredits = (p.modules || []).reduce((acc, m) => acc + (Number(m.credits) || 0), 0);
+
+  if (!p.title.trim()) flags.push({ type: "error", msg: "Programme title is missing." });
+  if (!p.nfqLevel) flags.push({ type: "error", msg: "NFQ level is missing." });
+  if (p.nfqLevel && (Number(p.nfqLevel) < 6 || Number(p.nfqLevel) > 9)) {
+    flags.push({ type: "error", msg: "NFQ level must be between 6 and 9 for this tool." });
+  }
+  if (!p.awardType.trim()) flags.push({ type: "warn", msg: "Award type is missing." });
+
+  if ((p.totalCredits || 0) <= 0) flags.push({ type: "error", msg: "Total programme credits are missing/zero." });
+  if ((p.totalCredits || 0) > 0 && sumCredits !== p.totalCredits) {
+    flags.push({ type: "error", msg: `Credits mismatch: totalCredits=${p.totalCredits} but modules sum to ${sumCredits}.` });
+  }
+
+  // Versions
+  if (!Array.isArray(p.versions) || p.versions.length === 0) {
+    flags.push({ type: "error", msg: "At least one Programme Version is required (e.g., FT/PT/Online)." });
+  } else {
+    const labels = new Set();
+    p.versions.forEach((v, idx) => {
+      const prefix = `Version ${idx + 1}`;
+      if (!v.label || !v.label.trim()) flags.push({ type: "warn", msg: `${prefix}: label is missing.` });
+      else {
+        const norm = v.label.trim().toLowerCase();
+        if (labels.has(norm)) flags.push({ type: "warn", msg: `${prefix}: duplicate label (“${v.label}”).` });
+        labels.add(norm);
+      }
+
+      // Delivery patterns per selected modality must sum to 100
+      (v.deliveryModalities || []).forEach((mod) => {
+        const pat = (v.deliveryPatterns || {})[mod];
+        if (!pat) {
+          flags.push({ type: "error", msg: `${prefix}: missing delivery pattern for ${mod}.` });
+          return;
+        }
+        const total = Number(pat.syncOnlinePct || 0) + Number(pat.asyncDirectedPct || 0) + Number(pat.onCampusPct || 0);
+        if (total !== 100) {
+          flags.push({ type: "error", msg: `${prefix}: ${mod} delivery pattern must total 100% (currently ${total}%).` });
+        }
+      });
+
+      if ((v.onlineProctoredExams || "TBC") === "YES" && !(v.onlineProctoredExamsNotes || "").trim()) {
+        flags.push({ type: "warn", msg: `${prefix}: online proctored exams marked YES but notes are empty.` });
+      }
+
+      if ((v.targetCohortSize || 0) <= 0) flags.push({ type: "warn", msg: `${prefix}: cohort size is missing/zero.` });
+
+      // Stage structure
+      if (!Array.isArray(v.stages) || v.stages.length === 0) {
+        flags.push({ type: "warn", msg: `${prefix}: no stages defined yet.` });
+      } else {
+        // Check stage credit totals vs programme credits (soft error if programme credits defined)
+        const stageTargetSum = (v.stages || []).reduce((acc, s) => acc + Number(s.creditsTarget || 0), 0);
+        if ((p.totalCredits || 0) > 0 && stageTargetSum > 0 && stageTargetSum !== Number(p.totalCredits || 0)) {
+          flags.push({ type: "warn", msg: `${prefix}: sum of stage credit targets (${stageTargetSum}) does not match programme total credits (${p.totalCredits}).` });
+        }
+
+        // Stage module credits match target
+        (v.stages || []).forEach((s) => {
+          const stageMods = (s.modules || []).map(x => x.moduleId);
+          const creditSum = (p.modules || [])
+            .filter(m => stageMods.includes(m.id))
+            .reduce((acc, m) => acc + Number(m.credits || 0), 0);
+
+          if ((s.creditsTarget || 0) > 0 && creditSum !== Number(s.creditsTarget || 0)) {
+            flags.push({ type: "warn", msg: `${prefix}: ${s.name || "stage"} module credits sum to ${creditSum} but target is ${s.creditsTarget}.` });
+          }
+
+          if (s.exitAward && s.exitAward.enabled && !(s.exitAward.awardTitle || "").trim()) {
+            flags.push({ type: "warn", msg: `${prefix}: ${s.name || "stage"} has an exit award enabled but no award title entered.` });
+          }
+        });
+      }
+    });
+  }
+
+  // Outcomes & mapping
+  if ((p.plos || []).length < 6) flags.push({ type: "warn", msg: "PLOs: fewer than 6 (usually aim for ~6–12)." });
+  if ((p.plos || []).length > 12) flags.push({ type: "warn", msg: "PLOs: more than 12 (consider tightening)." });
+
+  const modulesMissingMimlos = (p.modules || []).filter(m => !m.mimlos || m.mimlos.length === 0);
+  if (modulesMissingMimlos.length > 0) flags.push({ type: "warn", msg: `Some modules have no MIMLOs yet (${modulesMissingMimlos.length}).` });
+
+  const unmappedPLOs = (p.plos || []).filter(o => !(p.ploToModules || {})[o.id] || (p.ploToModules[o.id] || []).length === 0);
+  if (unmappedPLOs.length > 0) flags.push({ type: "error", msg: `Some PLOs are not mapped to any module (${unmappedPLOs.length}).` });
+
+  return flags;
+}
+
+
+function deliveryPatternsHtml(p){
+  const mods = Array.isArray(p.deliveryModalities) ? p.deliveryModalities : [];
+  const patterns = (p.deliveryPatterns && typeof p.deliveryPatterns === "object") ? p.deliveryPatterns : {};
+  if (mods.length === 0) return '<span class="text-muted">—</span>';
+  const label = (k) => (k==="F2F"?"Face-to-face":k==="BLENDED"?"Blended":k==="ONLINE"?"Fully online":k);
+  const rows = mods.map((m)=>{
+    const pat = patterns[m] || defaultPatternFor(m);
+    const a = Number(pat.syncOnlinePct ?? 0);
+    const b = Number(pat.asyncDirectedPct ?? 0);
+    const c = Number(pat.onCampusPct ?? 0);
+    return `<div><span class="fw-semibold">${escapeHtml(label(m))}:</span> ${a}% sync online, ${b}% async directed, ${c}% on campus</div>`;
+  }).join("");
+  return rows;
+}
+function completionPercent(p) {
+  let total = 10, done = 0;
+  if (p.title.trim()) done++;
+  if (p.nfqLevel) done++;
+  if ((p.totalCredits || 0) > 0) done++;
+  if ((p.modules || []).length > 0) done++;
+  if ((p.plos || []).length >= 6) done++;
+  if (Object.keys(p.ploToModules || {}).length > 0) done++;
+
+  if (Array.isArray(p.versions) && p.versions.length > 0) done++;
+  const v0 = (p.versions || [])[0];
+  if (v0 && (v0.deliveryModalities || []).length > 0) done++;
+  if (v0 && (v0.targetCohortSize || 0) > 0) done++;
+  if (v0 && Array.isArray(v0.stages) && v0.stages.length > 0) done++;
+
+  return Math.round((done / total) * 100);
+}
+
+
+
+function tagHtml(type) {
+  if (type === "error") return `<span class="tag tag-error">ERROR</span>`;
+  if (type === "warn") return `<span class="tag tag-warn">WARN</span>`;
+  return `<span class="tag tag-ok">OK</span>`;
+}
+
+function renderHeader() {
+  const p = state.programme;
+  document.getElementById("programmeTitleNav").textContent = p.title.trim() ? p.title : "New Programme (Draft)";
+  const comp = completionPercent(p);
+  const badge = document.getElementById("completionBadge");
+  badge.textContent = `${comp}% complete`;
+  badge.className = "badge " + (comp >= 75 ? "text-bg-success" : comp >= 40 ? "text-bg-warning" : "text-bg-secondary");
+  const ss = document.getElementById("saveStatus");
+  ss.textContent = state.saving ? "Saving…" : (state.lastSaved ? `Saved ${new Date(state.lastSaved).toLocaleString()}` : "Not saved yet");
+}
+
+function renderSteps() {
+  const box = document.getElementById("stepList");
+  box.innerHTML = "";
+  steps.forEach((s, idx) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "list-group-item list-group-item-action " + (idx === state.stepIndex ? "active" : "");
+    btn.textContent = `${idx + 1}. ${s.title}`;
+    btn.onclick = () => { state.stepIndex = idx; render(); };
+    box.appendChild(btn);
+  });
+
+  document.getElementById("backBtn").disabled = state.stepIndex === 0;
+  document.getElementById("nextBtn").disabled = state.stepIndex === steps.length - 1;
+}
+
+function renderFlags() {
+  const flags = validateProgramme(state.programme);
+  const box = document.getElementById("flagsBox");
+  box.innerHTML = "";
+  if (!flags.length) {
+    box.innerHTML = `${tagHtml("ok")} <div class="small">No flags</div>`;
+    return;
+  }
+  flags.forEach(f => {
+    const div = document.createElement("div");
+    div.innerHTML = `${tagHtml(f.type)} <div class="mt-1 small">${escapeHtml(f.msg)}</div>`;
+    box.appendChild(div);
+  });
+}
+
+function escapeHtml(s){
+  return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
+}
+
+function setField(path, value) {
+  // path is string like "title" or "modules[0].title"
+  // For MVP we update manually in handlers; this helper kept minimal.
+  state.programme[path] = value;
+  saveDebounced();
+  renderHeader();
+  renderFlags();
+}
+
+function render() {
+  renderHeader();
+  renderSteps();
+  renderFlags();
+  const p = state.programme;
+  const content = document.getElementById("content");
+  const step = steps[state.stepIndex].key;
+
+  if (step === "identity") {
+    const schoolOpts = SCHOOL_OPTIONS.map(s => `<option value="${escapeHtml(s)}" ${p.school===s?"selected":""}>${escapeHtml(s)}</option>`).join("");
+    const awardOpts = AWARD_TYPE_OPTIONS.map(a => {
+      if (a === "Other") return `<option value="Other" ${p.awardTypeIsOther?"selected":""}>Other (type below)</option>`;
+      return `<option value="${escapeHtml(a)}" ${(!p.awardTypeIsOther && p.awardType===a)?"selected":""}>${escapeHtml(a)}</option>`;
+    }).join("");
+
+    content.innerHTML = `
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Identity (QQI-critical)</h5>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Programme title</label>
+              <input class="form-control" id="titleInput" value="${escapeHtml(p.title)}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Award type</label>
+              <select class="form-select" id="awardSelect">
+                <option value="" disabled ${(!p.awardType && !p.awardTypeIsOther)?"selected":""}>Select an award type</option>
+                ${awardOpts}
+              </select>
+              <div class="mt-2" id="awardOtherWrap" style="display:${p.awardTypeIsOther?"block":"none"}">
+                <input class="form-control" id="awardOtherInput" value="${escapeHtml(p.awardTypeIsOther ? p.awardType : "")}" placeholder="Type the award type">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">NFQ level</label>
+              <input type="number" min="6" max="9" step="1" class="form-control" id="levelInput" value="${p.nfqLevel ?? ""}">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-semibold">School / Discipline</label>
+              <select class="form-select" id="schoolSelect">
+                <option value="" disabled ${!p.school?"selected":""}>Select a School</option>
+                ${schoolOpts}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Intake months</label>
+              <input class="form-control" id="intakeInput" value="${escapeHtml((p.intakeMonths||[]).join(", "))}" placeholder="Comma-separated, e.g., Sep, Jan">
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    wireIdentity();
+    return;
+  }
+
+  
+  if (step === "versions") {
+    const versions = Array.isArray(p.versions) ? p.versions : [];
+    const modDefs = [
+      { key: "F2F", label: "Face-to-face" },
+      { key: "BLENDED", label: "Blended" },
+      { key: "ONLINE", label: "Fully online" },
+    ];
+
+    const vCards = versions.map((v, idx) => {
+      const intakeVal = (v.intakes || []).join(", ");
+      const isActive = state.selectedVersionId ? (state.selectedVersionId === v.id) : (idx === 0);
+      const modsSelected = Array.isArray(v.deliveryModalities) ? v.deliveryModalities : [];
+      const modChecks = modDefs.map(m => `
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="checkbox" id="vmod_${v.id}_${m.key}" ${modsSelected.includes(m.key)?"checked":""}>
+          <label class="form-check-label" for="vmod_${v.id}_${m.key}">${escapeHtml(m.label)}</label>
+        </div>
+      `).join("");
+
+      const patternCards = modsSelected.map(mod => {
+        const pat = (v.deliveryPatterns || {})[mod] || defaultPatternFor(mod);
+        return `
+          <div class="card mt-2">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="fw-semibold">${escapeHtml(mod)} delivery pattern (must total 100%)</div>
+                <span class="small">${tagHtml(sumPattern(pat)===100?"ok":"warn")} <span class="text-secondary">${sumPattern(pat)}%</span></span>
+              </div>
+              <div class="row g-2 mt-2">
+                <div class="col-md-4">
+                  <label class="form-label">Synchronous Online Classes %</label>
+                  <input type="number" min="0" max="100" class="form-control" id="pat_${v.id}_${mod}_sync" value="${Number(pat.syncOnlinePct||0)}">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Asynchronous Directed Learning %</label>
+                  <input type="number" min="0" max="100" class="form-control" id="pat_${v.id}_${mod}_async" value="${Number(pat.asyncDirectedPct||0)}">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">On Campus Learning Event %</label>
+                  <input type="number" min="0" max="100" class="form-control" id="pat_${v.id}_${mod}_campus" value="${Number(pat.onCampusPct||0)}">
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const proctorYes = (v.onlineProctoredExams || "TBC") === "YES";
+      const proctorNotesStyle = proctorYes ? "" : "d-none";
+
+      return `
+        <div class="card mb-3">
+          <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
+            <div class="fw-semibold">Version ${idx+1}: ${escapeHtml(v.label || "(untitled)")}</div>
+            <div class="d-flex gap-2 align-items-center">
+              <button class="btn btn-sm ${isActive?"btn-primary":"btn-outline-primary"}" id="setActive_${v.id}">${isActive?"Active for stages":"Set active"}</button>
+              <button class="btn btn-sm btn-outline-danger" id="removeVer_${v.id}">Remove</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Version label</label>
+                <input class="form-control" id="vlabel_${v.id}" value="${escapeHtml(v.label||"")}">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label fw-semibold">Code</label>
+                <input class="form-control" id="vcode_${v.id}" value="${escapeHtml(v.code||"")}">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Duration</label>
+                <input class="form-control" id="vduration_${v.id}" value="${escapeHtml(v.duration||"")}" placeholder="e.g., 1 year FT / 2 years PT">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Intakes</label>
+                <input class="form-control" id="vintakes_${v.id}" value="${escapeHtml(intakeVal)}" placeholder="Comma-separated, e.g., Sep, Jan">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Target cohort size</label>
+                <input type="number" min="0" class="form-control" id="vcohort_${v.id}" value="${Number(v.targetCohortSize||0)}">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Number of groups</label>
+                <input type="number" min="0" class="form-control" id="vgroups_${v.id}" value="${Number(v.numberOfGroups||0)}">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Delivery modalities</label>
+                <div>${modChecks}</div>
+                ${patternCards || `<div class="small text-secondary mt-2">Select one or more modalities to define delivery patterns.</div>`}
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Delivery notes</label>
+                <textarea class="form-control" rows="3" id="vnotes_${v.id}" placeholder="High-level plan: where learning happens, key touchpoints.">${escapeHtml(v.deliveryNotes||"")}</textarea>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Online proctored exams?</label>
+                <select class="form-select" id="vproctor_${v.id}">
+                  <option value="TBC" ${(v.onlineProctoredExams||"TBC")==="TBC"?"selected":""}>TBC</option>
+                  <option value="NO" ${(v.onlineProctoredExams||"TBC")==="NO"?"selected":""}>No</option>
+                  <option value="YES" ${(v.onlineProctoredExams||"TBC")==="YES"?"selected":""}>Yes</option>
+                </select>
+              </div>
+              <div class="col-12 ${proctorNotesStyle}" id="vproctorNotesWrap_${v.id}">
+                <label class="form-label fw-semibold">Proctoring notes</label>
+                <textarea class="form-control" rows="2" id="vproctorNotes_${v.id}" placeholder="What is proctored, when, and why?">${escapeHtml(v.onlineProctoredExamsNotes||"")}</textarea>
+              </div>
+              <div class="col-12">
+                <div class="small text-secondary">Stages in this version: <span class="fw-semibold">${(v.stages||[]).length}</span> (define in the next step).</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    content.innerHTML = `
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+          <h4 class="mb-1">Programme Versions</h4>
+          <div class="text-secondary">Create versions (e.g., FT/PT/Online). Each version can have different delivery patterns, capacity, intakes and stage structure.</div>
+        </div>
+        <button class="btn btn-dark" id="addVersionBtn">+ Add version</button>
+      </div>
+      <div class="mt-3">
+        ${vCards || `<div class="alert alert-info mb-0">No versions yet. Add at least one version to continue.</div>`}
+      </div>
+    `;
+
+    wireVersions();
+    return;
+  }
+
+  if (step === "stages") {
+    const versions = Array.isArray(p.versions) ? p.versions : [];
+    if (!versions.length) {
+      content.innerHTML = `<div class="alert alert-warning">Add at least one Programme Version first.</div>`;
+      return;
+    }
+    if (!state.selectedVersionId) state.selectedVersionId = versions[0].id;
+    const v = versions.find(x => x.id === state.selectedVersionId) || versions[0];
+
+    const vSelect = versions.map(x => `<option value="${escapeHtml(x.id)}" ${x.id===v.id?"selected":""}>${escapeHtml(x.code||"")}${x.code?" — ":""}${escapeHtml(x.label||"")}</option>`).join("");
+
+    const stageCards = (v.stages || []).sort((a,b)=>Number(a.sequence||0)-Number(b.sequence||0)).map((s) => {
+      const exitOn = s.exitAward && s.exitAward.enabled;
+      const exitWrapClass = exitOn ? "" : "d-none";
+
+      const moduleChecks = (p.modules || []).map(m => {
+        const picked = (s.modules || []).find(x => x.moduleId === m.id);
+        const checked = !!picked;
+        const semVal = picked ? (picked.semester || "") : "";
+        return `
+          <div class="border rounded p-2 mb-2">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="st_${s.id}_mod_${m.id}" ${checked?"checked":""}>
+              <label class="form-check-label" for="st_${s.id}_mod_${m.id}">
+                ${escapeHtml(m.code ? `${m.code} — ` : "")}${escapeHtml(m.title)} <span class="text-secondary small">(${Number(m.credits||0)} cr)</span>
+              </label>
+            </div>
+            <div class="mt-2 ${checked?"":"d-none"}" id="st_${s.id}_semWrap_${m.id}">
+              <label class="form-label small mb-1">Semester / timing tag (optional)</label>
+              <input class="form-control form-control-sm" id="st_${s.id}_sem_${m.id}" value="${escapeHtml(semVal)}" placeholder="e.g., S1 / S2 / Year / Block 1">
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const stageCreditSum = sumStageCredits(p.modules || [], s.modules || []);
+
+      return `
+        <div class="card mb-3">
+          <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="fw-semibold">${escapeHtml(s.name || `Stage ${s.sequence || ""}`)}</div>
+            <button class="btn btn-sm btn-outline-danger" id="removeStage_${s.id}">Remove stage</button>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Stage name</label>
+                <input class="form-control" id="stname_${s.id}" value="${escapeHtml(s.name||"")}">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Sequence</label>
+                <input type="number" min="1" class="form-control" id="stseq_${s.id}" value="${Number(s.sequence||1)}">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Credits target</label>
+                <input type="number" min="0" class="form-control" id="stcred_${s.id}" value="${Number(s.creditsTarget||0)}">
+                <div class="small text-secondary mt-1">Assigned modules sum to <span class="fw-semibold">${stageCreditSum}</span> credits.</div>
+              </div>
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="stexit_${s.id}" ${exitOn?"checked":""}>
+                  <label class="form-check-label fw-semibold" for="stexit_${s.id}">Enable exit award for this stage</label>
+                </div>
+              </div>
+              <div class="col-12 ${exitWrapClass}" id="stexitWrap_${s.id}">
+                <label class="form-label fw-semibold">Exit award title</label>
+                <input class="form-control" id="stexitTitle_${s.id}" value="${escapeHtml((s.exitAward && s.exitAward.awardTitle)||"")}">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Modules in this stage</label>
+                ${moduleChecks || `<div class="text-secondary">No modules defined yet (add modules in Credits & Modules).</div>`}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    content.innerHTML = `
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+          <h4 class="mb-1">Stage Structure</h4>
+          <div class="text-secondary">Define stages for the selected programme version and assign modules to each stage.</div>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+          <select class="form-select" id="stageVersionSelect" style="min-width: 260px;">
+            ${vSelect}
+          </select>
+          <button class="btn btn-dark" id="addStageBtn">+ Add stage</button>
+        </div>
+      </div>
+
+      <div class="mt-3">
+        ${stageCards || `<div class="alert alert-info mb-0">No stages yet for this version. Add a stage to begin.</div>`}
+      </div>
+    `;
+
+    wireStages();
+    return;
+  }
+
+
+if (step === "structure") {
+    const moduleRows = (p.modules||[]).map((m, idx) => `
+      <div class="card border-0 bg-white shadow-sm mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="fw-semibold">Module ${idx+1}</div>
+            <button class="btn btn-outline-danger btn-sm" data-remove-module="${m.id}">Remove</button>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Code (optional)</label>
+              <input class="form-control" data-module-field="code" data-module-id="${m.id}" value="${escapeHtml(m.code||"")}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Title</label>
+              <input class="form-control" data-module-field="title" data-module-id="${m.id}" value="${escapeHtml(m.title||"")}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Credits</label>
+              <input type="number" class="form-control" data-module-field="credits" data-module-id="${m.id}" value="${Number(m.credits||0)}">
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join("");
+
+    content.innerHTML = `
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">Credits & modules (QQI-critical)</h5>
+            <button class="btn btn-dark btn-sm" id="addModuleBtn">+ Add module</button>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Total programme credits</label>
+              <input type="number" class="form-control" id="totalCredits" value="${Number(p.totalCredits||0)}">
+            </div>
+            <div class="col-md-8 d-flex align-items-end">
+              <div class="small-muted">Tip: keep the module list light at MVP stage — codes can be placeholders.</div>
+            </div>
+          </div>
+
+          ${moduleRows || `<div class="small text-secondary">No modules added yet.</div>`}
+        </div>
+      </div>
+    `;
+    wireStructure();
+    return;
+  }
+
+  if (step === "outcomes") {
+    const rows = (p.plos||[]).map((o, idx) => `
+      <div class="card border-0 bg-white shadow-sm mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="fw-semibold">PLO ${idx+1}</div>
+            <button class="btn btn-outline-danger btn-sm" data-remove-plo="${o.id}">Remove</button>
+          </div>
+          <textarea class="form-control" data-plo-id="${o.id}" rows="3" placeholder="e.g., Critically evaluate… / Design and implement…">${escapeHtml(o.text||"")}</textarea>
+        </div>
+      </div>
+    `).join("");
+
+    content.innerHTML = `
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">Programme Learning Outcomes (PLOs) (QQI-critical)</h5>
+            <button class="btn btn-dark btn-sm" id="addPloBtn">+ Add PLO</button>
+          </div>
+          ${bloomsGuidanceHtml(p.nfqLevel, "Programme Learning Outcomes")}
+          <div class="small-muted mb-3">Aim for ~6–12 clear, assessable outcomes. Keep them measurable and assessable.</div>
+          ${rows || `<div class="small text-secondary">No PLOs added yet.</div>`}
+        </div>
+      </div>
+    `;
+    wireOutcomes();
+    return;
+  }
+
+  if (step === "mimlos") {
+    const blocks = (p.modules||[]).map(m => {
+      const items = (m.mimlos||[]).map((t, i) => `
+        <div class="d-flex gap-2 mb-2">
+          <input class="form-control" data-mimlo-module="${m.id}" data-mimlo-index="${i}" value="${escapeHtml(t)}">
+          <button class="btn btn-outline-danger" data-remove-mimlo="${m.id}" data-remove-mimlo-index="${i}">Remove</button>
+        </div>
+      `).join("");
+      return `
+        <div class="card border-0 bg-white shadow-sm mb-3">
+          <div class="card-body">
+            <div class="fw-semibold mb-1">${escapeHtml((m.code?m.code+" — ":"") + m.title)}</div>
+            <div class="small-muted mb-3">Add 3–6 MIMLOs per module to start.</div>
+            ${items || `<div class="small text-secondary mb-2">No MIMLOs yet.</div>`}
+            <button class="btn btn-outline-secondary btn-sm" data-add-mimlo="${m.id}">+ Add MIMLO</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    content.innerHTML = `
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title mb-3">MIMLOs (Minimum Intended Module Learning Outcomes)</h5>
+          ${bloomsGuidanceHtml(p.nfqLevel, "MIMLOs")}
+          ${p.modules.length ? blocks : `<div class="small text-secondary">Add modules first (Credits & Modules step).</div>`}
+        </div>
+      </div>
+    `;
+    wireMimlos();
+    return;
+  }
+
+  if (step === "mapping") {
+    if (!p.plos.length || !p.modules.length) {
+      content.innerHTML = `<div class="card shadow-sm"><div class="card-body"><h5 class="card-title">Mapping</h5><div class="small text-secondary">Add PLOs and modules first.</div></div></div>`;
+      return;
+    }
+
+    const blocks = p.plos.map((o, idx) => {
+      const selected = p.ploToModules[o.id] || [];
+      const checks = p.modules.map(m => `
+        <label class="list-group-item d-flex gap-2 align-items-center">
+          <input class="form-check-input m-0" type="checkbox" data-map-plo="${o.id}" data-map-module="${m.id}" ${selected.includes(m.id)?"checked":""}>
+          <span class="small">${escapeHtml((m.code?m.code+" — ":"") + m.title)} <span class="text-secondary">(${Number(m.credits||0)} cr)</span></span>
+        </label>
+      `).join("");
+
+      return `
+        <div class="card border-0 bg-white shadow-sm mb-3">
+          <div class="card-body">
+            <div class="fw-semibold mb-1">PLO ${idx+1}</div>
+            <div class="small mb-3">${escapeHtml(o.text || "—")}</div>
+            <div class="list-group">${checks}</div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    content.innerHTML = `
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Map PLOs to modules (QQI-critical)</h5>
+          ${blocks}
+        </div>
+      </div>
+    `;
+    wireMapping();
+    return;
+  }
+
+  // snapshot
+  const versions = Array.isArray(p.versions) ? p.versions : [];
+
+  const moduleLabels = (p.modules||[]).map((m, i) => {
+    const label = (m.code && m.code.trim()) ? m.code.trim() : `M${i+1}`;
+    const full = (m.code && m.code.trim()) ? `${m.code.trim()} — ${m.title}` : m.title;
+    return { id: m.id, label, full, credits: Number(m.credits||0) };
+  });
+
+  // PLO ↔ Module Matrix
+  const matrixHeader = moduleLabels.map(m => `<th class="text-center" title="${escapeHtml(m.full)}">${escapeHtml(m.label)}</th>`).join("");
+  const matrixRows = (p.plos||[]).map((o, i) => {
+    const selected = p.ploToModules[o.id] || [];
+    const cells = moduleLabels.map(m => {
+      const on = selected.includes(m.id);
+      return `<td class="text-center">${on ? "✓" : ""}</td>`;
+    }).join("");
+    return `<tr><th class="small" style="min-width:260px" title="${escapeHtml(o.text||"")}">PLO ${i+1}</th>${cells}</tr>`;
+  }).join("");
+
+  const matrixTable = `
+    <div class="mt-4">
+      <div class="fw-semibold mb-2">PLO ↔ Module Mapping Matrix</div>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered align-middle mb-0">
+          <thead class="table-light"><tr><th style="min-width:260px">PLO</th>${matrixHeader}</tr></thead>
+          <tbody>${matrixRows || `<tr><td colspan="${moduleLabels.length+1}" class="text-secondary">Add PLOs and map them to modules to generate a matrix.</td></tr>`}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  const versionCards = versions.map((v, idx) => {
+    const mods = Array.isArray(v.deliveryModalities) ? v.deliveryModalities : [];
+    const patterns = v.deliveryPatterns || {};
+    const modLines = mods.map(mod => {
+      const pat = patterns[mod] || defaultPatternFor(mod);
+      return `<div class="small"><span class="fw-semibold">${escapeHtml(mod)}</span>: ${Number(pat.syncOnlinePct||0)}% sync online, ${Number(pat.asyncDirectedPct||0)}% async directed, ${Number(pat.onCampusPct||0)}% on-campus</div>`;
+    }).join("");
+
+    const stages = (v.stages || []).slice().sort((a,b)=>Number(a.sequence||0)-Number(b.sequence||0));
+    const stageLines = stages.map(s => {
+      const stageMods = (s.modules||[]).map(x=>x.moduleId);
+      const modNames = (p.modules||[]).filter(m=>stageMods.includes(m.id)).map(m => (m.code && m.code.trim()) ? m.code.trim() : m.title).join(", ");
+      const creditsSum = sumStageCredits(p.modules||[], s.modules||[]);
+      const exitTxt = (s.exitAward && s.exitAward.enabled) ? ` • Exit award: ${escapeHtml(s.exitAward.awardTitle||"")}` : "";
+      return `<li class="small"><span class="fw-semibold">${escapeHtml(s.name||"Stage")}</span> — target ${Number(s.creditsTarget||0)}cr (assigned ${creditsSum}cr)${exitTxt}<br><span class="text-secondary">${escapeHtml(modNames||"No modules assigned")}</span></li>`;
+    }).join("");
+
+    return `
+      <div class="col-12">
+        <div class="p-3 bg-light border rounded-4">
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+              <div class="fw-semibold">Version ${idx+1}: ${escapeHtml(v.label||"")}${v.code?` <span class="text-secondary">(${escapeHtml(v.code)})</span>`:""}</div>
+              <div class="small">
+                <span class="fw-semibold">Duration:</span> ${escapeHtml(v.duration||"—")} •
+                <span class="fw-semibold">Intakes:</span> ${escapeHtml((v.intakes||[]).join(", ") || "—")} •
+                <span class="fw-semibold">Cohort:</span> ${Number(v.targetCohortSize||0) || "—"} •
+                <span class="fw-semibold">Groups:</span> ${Number(v.numberOfGroups||0) || "—"}
+              </div>
+            </div>
+            <div class="small">
+              <span class="fw-semibold">Online proctored exams:</span> ${escapeHtml(v.onlineProctoredExams||"TBC")}
+            </div>
+          </div>
+
+          <div class="mt-2">
+            <div class="fw-semibold small mb-1">Delivery patterns</div>
+            ${modLines || `<div class="small text-secondary">—</div>`}
+          </div>
+
+          <div class="mt-3">
+            <div class="fw-semibold small mb-1">Stage structure</div>
+            ${stageLines ? `<ul class="mb-0 ps-3">${stageLines}</ul>` : `<div class="small text-secondary">—</div>`}
+          </div>
+
+          ${(v.onlineProctoredExams||"TBC")==="YES" && (v.onlineProctoredExamsNotes||"").trim()
+            ? `<div class="mt-2 small"><span class="fw-semibold">Proctoring notes:</span> ${escapeHtml(v.onlineProctoredExamsNotes)}</div>`
+            : ""}
+
+          ${(v.deliveryNotes||"").trim()
+            ? `<div class="mt-2 small"><span class="fw-semibold">Delivery notes:</span> ${escapeHtml(v.deliveryNotes)}</div>`
+            : ""}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  content.innerHTML = `
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">QQI Snapshot (copy/paste-ready)</h5>
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="p-3 bg-light border rounded-4">
+              <div class="fw-semibold mb-2">Programme summary</div>
+              <div class="small"><span class="fw-semibold">Title:</span> ${escapeHtml(p.title||"—")}</div>
+              <div class="small"><span class="fw-semibold">Award:</span> ${escapeHtml(p.awardType||"—")}</div>
+              <div class="small"><span class="fw-semibold">NFQ level:</span> ${escapeHtml(p.nfqLevel ?? "—")}</div>
+              <div class="small"><span class="fw-semibold">School:</span> ${escapeHtml(p.school||"—")}</div>
+              <div class="small"><span class="fw-semibold">Total credits:</span> ${escapeHtml(p.totalCredits || "—")}</div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="p-3 bg-light border rounded-4">
+              <div class="fw-semibold mb-2">Modules</div>
+              ${(p.modules||[]).length ? `
+                <ul class="small mb-0 ps-3">
+                  ${(p.modules||[]).map(m => `<li>${escapeHtml(m.code ? `${m.code} — ` : "")}${escapeHtml(m.title)} (${Number(m.credits||0)} cr)</li>`).join("")}
+                </ul>
+              ` : `<div class="small text-secondary">—</div>`}
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-3 p-3 bg-light border rounded-4">
+          <div class="fw-semibold mb-2">Programme Learning Outcomes (PLOs)</div>
+          ${(p.plos||[]).length ? `
+            <ol class="small mb-0 ps-3">
+              ${(p.plos||[]).map(o => `<li>${escapeHtml(o.text || "—")}</li>`).join("")}
+            </ol>
+          ` : `<div class="small text-secondary">—</div>`}
+        </div>
+
+        <div class="mt-3">
+          <div class="fw-semibold mb-2">Programme versions</div>
+          <div class="row g-3">
+            ${versionCards || `<div class="col-12"><div class="alert alert-warning mb-0">No versions added yet.</div></div>`}
+          </div>
+        </div>
+
+        ${matrixTable}
+
+        <div class="mt-4 d-flex flex-wrap gap-2">
+          <button class="btn btn-outline-secondary" id="copyJsonBtn">Copy JSON to clipboard</button>
+          <button class="btn btn-dark" id="downloadJsonBtn">Download JSON</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("copyJsonBtn").onclick = async () => {
+    await navigator.clipboard.writeText(JSON.stringify(state.programme, null, 2));
+  };
+  document.getElementById("downloadJsonBtn").onclick = () => downloadJson("programme-design.json", state.programme);
+}
+
+function getVersionById(id){
+  return (state.programme.versions || []).find(v => v.id === id);
+}
+
+function wireVersions() {
+  const p = state.programme;
+  if (!Array.isArray(p.versions)) p.versions = [];
+
+  const addBtn = document.getElementById("addVersionBtn");
+  if (addBtn) {
+    addBtn.onclick = () => {
+      const v = defaultVersion();
+      // Helpful defaults: if no versions yet, preselect a sensible modality based on common cases
+      p.versions.push(v);
+      state.selectedVersionId = v.id;
+      saveDebounced();
+      render();
+    };
+  }
+
+  (p.versions || []).forEach((v) => {
+    const byId = (suffix) => document.getElementById(`${suffix}_${v.id}`);
+
+    const setActive = document.getElementById(`setActive_${v.id}`);
+    if (setActive) setActive.onclick = () => { state.selectedVersionId = v.id; saveDebounced(); render(); };
+
+    const removeBtn = document.getElementById(`removeVer_${v.id}`);
+    if (removeBtn) removeBtn.onclick = () => {
+      p.versions = (p.versions || []).filter(x => x.id !== v.id);
+      if (state.selectedVersionId === v.id) state.selectedVersionId = (p.versions[0] && p.versions[0].id) || null;
+      saveDebounced();
+      render();
+    };
+
+    const label = byId("vlabel");
+    if (label) label.oninput = (e) => { v.label = e.target.value; saveDebounced(); renderHeader(); renderFlags(); };
+
+    const code = byId("vcode");
+    if (code) code.oninput = (e) => { v.code = e.target.value; saveDebounced(); renderHeader(); renderFlags(); };
+
+    const duration = byId("vduration");
+    if (duration) duration.oninput = (e) => { v.duration = e.target.value; saveDebounced(); renderHeader(); renderFlags(); };
+
+    const intakes = byId("vintakes");
+    if (intakes) intakes.oninput = (e) => {
+      v.intakes = e.target.value.split(",").map(x => x.trim()).filter(Boolean);
+      saveDebounced(); renderHeader(); renderFlags();
+    };
+
+    const cohort = byId("vcohort");
+    if (cohort) cohort.oninput = (e) => { v.targetCohortSize = Number(e.target.value || 0); saveDebounced(); renderHeader(); renderFlags(); };
+
+    const groups = byId("vgroups");
+    if (groups) groups.oninput = (e) => { v.numberOfGroups = Number(e.target.value || 0); saveDebounced(); renderHeader(); renderFlags(); };
+
+    const notes = byId("vnotes");
+    if (notes) notes.oninput = (e) => { v.deliveryNotes = e.target.value; saveDebounced(); renderHeader(); renderFlags(); };
+
+    const proctor = byId("vproctor");
+    if (proctor) proctor.onchange = (e) => {
+      v.onlineProctoredExams = e.target.value;
+      saveDebounced();
+      render(); // show/hide notes block
+    };
+
+    const proctorNotes = byId("vproctorNotes");
+    if (proctorNotes) proctorNotes.oninput = (e) => { v.onlineProctoredExamsNotes = e.target.value; saveDebounced(); renderHeader(); renderFlags(); };
+
+    // Modalities & patterns
+    const MOD_KEYS = ["F2F","BLENDED","ONLINE"];
+    if (!Array.isArray(v.deliveryModalities)) v.deliveryModalities = [];
+    if (!v.deliveryPatterns || typeof v.deliveryPatterns !== "object") v.deliveryPatterns = {};
+
+    MOD_KEYS.forEach((mod) => {
+      const cb = document.getElementById(`vmod_${v.id}_${mod}`);
+      if (!cb) return;
+      cb.onchange = (e) => {
+        const checked = e.target.checked;
+        if (checked && !v.deliveryModalities.includes(mod)) v.deliveryModalities.push(mod);
+        if (!checked) v.deliveryModalities = v.deliveryModalities.filter(x => x !== mod);
+        if (checked && !v.deliveryPatterns[mod]) v.deliveryPatterns[mod] = defaultPatternFor(mod);
+        saveDebounced();
+        render(); // re-render pattern cards
+      };
+    });
+
+    (v.deliveryModalities || []).forEach((mod) => {
+      if (!v.deliveryPatterns[mod]) v.deliveryPatterns[mod] = defaultPatternFor(mod);
+
+      const sync = document.getElementById(`pat_${v.id}_${mod}_sync`);
+      const async = document.getElementById(`pat_${v.id}_${mod}_async`);
+      const campus = document.getElementById(`pat_${v.id}_${mod}_campus`);
+
+      const update = () => {
+        const pat = v.deliveryPatterns[mod] || defaultPatternFor(mod);
+        pat.syncOnlinePct = Number(sync ? sync.value : pat.syncOnlinePct || 0);
+        pat.asyncDirectedPct = Number(async ? async.value : pat.asyncDirectedPct || 0);
+        pat.onCampusPct = Number(campus ? campus.value : pat.onCampusPct || 0);
+        v.deliveryPatterns[mod] = pat;
+        saveDebounced();
+        renderFlags();
+      };
+
+      if (sync) sync.oninput = update;
+      if (async) async.oninput = update;
+      if (campus) campus.oninput = update;
+    });
+  });
+}
+
+function wireStages() {
+  const p = state.programme;
+  if (!Array.isArray(p.versions)) p.versions = [];
+  const versions = p.versions;
+
+  const select = document.getElementById("stageVersionSelect");
+  if (select) {
+    select.onchange = (e) => {
+      state.selectedVersionId = e.target.value;
+      saveDebounced();
+      render();
+    };
+  }
+
+  const v = getVersionById(state.selectedVersionId) || versions[0];
+  if (!v) return;
+  if (!Array.isArray(v.stages)) v.stages = [];
+
+  const addStageBtn = document.getElementById("addStageBtn");
+  if (addStageBtn) {
+    addStageBtn.onclick = () => {
+      const nextSeq = (v.stages || []).length + 1;
+      const s = defaultStage(nextSeq);
+      // Helpful default: if programme credits set and this is first stage, suggest a common split
+      if ((p.totalCredits || 0) > 0 && (v.stages || []).length === 0) {
+        // Default to 60-credit stages where it fits; otherwise 0 and let teams decide
+        s.creditsTarget = (p.totalCredits % 60 === 0) ? 60 : 0;
+      }
+      v.stages.push(s);
+      saveDebounced();
+      render();
+    };
+  }
+
+  (v.stages || []).forEach((s) => {
+    const name = document.getElementById(`stname_${s.id}`);
+    if (name) name.oninput = (e) => { s.name = e.target.value; saveDebounced(); renderHeader(); renderFlags(); };
+
+    const seq = document.getElementById(`stseq_${s.id}`);
+    if (seq) seq.oninput = (e) => { s.sequence = Number(e.target.value || 1); saveDebounced(); renderFlags(); };
+
+    const cred = document.getElementById(`stcred_${s.id}`);
+    if (cred) cred.oninput = (e) => { s.creditsTarget = Number(e.target.value || 0); saveDebounced(); renderFlags(); };
+
+    const remove = document.getElementById(`removeStage_${s.id}`);
+    if (remove) remove.onclick = () => {
+      v.stages = (v.stages || []).filter(x => x.id !== s.id);
+      saveDebounced();
+      render();
+    };
+
+    const exit = document.getElementById(`stexit_${s.id}`);
+    if (exit) exit.onchange = (e) => {
+      if (!s.exitAward) s.exitAward = { enabled: false, awardTitle: "" };
+      s.exitAward.enabled = !!e.target.checked;
+      saveDebounced();
+      render(); // show/hide title
+    };
+
+    const exitTitle = document.getElementById(`stexitTitle_${s.id}`);
+    if (exitTitle) exitTitle.oninput = (e) => {
+      if (!s.exitAward) s.exitAward = { enabled: false, awardTitle: "" };
+      s.exitAward.awardTitle = e.target.value;
+      saveDebounced();
+      renderFlags();
+    };
+
+    if (!Array.isArray(s.modules)) s.modules = [];
+
+    // Module picking
+    (p.modules || []).forEach((m) => {
+      const cb = document.getElementById(`st_${s.id}_mod_${m.id}`);
+      if (!cb) return;
+      cb.onchange = (e) => {
+        const checked = e.target.checked;
+        if (checked && !s.modules.find(x => x.moduleId === m.id)) {
+          s.modules.push({ moduleId: m.id, semester: "" });
+        }
+        if (!checked) {
+          s.modules = s.modules.filter(x => x.moduleId !== m.id);
+        }
+        saveDebounced();
+        render(); // show/hide semester input + update credit sums
+      };
+
+      const sem = document.getElementById(`st_${s.id}_sem_${m.id}`);
+      if (sem) sem.oninput = (e) => {
+        const entry = s.modules.find(x => x.moduleId === m.id);
+        if (entry) entry.semester = e.target.value;
+        saveDebounced();
+      };
+    });
+  });
+}
+
+function wireIdentity(){
+  const p = state.programme;
+  document.getElementById("titleInput").addEventListener("input", (e)=>{ p.title = e.target.value; saveDebounced(); renderHeader(); });
+  const awardSelect = document.getElementById("awardSelect");
+  const awardOtherWrap = document.getElementById("awardOtherWrap");
+  const awardOtherInput = document.getElementById("awardOtherInput");
+  if (awardSelect) {
+    awardSelect.addEventListener("change", (e) => {
+      const v = e.target.value;
+      if (v === "Other") {
+        p.awardTypeIsOther = true;
+        p.awardType = p.awardTypeIsOther ? (p.awardType || "") : "";
+        awardOtherWrap.style.display = "block";
+        awardOtherInput?.focus();
+      } else {
+        p.awardTypeIsOther = false;
+        p.awardType = v || "";
+        awardOtherWrap.style.display = "none";
+      }
+      saveDebounced();
+      renderFlags();
+    });
+  }
+  if (awardOtherInput) {
+    awardOtherInput.addEventListener("input", (e) => {
+      if (!p.awardTypeIsOther) return;
+      p.awardType = e.target.value;
+      saveDebounced();
+      renderFlags();
+    });
+  }
+  document.getElementById("levelInput").addEventListener("input", (e)=>{ p.nfqLevel = e.target.value ? Number(e.target.value) : null; saveDebounced(); renderFlags(); });
+  const schoolSelect = document.getElementById("schoolSelect");
+  if (schoolSelect) schoolSelect.addEventListener("change", (e)=>{ p.school = e.target.value; saveDebounced(); });
+  document.getElementById("intakeInput").addEventListener("input", (e)=>{ p.intakeMonths = e.target.value.split(",").map(s=>s.trim()).filter(Boolean); saveDebounced(); });
+}
+
+function wireDelivery(){
+  const p = state.programme;
+
+  // modality checkboxes
+  document.querySelectorAll('input[id^="mod_"][data-mod]').forEach(cb => {
+    cb.addEventListener("change", (e) => {
+      const mod = e.target.getAttribute("data-mod");
+      p.deliveryModalities = Array.isArray(p.deliveryModalities) ? p.deliveryModalities : [];
+      if (e.target.checked) {
+        if (!p.deliveryModalities.includes(mod)) p.deliveryModalities.push(mod);
+        p.deliveryPatterns = (p.deliveryPatterns && typeof p.deliveryPatterns === "object") ? p.deliveryPatterns : {};
+        if (!p.deliveryPatterns[mod]) p.deliveryPatterns[mod] = defaultPatternFor(mod);
+      } else {
+        p.deliveryModalities = p.deliveryModalities.filter(x => x !== mod);
+        if (p.deliveryPatterns && p.deliveryPatterns[mod]) delete p.deliveryPatterns[mod];
+      }
+      saveDebounced();
+      renderFlags();
+      renderStep(); // re-render to show/hide pattern cards
+    });
+  });
+
+  // pattern inputs
+  document.querySelectorAll(".pat-input").forEach(inp => {
+    inp.addEventListener("input", (e) => {
+      const mod = e.target.getAttribute("data-mod");
+      const field = e.target.getAttribute("data-field");
+      const val = clampInt(e.target.value, 0, 100);
+      p.deliveryPatterns = (p.deliveryPatterns && typeof p.deliveryPatterns === "object") ? p.deliveryPatterns : {};
+      p.deliveryPatterns[mod] = p.deliveryPatterns[mod] || defaultPatternFor(mod);
+      p.deliveryPatterns[mod][field] = val;
+      saveDebounced();
+      renderFlags();
+      // update badge by re-render (simple)
+      renderStep();
+    });
+  });
+
+  // proctored
+  document.getElementById("proctoredSelect").addEventListener("change", (e)=>{
+    p.onlineProctoredExams = e.target.value;
+    saveDebounced();
+    renderFlags();
+    renderStep();
+  });
+  const notes = document.getElementById("proctoredNotes");
+  if (notes){
+    notes.addEventListener("input", (e)=>{
+      p.onlineProctoredExamsNotes = e.target.value;
+      saveDebounced();
+    });
+  }
+
+  // delivery notes
+  document.getElementById("deliveryNotes").addEventListener("input", (e)=>{
+    p.deliveryNotes = e.target.value;
+    saveDebounced();
+  });
+}
+function wireCapacity(){
+  const p = state.programme;
+  document.getElementById("cohortSize").addEventListener("input", (e)=>{ p.cohortSize = Number(e.target.value||0); saveDebounced(); renderFlags(); });
+  document.getElementById("numGroups").addEventListener("input", (e)=>{ p.numberOfGroups = Number(e.target.value||0); saveDebounced(); });
+  document.getElementById("duration").addEventListener("input", (e)=>{ p.duration = e.target.value; saveDebounced(); });
+  document.getElementById("capacityNotes").addEventListener("input", (e)=>{ p.capacityNotes = e.target.value; saveDebounced(); });
+}
+
+function wireStructure(){
+  const p = state.programme;
+  document.getElementById("totalCredits").addEventListener("input", (e)=>{ p.totalCredits = Number(e.target.value||0); saveDebounced(); renderFlags(); });
+  document.getElementById("addModuleBtn").onclick = () => {
+    p.modules.push({ id: uid("mod"), code: "", title: "New module", credits: 0, mimlos: [] });
+    saveDebounced();
+    render();
+  };
+
+  document.querySelectorAll("[data-remove-module]").forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.getAttribute("data-remove-module");
+      p.modules = p.modules.filter(m => m.id !== id);
+      // remove from mappings too
+      for (const ploId of Object.keys(p.ploToModules||{})) {
+        p.ploToModules[ploId] = (p.ploToModules[ploId]||[]).filter(mid => mid !== id);
+      }
+      saveDebounced();
+      renderFlags();
+      render();
+    };
+  });
+
+  document.querySelectorAll("[data-module-field]").forEach(inp => {
+    inp.addEventListener("input", (e) => {
+      const id = inp.getAttribute("data-module-id");
+      const field = inp.getAttribute("data-module-field");
+      const m = p.modules.find(x => x.id === id);
+      if (!m) return;
+      m[field] = field === "credits" ? Number(e.target.value||0) : e.target.value;
+      saveDebounced();
+      renderFlags();
+    });
+  });
+}
+
+function wireOutcomes(){
+  const p = state.programme;
+  document.getElementById("addPloBtn").onclick = () => {
+    p.plos.push({ id: uid("plo"), text: "" });
+    saveDebounced();
+    render();
+  };
+
+  document.querySelectorAll("[data-remove-plo]").forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.getAttribute("data-remove-plo");
+      p.plos = p.plos.filter(o => o.id !== id);
+      delete p.ploToModules[id];
+      saveDebounced();
+      renderFlags();
+      render();
+    };
+  });
+
+  document.querySelectorAll("[data-plo-id]").forEach(area => {
+    area.addEventListener("input", (e) => {
+      const id = area.getAttribute("data-plo-id");
+      const o = p.plos.find(x => x.id === id);
+      if (!o) return;
+      o.text = e.target.value;
+      saveDebounced();
+    });
+  });
+}
+
+function wireMimlos(){
+  const p = state.programme;
+  document.querySelectorAll("[data-add-mimlo]").forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.getAttribute("data-add-mimlo");
+      const m = p.modules.find(x => x.id === id);
+      if (!m) return;
+      m.mimlos = m.mimlos || [];
+      m.mimlos.push("");
+      saveDebounced();
+      renderFlags();
+      render();
+    };
+  });
+
+  document.querySelectorAll("[data-remove-mimlo]").forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.getAttribute("data-remove-mimlo");
+      const idx = Number(btn.getAttribute("data-remove-mimlo-index"));
+      const m = p.modules.find(x => x.id === id);
+      if (!m) return;
+      m.mimlos = (m.mimlos || []).filter((_, i) => i !== idx);
+      saveDebounced();
+      renderFlags();
+      render();
+    };
+  });
+
+  document.querySelectorAll("[data-mimlo-module]").forEach(inp => {
+    inp.addEventListener("input", (e) => {
+      const id = inp.getAttribute("data-mimlo-module");
+      const idx = Number(inp.getAttribute("data-mimlo-index"));
+      const m = p.modules.find(x => x.id === id);
+      if (!m) return;
+      m.mimlos = m.mimlos || [];
+      m.mimlos[idx] = e.target.value;
+      saveDebounced();
+      renderFlags();
+    });
+  });
+}
+
+function wireMapping(){
+  const p = state.programme;
+  document.querySelectorAll("[data-map-plo]").forEach(chk => {
+    chk.addEventListener("change", (e) => {
+      const ploId = chk.getAttribute("data-map-plo");
+      const modId = chk.getAttribute("data-map-module");
+      const arr = p.ploToModules[ploId] || [];
+      if (chk.checked) {
+        if (!arr.includes(modId)) arr.push(modId);
+      } else {
+        const i = arr.indexOf(modId);
+        if (i >= 0) arr.splice(i, 1);
+      }
+      p.ploToModules[ploId] = arr;
+      saveDebounced();
+      renderFlags();
+    });
+  });
+}
+
+function initNavButtons(){
+  document.getElementById("backBtn").onclick = () => {
+    state.stepIndex = Math.max(0, state.stepIndex - 1);
+    render();
+  };
+  document.getElementById("nextBtn").onclick = () => {
+    state.stepIndex = Math.min(steps.length - 1, state.stepIndex + 1);
+    render();
+  };
+
+  document.getElementById("exportBtn").onclick = () => downloadJson("programme-design.json", state.programme);
+
+  document.getElementById("importInput").addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      // basic shape check
+      state.programme = { ...defaultProgramme(), ...json, schemaVersion: 1 };
+      saveNow();
+      state.stepIndex = 0;
+      render();
+    } catch (err) {
+      alert("Import failed: invalid JSON.");
+    } finally {
+      e.target.value = "";
+    }
+  });
+
+  document.getElementById("resetBtn").onclick = () => {
+    if (!confirm("This will clear the saved programme in this browser. Continue?")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    state.programme = defaultProgramme();
+    state.stepIndex = 0;
+    state.lastSaved = null;
+    render();
+  };
+}
+
+// Boot
+load();
+initNavButtons();
+render();
+renderHeader();
