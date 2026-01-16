@@ -68,13 +68,14 @@ const steps = [
   { key: "assessments", title: "Assessments" },
   { key: "reading-lists", title: "Reading Lists" },
   { key: "mapping", title: "Mapping" },
+  { key: "traceability", title: "Traceability" },
   { key: "snapshot", title: "QQI Snapshot" },
 ];
 
 function activeSteps() {
   const p = state?.programme || {};
   if (p.mode === "MODULE_EDITOR") {
-    const allowed = new Set(["mimlos", "assessments", "reading-lists", "mapping", "snapshot"]);
+    const allowed = new Set(["mimlos", "assessments", "reading-lists", "mapping", "traceability", "snapshot"]);
     return steps.filter(s => allowed.has(s.key));
   }
   return steps;
@@ -1598,6 +1599,33 @@ if (step === "reading-lists") {
     return;
   }
 
+  // traceability
+  if (step === "traceability") {
+    // Render loading state first, then load standards asynchronously
+    content.innerHTML = devModeToggleHtml + `
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Traceability Matrix</h5>
+          <div class="text-center py-4">
+            <div class="spinner-border text-secondary" role="status"></div>
+            <div class="small text-secondary mt-2">Loading award standards...</div>
+          </div>
+        </div>
+      </div>
+    `;
+    wireDevModeToggle();
+
+    // Load standards and render the full table
+    getAwardStandard().then(standardsData => {
+      renderTraceabilityTable(p, standardsData, devModeToggleHtml);
+    }).catch(err => {
+      console.error('Failed to load standards:', err);
+      // Render without standards coverage check
+      renderTraceabilityTable(p, null, devModeToggleHtml);
+    });
+    return;
+  }
+
   // snapshot
   const versions = Array.isArray(p.versions) ? p.versions : [];
 
@@ -2706,6 +2734,319 @@ function wireReadingLists() {
       }
     };
   });
+}
+
+function renderTraceabilityTable(p, standardsData, devModeToggleHtml) {
+  const content = document.getElementById("content");
+  const traceRows = [];
+  const moduleMap = new Map((p.modules || []).map(m => [m.id, m]));
+  
+  // Get all award standards for the programme's NFQ level
+  const nfqLevel = String(p.nfqLevel || '');
+  const levelStandards = (standardsData?.levels?.[nfqLevel]) || [];
+  
+  // Track which standards are covered by PLOs
+  const coveredStandards = new Set();
+  
+  (p.plos || []).forEach((plo, ploIdx) => {
+    const standardMappings = plo.standardMappings || [];
+    const mappedModuleIds = p.ploToModules?.[plo.id] || [];
+    
+    // If no standard mappings, still show the PLO
+    const standards = standardMappings.length > 0 
+      ? standardMappings 
+      : [{ criteria: '(Not mapped)', thread: '' }];
+    
+    standards.forEach(std => {
+      const standardLabel = std.thread ? `${std.criteria} — ${std.thread}` : std.criteria;
+      
+      // Mark this standard as covered by a PLO
+      if (std.thread) {
+        coveredStandards.add(std.thread);
+      }
+      
+      if (mappedModuleIds.length === 0) {
+        // PLO not mapped to any module
+        traceRows.push({
+          standard: standardLabel,
+          ploNum: ploIdx + 1,
+          ploText: plo.text || '',
+          moduleCode: '—',
+          moduleTitle: '(Not mapped to module)',
+          mimloNum: '—',
+          mimloText: '',
+          assessmentTitle: '',
+          assessmentType: '',
+          assessmentWeight: '',
+          status: 'gap',
+          statusLabel: 'PLO Gap'
+        });
+      } else {
+        mappedModuleIds.forEach(modId => {
+          const mod = moduleMap.get(modId);
+          if (!mod) return;
+          
+          const mimlos = mod.mimlos || [];
+          const assessments = mod.assessments || [];
+          
+          if (mimlos.length === 0) {
+            // Module has no MIMLOs
+            traceRows.push({
+              standard: standardLabel,
+              ploNum: ploIdx + 1,
+              ploText: plo.text || '',
+              moduleCode: mod.code || '',
+              moduleTitle: mod.title || '',
+              mimloNum: '—',
+              mimloText: '(No MIMLOs defined)',
+              assessmentTitle: '',
+              assessmentType: '',
+              assessmentWeight: '',
+              status: 'gap',
+              statusLabel: 'MIMLO Gap'
+            });
+          } else {
+            mimlos.forEach((mimlo, mimloIdx) => {
+              const mimloId = mimlo.id || `mimlo_${mimloIdx}`;
+              // Find assessments that cover this MIMLO
+              const coveringAssessments = assessments.filter(a => 
+                (a.mimloIds || []).includes(mimloId)
+              );
+              
+              if (coveringAssessments.length === 0) {
+                // MIMLO not assessed
+                traceRows.push({
+                  standard: standardLabel,
+                  ploNum: ploIdx + 1,
+                  ploText: plo.text || '',
+                  moduleCode: mod.code || '',
+                  moduleTitle: mod.title || '',
+                  mimloNum: mimloIdx + 1,
+                  mimloText: mimlo.text || '',
+                  assessmentTitle: '—',
+                  assessmentType: '(Not assessed)',
+                  assessmentWeight: '',
+                  status: 'warning',
+                  statusLabel: 'Assessment Gap'
+                });
+              } else {
+                coveringAssessments.forEach(asm => {
+                  traceRows.push({
+                    standard: standardLabel,
+                    ploNum: ploIdx + 1,
+                    ploText: plo.text || '',
+                    moduleCode: mod.code || '',
+                    moduleTitle: mod.title || '',
+                    mimloNum: mimloIdx + 1,
+                    mimloText: mimlo.text || '',
+                    assessmentTitle: asm.title || '',
+                    assessmentType: asm.type || '',
+                    assessmentWeight: asm.weighting ? `${asm.weighting}%` : '',
+                    status: 'ok',
+                    statusLabel: 'Covered'
+                  });
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+  });
+
+  // Find uncovered award standards and add them as critical gaps
+  const uncoveredStandards = levelStandards.filter(std => !coveredStandards.has(std.thread));
+  uncoveredStandards.forEach(std => {
+    const standardLabel = std.thread ? `${std.criteria} — ${std.thread}` : std.criteria;
+    traceRows.unshift({
+      standard: standardLabel,
+      ploNum: '—',
+      ploText: '(No PLO covers this standard)',
+      moduleCode: '—',
+      moduleTitle: '',
+      mimloNum: '—',
+      mimloText: '',
+      assessmentTitle: '',
+      assessmentType: '',
+      assessmentWeight: '',
+      status: 'uncovered',
+      statusLabel: 'Standard Gap'
+    });
+  });
+
+  // Summary stats
+  const totalRows = traceRows.length;
+  const coveredCount = traceRows.filter(r => r.status === 'ok').length;
+  const warningCount = traceRows.filter(r => r.status === 'warning').length;
+  const gapCount = traceRows.filter(r => r.status === 'gap').length;
+  const uncoveredCount = traceRows.filter(r => r.status === 'uncovered').length;
+
+  const statusBadge = (status, label) => {
+    if (status === 'ok') return `<span class="badge text-bg-success">${escapeHtml(label)}</span>`;
+    if (status === 'warning') return `<span class="badge text-bg-warning">${escapeHtml(label)}</span>`;
+    if (status === 'uncovered') return `<span class="badge text-bg-dark">${escapeHtml(label)}</span>`;
+    return `<span class="badge text-bg-danger">${escapeHtml(label)}</span>`;
+  };
+
+  const tableRows = traceRows.map((r, i) => `
+    <tr data-status="${r.status}">
+      <td class="small ${r.status === 'uncovered' ? 'fw-bold' : ''}">${escapeHtml(r.standard)}</td>
+      <td class="small text-nowrap">${r.ploNum !== '—' ? 'PLO ' + r.ploNum : '—'}</td>
+      <td class="small" style="max-width:200px;" title="${escapeHtml(r.ploText)}">${escapeHtml(r.ploText.length > 60 ? r.ploText.slice(0,60) + '…' : r.ploText)}</td>
+      <td class="small text-nowrap">${escapeHtml(r.moduleCode)}</td>
+      <td class="small">${escapeHtml(r.moduleTitle)}</td>
+      <td class="small text-nowrap">${r.mimloNum !== '—' ? 'MIMLO ' + r.mimloNum : '—'}</td>
+      <td class="small" style="max-width:180px;" title="${escapeHtml(r.mimloText)}">${escapeHtml(r.mimloText.length > 50 ? r.mimloText.slice(0,50) + '…' : r.mimloText)}</td>
+      <td class="small">${escapeHtml(r.assessmentTitle)}</td>
+      <td class="small">${escapeHtml(r.assessmentType)}</td>
+      <td class="small text-end">${escapeHtml(r.assessmentWeight)}</td>
+      <td class="small text-center">${statusBadge(r.status, r.statusLabel)}</td>
+    </tr>
+  `).join('');
+
+  const standardsCoverage = levelStandards.length > 0 
+    ? `<div class="mb-3 p-3 ${uncoveredCount > 0 ? 'bg-danger-subtle' : 'bg-success-subtle'} rounded">
+        <div class="fw-semibold mb-1">Award Standards Coverage (NFQ Level ${nfqLevel})</div>
+        <div class="small">${levelStandards.length - uncoveredCount} of ${levelStandards.length} standards covered by PLOs
+          ${uncoveredCount > 0 ? ` — <strong>${uncoveredCount} standard${uncoveredCount > 1 ? 's' : ''} not yet addressed</strong>` : ' ✓'}
+        </div>
+       </div>`
+    : (nfqLevel ? `<div class="alert alert-warning mb-3">No award standards found for NFQ Level ${nfqLevel}. Check that standards.json includes this level.</div>` : '');
+
+  content.innerHTML = devModeToggleHtml + `
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Traceability Matrix</h5>
+        <p class="small text-secondary mb-3">This table shows the full alignment chain from QQI Award Standards → PLOs → Modules → MIMLOs → Assessments. Use the filters to identify gaps.</p>
+        
+        ${standardsCoverage}
+        
+        <div class="d-flex flex-wrap gap-3 mb-3 align-items-center">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-success">${coveredCount}</span>
+            <span class="small">Covered</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-warning">${warningCount}</span>
+            <span class="small">Assessment Gaps</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-danger">${gapCount}</span>
+            <span class="small">PLO/MIMLO Gaps</span>
+          </div>
+          ${uncoveredCount > 0 ? `
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-dark">${uncoveredCount}</span>
+            <span class="small">Uncovered Standards</span>
+          </div>
+          ` : ''}
+          <div class="ms-auto d-flex gap-2">
+            <select class="form-select form-select-sm" id="traceFilterStatus" style="width:auto;">
+              <option value="all">All statuses</option>
+              <option value="ok">Covered only</option>
+              <option value="warning">Assessment gaps</option>
+              <option value="gap">PLO/MIMLO gaps</option>
+              <option value="uncovered">Uncovered standards</option>
+            </select>
+            <select class="form-select form-select-sm" id="traceFilterModule" style="width:auto;">
+              <option value="all">All modules</option>
+              ${(p.modules || []).map(m => `<option value="${escapeHtml(m.code || m.title)}">${escapeHtml(m.code || m.title)}</option>`).join('')}
+            </select>
+            <button class="btn btn-outline-secondary btn-sm" id="traceExportCsv">Export CSV</button>
+          </div>
+        </div>
+
+        ${traceRows.length > 0 ? `
+          <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+            <table class="table table-sm table-hover table-bordered align-middle mb-0" id="traceabilityTable">
+              <thead class="table-light sticky-top">
+                <tr>
+                  <th style="min-width:140px;">Award Standard</th>
+                  <th style="min-width:60px;">PLO</th>
+                  <th style="min-width:150px;">PLO Text</th>
+                  <th style="min-width:80px;">Module</th>
+                  <th style="min-width:120px;">Module Title</th>
+                  <th style="min-width:70px;">MIMLO</th>
+                  <th style="min-width:140px;">MIMLO Text</th>
+                  <th style="min-width:100px;">Assessment</th>
+                  <th style="min-width:100px;">Type</th>
+                  <th style="min-width:60px;">Weight</th>
+                  <th style="min-width:80px;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tableRows}
+              </tbody>
+            </table>
+          </div>
+          <div class="small text-secondary mt-2">${totalRows} alignment${totalRows !== 1 ? 's' : ''} shown</div>
+        ` : `
+          <div class="alert alert-info mb-0">No traceability data yet. Add PLOs, map them to modules, define MIMLOs, and create assessments to see the full alignment chain.</div>
+        `}
+      </div>
+    </div>
+  `;
+  wireDevModeToggle();
+  wireTraceability();
+}
+
+function wireTraceability() {
+  const filterStatus = document.getElementById('traceFilterStatus');
+  const filterModule = document.getElementById('traceFilterModule');
+  const exportBtn = document.getElementById('traceExportCsv');
+  const table = document.getElementById('traceabilityTable');
+
+  function applyFilters() {
+    if (!table) return;
+    const statusVal = filterStatus?.value || 'all';
+    const moduleVal = filterModule?.value || 'all';
+    
+    table.querySelectorAll('tbody tr').forEach(row => {
+      const rowStatus = row.getAttribute('data-status');
+      const rowModule = row.children[3]?.textContent?.trim() || '';
+      
+      let show = true;
+      if (statusVal !== 'all' && rowStatus !== statusVal) show = false;
+      if (moduleVal !== 'all' && rowModule !== moduleVal) show = false;
+      
+      row.style.display = show ? '' : 'none';
+    });
+  }
+
+  if (filterStatus) filterStatus.onchange = applyFilters;
+  if (filterModule) filterModule.onchange = applyFilters;
+
+  if (exportBtn && table) {
+    exportBtn.onclick = () => {
+      const rows = [];
+      const headers = [];
+      table.querySelectorAll('thead th').forEach(th => headers.push(th.textContent.trim()));
+      rows.push(headers.join(','));
+      
+      table.querySelectorAll('tbody tr').forEach(tr => {
+        if (tr.style.display === 'none') return;
+        const cells = [];
+        tr.querySelectorAll('td').forEach(td => {
+          let val = td.textContent.trim();
+          // Escape quotes and wrap in quotes if contains comma
+          if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+            val = '"' + val.replace(/"/g, '""') + '"';
+          }
+          cells.push(val);
+        });
+        rows.push(cells.join(','));
+      });
+      
+      const csv = rows.join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'traceability_matrix.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+  }
 }
 
 function wireMapping(){
