@@ -1,0 +1,10 @@
+{
+  "json.schemas": [
+    {
+      "fileMatch": [
+        "samples/*.json"
+      ],
+      "url": "./assets/programme.schema.json"
+    }
+  ]
+}
