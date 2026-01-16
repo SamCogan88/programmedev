@@ -28,7 +28,7 @@ window.setMode = function setMode(mode, assignedModuleIds = []) {
   p.mode = mode;
 
   if (mode === "MODULE_EDITOR") {
-    const defaultAssigned = (p.modules || []).map(m => m.id).slice(0, 1);
+    const defaultAssigned = (p.modules || []).map(m => m.id);
     p.moduleEditor = p.moduleEditor || {};
     p.moduleEditor.assignedModuleIds = assignedModuleIds.length ? assignedModuleIds : defaultAssigned;
     p.moduleEditor.locks = p.moduleEditor.locks || { programme: true, modulesMeta: true, versions: true, plos: true };
@@ -1179,6 +1179,22 @@ if (step === "structure") {
   }
 
   if (step === "mimlos") {
+
+const editableIds = editableModuleIds();
+const selectedId = getSelectedModuleId();
+const canPickModule = (state.programme.mode === "MODULE_EDITOR" && editableIds.length > 1);
+const modulesForEdit = (p.modules || []).filter(m => editableIds.includes(m.id));
+const modulePicker = canPickModule ? `
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      <label class="form-label fw-semibold">Assigned module</label>
+      <select class="form-select" id="modulePicker">
+        ${modulesForEdit.map(m => `<option value="${m.id}" ${m.id===selectedId?"selected":""}>${escapeHtml(m.code || "")} — ${escapeHtml(m.title || "")}</option>`).join("")}
+      </select>
+    </div>
+  </div>
+` : "";
+
     const blocks = (p.modules||[]).map(m => {
       const items = (m.mimlos||[]).map((t, i) => `
         <div class="d-flex gap-2 mb-2">
@@ -1187,7 +1203,7 @@ if (step === "structure") {
         </div>
       `).join("");
       return `
-        <div class="card border-0 bg-white shadow-sm mb-3">
+        <div class="card border-0 bg-white shadow-sm mb-3" ${state.programme.mode==="MODULE_EDITOR" && editableIds.length>1 && m.id!==selectedId ? 'style="display:none"' : ""}>
           <div class="card-body">
             <div class="fw-semibold mb-1">${escapeHtml((m.code?m.code+" — ":"") + m.title)}</div>
             <div class="small-muted mb-3">Add 3–6 MIMLOs per module to start.</div>
@@ -2320,6 +2336,15 @@ if (runNewTab) {
 
 function wireMimlos(){
   const p = state.programme;
+
+const picker = document.getElementById("modulePicker");
+if (picker) {
+  picker.onchange = () => {
+    state.selectedModuleId = picker.value;
+    render();
+  };
+}
+
   p.mode = p.mode || 'PROGRAMME_OWNER';
   document.querySelectorAll("[data-add-mimlo]").forEach(btn => {
     btn.onclick = () => {
