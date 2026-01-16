@@ -2913,11 +2913,14 @@ function renderTraceabilityTable(p, standardsData, devModeToggleHtml) {
        </div>`
     : (nfqLevel ? `<div class="alert alert-warning mb-3">No award standards found for NFQ Level ${nfqLevel}. Check that standards.json includes this level.</div>` : '');
 
+  // Build Sankey data from trace rows
+  const sankeyData = buildSankeyData(traceRows, p);
+
   content.innerHTML = devModeToggleHtml + `
     <div class="card shadow-sm">
       <div class="card-body">
         <h5 class="card-title mb-3">Traceability Matrix</h5>
-        <p class="small text-secondary mb-3">This table shows the full alignment chain from QQI Award Standards → PLOs → Modules → MIMLOs → Assessments. Use the filters to identify gaps.</p>
+        <p class="small text-secondary mb-3">This shows the full alignment chain from QQI Award Standards → PLOs → Modules → MIMLOs → Assessments. Use the tabs to switch between table and diagram views.</p>
         
         ${standardsCoverage}
         
@@ -2940,54 +2943,101 @@ function renderTraceabilityTable(p, standardsData, devModeToggleHtml) {
             <span class="small">Uncovered Standards</span>
           </div>
           ` : ''}
-          <div class="ms-auto d-flex gap-2">
-            <select class="form-select form-select-sm" id="traceFilterStatus" style="width:auto;">
-              <option value="all">All statuses</option>
-              <option value="ok">Covered only</option>
-              <option value="warning">Assessment gaps</option>
-              <option value="gap">PLO/MIMLO gaps</option>
-              <option value="uncovered">Uncovered standards</option>
-            </select>
-            <select class="form-select form-select-sm" id="traceFilterModule" style="width:auto;">
-              <option value="all">All modules</option>
-              ${(p.modules || []).map(m => `<option value="${escapeHtml(m.code || m.title)}">${escapeHtml(m.code || m.title)}</option>`).join('')}
-            </select>
-            <button class="btn btn-outline-secondary btn-sm" id="traceExportCsv">Export CSV</button>
-          </div>
         </div>
 
-        ${traceRows.length > 0 ? `
-          <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
-            <table class="table table-sm table-hover table-bordered align-middle mb-0" id="traceabilityTable">
-              <thead class="table-light sticky-top">
-                <tr>
-                  <th style="min-width:140px;">Award Standard</th>
-                  <th style="min-width:60px;">PLO</th>
-                  <th style="min-width:150px;">PLO Text</th>
-                  <th style="min-width:80px;">Module</th>
-                  <th style="min-width:120px;">Module Title</th>
-                  <th style="min-width:70px;">MIMLO</th>
-                  <th style="min-width:140px;">MIMLO Text</th>
-                  <th style="min-width:100px;">Assessment</th>
-                  <th style="min-width:100px;">Type</th>
-                  <th style="min-width:60px;">Weight</th>
-                  <th style="min-width:80px;">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${tableRows}
-              </tbody>
-            </table>
+        <!-- Tab navigation -->
+        <ul class="nav nav-tabs mb-3" id="traceabilityTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="table-tab" data-bs-toggle="tab" data-bs-target="#tableView" type="button" role="tab" aria-controls="tableView" aria-selected="true">
+              📋 Table View
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="sankey-tab" data-bs-toggle="tab" data-bs-target="#sankeyView" type="button" role="tab" aria-controls="sankeyView" aria-selected="false">
+              📊 Sankey Diagram
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content" id="traceabilityTabContent">
+          <!-- Table View Tab -->
+          <div class="tab-pane fade show active" id="tableView" role="tabpanel" aria-labelledby="table-tab">
+            <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+              <select class="form-select form-select-sm" id="traceFilterStatus" style="width:auto;">
+                <option value="all">All statuses</option>
+                <option value="ok">Covered only</option>
+                <option value="warning">Assessment gaps</option>
+                <option value="gap">PLO/MIMLO gaps</option>
+                <option value="uncovered">Uncovered standards</option>
+              </select>
+              <select class="form-select form-select-sm" id="traceFilterModule" style="width:auto;">
+                <option value="all">All modules</option>
+                ${(p.modules || []).map(m => `<option value="${escapeHtml(m.code || m.title)}">${escapeHtml(m.code || m.title)}</option>`).join('')}
+              </select>
+              <button class="btn btn-outline-secondary btn-sm" id="traceExportCsv">Export CSV</button>
+            </div>
+
+            ${traceRows.length > 0 ? `
+              <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                <table class="table table-sm table-hover table-bordered align-middle mb-0" id="traceabilityTable">
+                  <thead class="table-light sticky-top">
+                    <tr>
+                      <th style="min-width:140px;">Award Standard</th>
+                      <th style="min-width:60px;">PLO</th>
+                      <th style="min-width:150px;">PLO Text</th>
+                      <th style="min-width:80px;">Module</th>
+                      <th style="min-width:120px;">Module Title</th>
+                      <th style="min-width:70px;">MIMLO</th>
+                      <th style="min-width:140px;">MIMLO Text</th>
+                      <th style="min-width:100px;">Assessment</th>
+                      <th style="min-width:100px;">Type</th>
+                      <th style="min-width:60px;">Weight</th>
+                      <th style="min-width:80px;">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${tableRows}
+                  </tbody>
+                </table>
+              </div>
+              <div class="small text-secondary mt-2">${totalRows} alignment${totalRows !== 1 ? 's' : ''} shown</div>
+            ` : `
+              <div class="alert alert-info mb-0">No traceability data yet. Add PLOs, map them to modules, define MIMLOs, and create assessments to see the full alignment chain.</div>
+            `}
           </div>
-          <div class="small text-secondary mt-2">${totalRows} alignment${totalRows !== 1 ? 's' : ''} shown</div>
-        ` : `
-          <div class="alert alert-info mb-0">No traceability data yet. Add PLOs, map them to modules, define MIMLOs, and create assessments to see the full alignment chain.</div>
-        `}
+
+          <!-- Sankey Diagram Tab -->
+          <div class="tab-pane fade" id="sankeyView" role="tabpanel" aria-labelledby="sankey-tab">
+            ${traceRows.length > 0 ? `
+              <div class="mb-2">
+                <div class="small text-secondary mb-2">Flow diagram showing alignments from Award Standards through to Assessments. Hover over nodes and links for details.</div>
+                <div class="d-flex gap-2 flex-wrap mb-2">
+                  <span class="badge text-bg-success">● Covered</span>
+                  <span class="badge text-bg-warning">● Warning</span>
+                  <span class="badge text-bg-danger">● Gap</span>
+                  <span class="badge text-bg-dark">● Uncovered</span>
+                </div>
+              </div>
+              <div id="sankeyChart" style="width:100%; height:600px; background: var(--bs-body-bg); border-radius: 0.375rem;"></div>
+            ` : `
+              <div class="alert alert-info mb-0">No traceability data yet. Add PLOs, map them to modules, define MIMLOs, and create assessments to see the Sankey diagram.</div>
+            `}
+          </div>
+        </div>
       </div>
     </div>
   `;
   wireDevModeToggle();
   wireTraceability();
+  
+  // Render Sankey diagram when data exists
+  if (traceRows.length > 0) {
+    renderSankeyDiagram(sankeyData);
+    // Re-render Sankey when tab is shown (Plotly needs visible container)
+    document.getElementById('sankey-tab')?.addEventListener('shown.bs.tab', () => {
+      renderSankeyDiagram(sankeyData);
+    });
+  }
 }
 
 function wireTraceability() {
@@ -3047,6 +3097,172 @@ function wireTraceability() {
       URL.revokeObjectURL(url);
     };
   }
+}
+
+/**
+ * Build Sankey diagram data from trace rows
+ * Creates nodes for: Standards, PLOs, Modules, MIMLOs, Assessments
+ * Creates links between them based on alignments
+ */
+function buildSankeyData(traceRows, programme) {
+  // Node categories and their prefixes
+  const nodeLabels = [];
+  const nodeColors = [];
+  const nodeMap = new Map(); // label -> index
+  
+  // Color palette for categories
+  const categoryColors = {
+    standard: 'rgba(102, 16, 242, 0.8)',   // Purple for standards
+    plo: 'rgba(13, 110, 253, 0.8)',        // Blue for PLOs
+    module: 'rgba(25, 135, 84, 0.8)',      // Green for modules
+    mimlo: 'rgba(255, 193, 7, 0.8)',       // Yellow for MIMLOs
+    assessment: 'rgba(220, 53, 69, 0.8)', // Red for assessments
+    gap: 'rgba(220, 53, 69, 0.9)'          // Red for gap indicator
+  };
+  
+  // Status colors for links
+  const statusColors = {
+    ok: 'rgba(25, 135, 84, 0.4)',       // Green
+    warning: 'rgba(255, 193, 7, 0.4)',  // Yellow
+    gap: 'rgba(220, 53, 69, 0.4)',      // Red
+    uncovered: 'rgba(33, 37, 41, 0.4)'  // Dark
+  };
+  
+  function addNode(label, category) {
+    if (!nodeMap.has(label)) {
+      nodeMap.set(label, nodeLabels.length);
+      nodeLabels.push(label);
+      nodeColors.push(categoryColors[category]);
+    }
+    return nodeMap.get(label);
+  }
+  
+  const links = [];
+  const linkMap = new Map(); // "source-target" -> link index
+  
+  function addLink(sourceIdx, targetIdx, status) {
+    const key = `${sourceIdx}-${targetIdx}`;
+    if (linkMap.has(key)) {
+      // Increment existing link value
+      const idx = linkMap.get(key);
+      links[idx].value += 1;
+    } else {
+      linkMap.set(key, links.length);
+      links.push({
+        source: sourceIdx,
+        target: targetIdx,
+        value: 1,
+        color: statusColors[status] || statusColors.ok
+      });
+    }
+  }
+  
+  // Process trace rows to build nodes and links
+  traceRows.forEach(row => {
+    // Handle uncovered standards - link them to a "gap" node to show they're missing coverage
+    if (row.status === 'uncovered') {
+      const standardNode = addNode(`📋 ${row.standard}`, 'standard');
+      const gapNode = addNode(`⚠️ NO PLO COVERAGE`, 'gap');
+      addLink(standardNode, gapNode, 'uncovered');
+      return;
+    }
+    
+    // Add nodes for each level
+    const standardNode = addNode(`📋 ${row.standard}`, 'standard');
+    
+    if (row.ploNum !== '—') {
+      const ploLabel = `🎯 PLO ${row.ploNum}`;
+      const ploNode = addNode(ploLabel, 'plo');
+      addLink(standardNode, ploNode, row.status);
+      
+      if (row.moduleCode && row.moduleCode !== '—') {
+        const moduleLabel = `📦 ${row.moduleCode}`;
+        const moduleNode = addNode(moduleLabel, 'module');
+        addLink(ploNode, moduleNode, row.status);
+        
+        if (row.mimloNum !== '—') {
+          const mimloLabel = `📝 ${row.moduleCode} MIMLO ${row.mimloNum}`;
+          const mimloNode = addNode(mimloLabel, 'mimlo');
+          addLink(moduleNode, mimloNode, row.status);
+          
+          if (row.assessmentTitle && row.status === 'ok') {
+            const asmLabel = `✅ ${row.assessmentTitle}`;
+            const asmNode = addNode(asmLabel, 'assessment');
+            addLink(mimloNode, asmNode, row.status);
+          }
+        }
+      }
+    }
+  });
+  
+  return {
+    nodes: {
+      label: nodeLabels,
+      color: nodeColors,
+      pad: 15,
+      thickness: 20,
+      line: { color: 'rgba(0,0,0,0.3)', width: 0.5 }
+    },
+    links: {
+      source: links.map(l => l.source),
+      target: links.map(l => l.target),
+      value: links.map(l => l.value),
+      color: links.map(l => l.color)
+    }
+  };
+}
+
+/**
+ * Render Sankey diagram using Plotly
+ */
+function renderSankeyDiagram(sankeyData) {
+  const container = document.getElementById('sankeyChart');
+  if (!container || !window.Plotly) return;
+  
+  // Check if we have any links to display
+  if (sankeyData.links.source.length === 0) {
+    container.innerHTML = '<div class="alert alert-info">No alignment data to visualize. Add mappings between PLOs, modules, and assessments.</div>';
+    return;
+  }
+  
+  // Detect theme for appropriate colors
+  const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+  
+  const trace = {
+    type: 'sankey',
+    orientation: 'h',
+    node: {
+      ...sankeyData.nodes,
+      hovertemplate: '%{label}<extra></extra>'
+    },
+    link: {
+      ...sankeyData.links,
+      hovertemplate: '%{source.label} → %{target.label}<br>Count: %{value}<extra></extra>'
+    }
+  };
+  
+  const layout = {
+    title: {
+      text: 'Alignment Flow: Standards → PLOs → Modules → MIMLOs → Assessments',
+      font: { size: 14, color: isDark ? '#dee2e6' : '#212529' }
+    },
+    font: {
+      size: 11,
+      color: isDark ? '#dee2e6' : '#212529'
+    },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    margin: { l: 10, r: 10, t: 40, b: 10 }
+  };
+  
+  const config = {
+    responsive: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+    displaylogo: false
+  };
+  
+  Plotly.newPlot(container, [trace], layout, config);
 }
 
 function wireMapping(){
