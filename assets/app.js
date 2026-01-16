@@ -1378,7 +1378,7 @@ if (step === "effort-hours") {
           ${noVersionsMsg || `
           <div class="table-responsive">
             <table class="table table-sm table-bordered align-middle mb-0" data-effort-table="${m.id}">
-              <thead class="table-light">
+              <thead>
                 <tr>
                   <th rowspan="2" class="align-middle" style="min-width:150px">Version / Modality</th>
                   <th colspan="2" class="text-center">Classroom &amp; Demonstrations</th>
@@ -2070,7 +2070,7 @@ if (step === "schedule") {
       <div class="fw-semibold mb-2">PLO ↔ Module Mapping Matrix</div>
       <div class="table-responsive">
         <table class="table table-sm table-bordered align-middle mb-0">
-          <thead class="table-light"><tr><th style="min-width:260px">PLO</th>${matrixHeader}</tr></thead>
+          <thead><tr><th style="min-width:260px">PLO</th>${matrixHeader}</tr></thead>
           <tbody>${matrixRows || `<tr><td colspan="${moduleLabels.length+1}" class="text-secondary">Add PLOs and map them to modules to generate a matrix.</td></tr>`}</tbody>
         </table>
       </div>
@@ -3484,7 +3484,7 @@ function renderTraceabilityTable(p, standardsData, devModeToggleHtml) {
             ${traceRows.length > 0 ? `
               <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
                 <table class="table table-sm table-hover table-bordered align-middle mb-0" id="traceabilityTable">
-                  <thead class="table-light sticky-top">
+                  <thead class="sticky-top" style="background: var(--bs-body-bg);">
                     <tr>
                       <th style="min-width:140px;">Award Standard</th>
                       <th style="min-width:60px;">PLO</th>
