@@ -1195,15 +1195,16 @@ const modulePicker = canPickModule ? `
   </div>
 ` : "";
 
-    const blocks = (p.modules||[]).map(m => {
+    const blocks = modulesForEdit.map(m => {
       const items = (m.mimlos||[]).map((t, i) => `
         <div class="d-flex gap-2 mb-2">
           <input class="form-control" data-mimlo-module="${m.id}" data-mimlo-index="${i}" value="${escapeHtml(mimloText(t))}">
           <button class="btn btn-outline-danger" data-remove-mimlo="${m.id}" data-remove-mimlo-index="${i}">Remove</button>
         </div>
       `).join("");
+      const isHidden = (state.programme.mode === "MODULE_EDITOR" && editableIds.length > 1 && m.id !== selectedId);
       return `
-        <div class="card border-0 bg-white shadow-sm mb-3" ${state.programme.mode==="MODULE_EDITOR" && editableIds.length>1 && m.id!==selectedId ? 'style="display:none"' : ""}>
+        <div class="card border-0 bg-white shadow-sm mb-3" ${isHidden ? 'style="display:none"' : ""} data-module-card="${m.id}">
           <div class="card-body">
             <div class="fw-semibold mb-1">${escapeHtml((m.code?m.code+" — ":"") + m.title)}</div>
             <div class="small-muted mb-3">Add 3–6 MIMLOs per module to start.</div>
@@ -1215,13 +1216,12 @@ const modulePicker = canPickModule ? `
     }).join("");
 
     content.innerHTML = devModeToggleHtml + `
-    // Dev-only UI toggle wiring
-    wireDevModeToggle();
       <div class="card shadow-sm">
         <div class="card-body">
           <h5 class="card-title mb-3">MIMLOs (Minimum Intended Module Learning Outcomes)</h5>
           ${bloomsGuidanceHtml(p.nfqLevel, "MIMLOs")}
-          ${p.modules.length ? blocks : `<div class="small text-secondary">Add modules first (Credits & Modules step).</div>`}
+          ${modulePicker}
+          ${modulesForEdit.length ? blocks : `<div class="small text-secondary">Add modules first (Credits & Modules step).</div>`}
         </div>
       </div>
     `;
