@@ -65,15 +65,19 @@ const steps = [
   { key: "stages", title: "Stage Structure" },
   { key: "structure", title: "Credits & Modules" },
   { key: "mimlos", title: "MIMLOs" },
+  { key: "effort-hours", title: "Effort Hours" },
   { key: "assessments", title: "Assessments" },
+  { key: "reading-lists", title: "Reading Lists" },
+  { key: "schedule", title: "Programme Schedule" },
   { key: "mapping", title: "Mapping" },
+  { key: "traceability", title: "Traceability" },
   { key: "snapshot", title: "QQI Snapshot" },
 ];
 
 function activeSteps() {
   const p = state?.programme || {};
   if (p.mode === "MODULE_EDITOR") {
-    const allowed = new Set(["mimlos", "assessments", "mapping", "snapshot"]);
+    const allowed = new Set(["mimlos", "effort-hours", "assessments", "reading-lists", "schedule", "mapping", "traceability", "snapshot"]);
     return steps.filter(s => allowed.has(s.key));
   }
   return steps;
@@ -229,7 +233,7 @@ const defaultVersion = () => ({
   targetCohortSize: 0,
   numberOfGroups: 0,
 
-  deliveryModalities: [], // F2F | BLENDED | ONLINE
+  deliveryModality: "F2F", // F2F | BLENDED | ONLINE
   deliveryPatterns: {},   // modality -> { syncOnlinePct, asyncDirectedPct, onCampusPct }
   deliveryNotes: "",
 
@@ -822,41 +826,41 @@ function render() {
     const vCards = versions.map((v, idx) => {
       const intakeVal = (v.intakes || []).join(", ");
       const isActive = state.selectedVersionId ? (state.selectedVersionId === v.id) : (idx === 0);
-      const modsSelected = Array.isArray(v.deliveryModalities) ? v.deliveryModalities : [];
-      const modChecks = modDefs.map(m => `
+      const selectedMod = v.deliveryModality || "";
+      const modRadios = modDefs.map(m => `
         <div class="form-check form-check-inline">
-          <input class="form-check-input" type="checkbox" id="vmod_${v.id}_${m.key}" ${modsSelected.includes(m.key)?"checked":""}>
+          <input class="form-check-input" type="radio" name="vmod_${v.id}" id="vmod_${v.id}_${m.key}" value="${m.key}" ${selectedMod === m.key ? "checked" : ""}>
           <label class="form-check-label" for="vmod_${v.id}_${m.key}">${escapeHtml(m.label)}</label>
         </div>
       `).join("");
 
-      const patternCards = modsSelected.map(mod => {
-        const pat = (v.deliveryPatterns || {})[mod] || defaultPatternFor(mod);
+      const patternCard = selectedMod ? (() => {
+        const pat = (v.deliveryPatterns || {})[selectedMod] || defaultPatternFor(selectedMod);
         return `
           <div class="card mt-2">
             <div class="card-body">
               <div class="d-flex align-items-center justify-content-between">
-                <div class="fw-semibold">${escapeHtml(mod)} delivery pattern (must total 100%)</div>
+                <div class="fw-semibold">${escapeHtml(selectedMod)} delivery pattern (must total 100%)</div>
                 <span class="small">${tagHtml(sumPattern(pat)===100?"ok":"warn")} <span class="text-secondary">${sumPattern(pat)}%</span></span>
               </div>
               <div class="row g-2 mt-2">
                 <div class="col-md-4">
                   <label class="form-label">Synchronous Online Classes %</label>
-                  <input type="number" min="0" max="100" class="form-control" id="pat_${v.id}_${mod}_sync" value="${Number(pat.syncOnlinePct||0)}">
+                  <input type="number" min="0" max="100" class="form-control" id="pat_${v.id}_${selectedMod}_sync" value="${Number(pat.syncOnlinePct||0)}">
                 </div>
                 <div class="col-md-4">
                   <label class="form-label">Asynchronous Directed Learning %</label>
-                  <input type="number" min="0" max="100" class="form-control" id="pat_${v.id}_${mod}_async" value="${Number(pat.asyncDirectedPct||0)}">
+                  <input type="number" min="0" max="100" class="form-control" id="pat_${v.id}_${selectedMod}_async" value="${Number(pat.asyncDirectedPct||0)}">
                 </div>
                 <div class="col-md-4">
                   <label class="form-label">On Campus Learning Event %</label>
-                  <input type="number" min="0" max="100" class="form-control" id="pat_${v.id}_${mod}_campus" value="${Number(pat.onCampusPct||0)}">
+                  <input type="number" min="0" max="100" class="form-control" id="pat_${v.id}_${selectedMod}_campus" value="${Number(pat.onCampusPct||0)}">
                 </div>
               </div>
             </div>
           </div>
         `;
-      }).join("");
+      })() : `<div class="small text-secondary mt-2">Select a delivery modality to define delivery patterns.</div>`;
 
       const proctorYes = (v.onlineProctoredExams || "TBC") === "YES";
       const proctorNotesStyle = proctorYes ? "" : "d-none";
@@ -897,9 +901,9 @@ function render() {
                 <input type="number" min="0" class="form-control" id="vgroups_${v.id}" value="${Number(v.numberOfGroups||0)}">
               </div>
               <div class="col-12">
-                <label class="form-label fw-semibold">Delivery modalities</label>
-                <div>${modChecks}</div>
-                ${patternCards || `<div class="small text-secondary mt-2">Select one or more modalities to define delivery patterns.</div>`}
+                <label class="form-label fw-semibold">Delivery modality</label>
+                <div>${modRadios}</div>
+                ${patternCard}
               </div>
               <div class="col-12">
                 <label class="form-label fw-semibold">Delivery notes</label>
@@ -1118,6 +1122,15 @@ if (step === "structure") {
         </span>
       `).join("");
 
+      // Lint the PLO text for problematic verbs
+      const lintResult = (typeof LO_Lint !== 'undefined') ? LO_Lint.lintLearningOutcome(o.text || "") : { issues: [] };
+      const lintWarnings = lintResult.issues.filter(i => i.severity === 'warn').map(issue => `
+        <div class="alert alert-warning py-1 px-2 mb-1 small">
+          <strong>⚠️ "${escapeHtml(issue.match)}"</strong> — ${escapeHtml(issue.message)}
+          ${issue.suggestions.length ? `<br><em>Try: ${issue.suggestions.map(s => escapeHtml(s)).join(", ")}</em>` : ""}
+        </div>
+      `).join("");
+
       return `
       <div class="card border-0 bg-white shadow-sm mb-3">
         <div class="card-body">
@@ -1127,6 +1140,7 @@ if (step === "structure") {
           </div>
 
           <textarea class="form-control" data-plo-id="${o.id}" rows="3" placeholder="e.g., Analyse… / Design and implement…">${escapeHtml(o.text||"")}</textarea>
+          <div class="plo-lint-warnings mt-2">${lintWarnings}</div>
 
           <div class="mt-3">
             <div class="fw-semibold small mb-2">Map this PLO to QQI award standards</div>
@@ -1195,15 +1209,31 @@ const modulePicker = canPickModule ? `
   </div>
 ` : "";
 
-    const blocks = (p.modules||[]).map(m => {
-      const items = (m.mimlos||[]).map((t, i) => `
-        <div class="d-flex gap-2 mb-2">
-          <input class="form-control" data-mimlo-module="${m.id}" data-mimlo-index="${i}" value="${escapeHtml(mimloText(t))}">
-          <button class="btn btn-outline-danger" data-remove-mimlo="${m.id}" data-remove-mimlo-index="${i}">Remove</button>
-        </div>
-      `).join("");
+    const blocks = modulesForEdit.map(m => {
+      const items = (m.mimlos||[]).map((t, i) => {
+        // Lint the MIMLO text for problematic verbs
+        const mimloTxt = mimloText(t);
+        const lintResult = (typeof LO_Lint !== 'undefined') ? LO_Lint.lintLearningOutcome(mimloTxt) : { issues: [] };
+        const lintWarnings = lintResult.issues.filter(iss => iss.severity === 'warn').map(issue => `
+          <div class="alert alert-warning py-1 px-2 mb-0 mt-1 small">
+            <strong>⚠️ "${escapeHtml(issue.match)}"</strong> — ${escapeHtml(issue.message)}
+            ${issue.suggestions.length ? `<br><em>Try: ${issue.suggestions.map(s => escapeHtml(s)).join(", ")}</em>` : ""}
+          </div>
+        `).join("");
+
+        return `
+          <div class="mb-2">
+            <div class="input-group d-flex gap-2">
+              <input class="form-control" data-mimlo-module="${m.id}" data-mimlo-index="${i}" value="${escapeHtml(mimloTxt)}">
+              <button class="btn btn-outline-danger" data-remove-mimlo="${m.id}" data-remove-mimlo-index="${i}">Remove</button>
+            </div>
+            <div class="mimlo-lint-warnings mt-1">${lintWarnings}</div>
+          </div>
+        `;
+      }).join("");
+      const isHidden = (state.programme.mode === "MODULE_EDITOR" && editableIds.length > 1 && m.id !== selectedId);
       return `
-        <div class="card border-0 bg-white shadow-sm mb-3" ${state.programme.mode==="MODULE_EDITOR" && editableIds.length>1 && m.id!==selectedId ? 'style="display:none"' : ""}>
+        <div class="card border-0 bg-white shadow-sm mb-3" ${isHidden ? 'style="display:none"' : ""} data-module-card="${m.id}">
           <div class="card-body">
             <div class="fw-semibold mb-1">${escapeHtml((m.code?m.code+" — ":"") + m.title)}</div>
             <div class="small-muted mb-3">Add 3–6 MIMLOs per module to start.</div>
@@ -1215,13 +1245,12 @@ const modulePicker = canPickModule ? `
     }).join("");
 
     content.innerHTML = devModeToggleHtml + `
-    // Dev-only UI toggle wiring
-    wireDevModeToggle();
       <div class="card shadow-sm">
         <div class="card-body">
           <h5 class="card-title mb-3">MIMLOs (Minimum Intended Module Learning Outcomes)</h5>
           ${bloomsGuidanceHtml(p.nfqLevel, "MIMLOs")}
-          ${p.modules.length ? blocks : `<div class="small text-secondary">Add modules first (Credits & Modules step).</div>`}
+          ${modulePicker}
+          ${modulesForEdit.length ? blocks : `<div class="small text-secondary">Add modules first (Credits & Modules step).</div>`}
         </div>
       </div>
     `;
@@ -1229,6 +1258,207 @@ const modulePicker = canPickModule ? `
     wireMimlos();
     return;
   }
+
+
+if (step === "effort-hours") {
+  const editableIds = editableModuleIds();
+  const selectedId = getSelectedModuleId();
+  const modulesForEdit = (p.modules || []).filter(m => editableIds.includes(m.id));
+  const canPickModule = (state.programme.mode === "MODULE_EDITOR" && editableIds.length > 1);
+
+  const modulePicker = canPickModule ? `
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Assigned module</label>
+        <select class="form-select" id="modulePicker">
+          ${modulesForEdit.map(m => `<option value="${m.id}" ${m.id===selectedId?"selected":""}>${escapeHtml(m.code || "")} — ${escapeHtml(m.title || "")}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+  ` : "";
+
+  // Build version/modality combinations from programme versions
+  const versions = Array.isArray(p.versions) ? p.versions : [];
+  const modalityLabels = { F2F: "Face-to-face", BLENDED: "Blended", ONLINE: "Fully online" };
+  const versionModalities = versions
+    .filter(v => v.deliveryModality) // Only versions with a modality selected
+    .map(v => ({
+      key: `${v.id}_${v.deliveryModality}`,
+      versionId: v.id,
+      modality: v.deliveryModality,
+      label: `${v.label || v.code || 'Version'} — ${modalityLabels[v.deliveryModality] || v.deliveryModality}`
+    }));
+
+  const blocks = modulesForEdit.map(m => {
+    // Ensure effortHours structure exists for each version/modality
+    m.effortHours = m.effortHours || {};
+    versionModalities.forEach(vm => {
+      m.effortHours[vm.key] = m.effortHours[vm.key] || {
+        classroomHours: 0,
+        classroomRatio: "1:60",
+        mentoringHours: 0,
+        mentoringRatio: "1:25",
+        otherContactHours: 0,
+        otherContactRatio: "",
+        otherContactSpecify: "",
+        directedElearningHours: 0,
+        independentLearningHours: 0,
+        otherHours: 0,
+        otherHoursSpecify: "",
+        workBasedHours: 0
+      };
+    });
+
+    const isHidden = (state.programme.mode === "MODULE_EDITOR" && editableIds.length > 1 && m.id !== selectedId);
+    
+    // Calculate totals for each version/modality
+    const getTotalHours = (key) => {
+      const e = m.effortHours[key] || {};
+      return Number(e.classroomHours || 0) + Number(e.mentoringHours || 0) + 
+             Number(e.otherContactHours || 0) + Number(e.directedElearningHours || 0) + 
+             Number(e.independentLearningHours || 0) + Number(e.otherHours || 0) + 
+             Number(e.workBasedHours || 0);
+    };
+
+    // Expected total based on credits (1 ECTS = 25 hours typically)
+    const expectedTotal = Number(m.credits || 0) * 25;
+
+    const modalityRows = versionModalities.map(vm => {
+      const e = m.effortHours[vm.key] || {};
+      const total = getTotalHours(vm.key);
+      const totalClass = total === expectedTotal ? 'text-bg-success' : (total > 0 ? 'text-bg-warning' : 'text-bg-secondary');
+      
+      return `
+        <tr data-version-modality="${vm.key}" data-module-id="${m.id}">
+          <td class="fw-semibold align-middle">${escapeHtml(vm.label)}</td>
+          <td>
+            <input type="number" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="classroomHours" value="${e.classroomHours || 0}" min="0">
+          </td>
+          <td>
+            <input type="text" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="classroomRatio" value="${escapeHtml(e.classroomRatio || '1:60')}" placeholder="1:60">
+          </td>
+          <td>
+            <input type="number" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="mentoringHours" value="${e.mentoringHours || 0}" min="0">
+          </td>
+          <td>
+            <input type="text" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="mentoringRatio" value="${escapeHtml(e.mentoringRatio || '1:25')}" placeholder="1:25">
+          </td>
+          <td>
+            <input type="number" class="form-control form-control-sm" style="width:60px" 
+              data-effort-field="otherContactHours" value="${e.otherContactHours || 0}" min="0">
+          </td>
+          <td>
+            <input type="text" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="otherContactRatio" value="${escapeHtml(e.otherContactRatio || '')}" placeholder="1:X">
+          </td>
+          <td>
+            <input type="text" class="form-control form-control-sm" style="width:90px" 
+              data-effort-field="otherContactSpecify" value="${escapeHtml(e.otherContactSpecify || '')}" placeholder="Specify...">
+          </td>
+          <td>
+            <input type="number" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="directedElearningHours" value="${e.directedElearningHours || 0}" min="0">
+          </td>
+          <td>
+            <input type="number" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="independentLearningHours" value="${e.independentLearningHours || 0}" min="0">
+          </td>
+          <td>
+            <input type="number" class="form-control form-control-sm" style="width:60px" 
+              data-effort-field="otherHours" value="${e.otherHours || 0}" min="0">
+          </td>
+          <td>
+            <input type="text" class="form-control form-control-sm" style="width:90px" 
+              data-effort-field="otherHoursSpecify" value="${escapeHtml(e.otherHoursSpecify || '')}" placeholder="Specify...">
+          </td>
+          <td>
+            <input type="number" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="workBasedHours" value="${e.workBasedHours || 0}" min="0">
+          </td>
+          <td class="text-center align-middle">
+            <span class="badge ${totalClass}" data-total-display>${total}</span>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    const noVersionsMsg = versionModalities.length === 0 
+      ? `<div class="alert alert-info mb-0">No programme versions with delivery modalities defined. Go to the Programme Versions step to add versions and select their delivery modality.</div>` 
+      : "";
+
+    return `
+      <div class="card border-0 bg-white shadow-sm mb-4" ${isHidden ? 'style="display:none"' : ""} data-module-card="${m.id}">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="fw-semibold">${escapeHtml((m.code ? m.code + " — " : "") + m.title)}</div>
+            <div class="small text-secondary">
+              ${m.credits} ECTS × 25 = <strong>${expectedTotal}</strong> expected hours
+            </div>
+          </div>
+          
+          ${noVersionsMsg || `
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle mb-0" data-effort-table="${m.id}">
+              <thead>
+                <tr>
+                  <th rowspan="2" class="align-middle" style="min-width:150px">Version / Modality</th>
+                  <th colspan="2" class="text-center">Classroom &amp; Demonstrations</th>
+                  <th colspan="2" class="text-center">Mentoring &amp; Small-group</th>
+                  <th colspan="3" class="text-center">Other Contact (specify)</th>
+                  <th rowspan="2" class="text-center align-middle" style="min-width:80px">Directed<br>E-learning</th>
+                  <th rowspan="2" class="text-center align-middle" style="min-width:80px">Independent<br>Learning</th>
+                  <th colspan="2" class="text-center">Other Hours (specify)</th>
+                  <th rowspan="2" class="text-center align-middle" style="min-width:80px">Work-based<br>Learning</th>
+                  <th rowspan="2" class="text-center align-middle" style="min-width:70px">Total<br>Effort</th>
+                </tr>
+                <tr>
+                  <th class="text-center small">Hours</th>
+                  <th class="text-center small">Min Ratio</th>
+                  <th class="text-center small">Hours</th>
+                  <th class="text-center small">Min Ratio</th>
+                  <th class="text-center small">Hours</th>
+                  <th class="text-center small">Ratio</th>
+                  <th class="text-center small">Type</th>
+                  <th class="text-center small">Hours</th>
+                  <th class="text-center small">Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${modalityRows}
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="small text-secondary mt-2">
+            <strong>Tip:</strong> Total effort hours should equal ${expectedTotal} (based on ${m.credits} ECTS credits × 25 hours per credit).
+          </div>
+          `}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  content.innerHTML = devModeToggleHtml + `
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Effort Hours by Version / Modality</h5>
+        <p class="small text-secondary mb-3">
+          Define how student learning effort is distributed across different activity types for each programme version and delivery modality.
+          This helps demonstrate the workload balance and staffing requirements (teacher/learner ratios).
+        </p>
+        ${modulePicker}
+        ${modulesForEdit.length ? blocks : `<div class="small text-secondary">Add modules first (Credits & Modules step).</div>`}
+      </div>
+    </div>
+  `;
+  wireDevModeToggle();
+  wireEffortHours();
+  return;
+}
 
 
 if (step === "assessments") {
@@ -1405,6 +1635,341 @@ ${modulePicker}
 }
 
 
+if (step === "reading-lists") {
+  const editableIds = editableModuleIds();
+  const selectedId = getSelectedModuleId();
+  const modulesForEdit = (p.modules || []).filter(m => editableIds.includes(m.id));
+  const isModuleEditor = p.mode === "MODULE_EDITOR";
+  const currentYear = new Date().getFullYear();
+
+  const canPickModule = (isModuleEditor && editableIds.length > 1);
+  const modulePicker = canPickModule ? `
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Assigned module</label>
+        <select class="form-select" id="modulePicker">
+          ${modulesForEdit.map(m => `<option value="${m.id}" ${m.id===selectedId?"selected":""}>${escapeHtml(m.code || "")} — ${escapeHtml(m.title || "")}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+  ` : "";
+
+  const blocks = modulesForEdit.map(m => {
+    m.readingList = m.readingList || [];
+    const isHidden = (isModuleEditor && editableIds.length > 1 && m.id !== selectedId);
+
+    const items = m.readingList.map((item, i) => {
+      const yearNum = Number(item.year) || 0;
+      const isOld = yearNum > 0 && (currentYear - yearNum) > 5;
+      const oldWarning = isOld ? `<span class="badge text-bg-warning ms-2" title="This resource is more than 5 years old">⚠ ${currentYear - yearNum} years old</span>` : '';
+      
+      return `
+        <div class="card border-0 bg-light mb-2">
+          <div class="card-body py-2">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div class="d-flex align-items-center gap-2">
+                <span class="fw-semibold small">Resource ${i + 1}</span>
+                ${oldWarning}
+              </div>
+              <button class="btn btn-outline-danger btn-sm" data-remove-reading="${m.id}" data-reading-index="${i}">Remove</button>
+            </div>
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label class="form-label small">Author(s)</label>
+                <input class="form-control form-control-sm" data-reading-field="author" data-reading-module="${m.id}" data-reading-index="${i}" value="${escapeHtml(item.author || '')}" placeholder="e.g., Smith, J. & Jones, M.">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small">Title</label>
+                <input class="form-control form-control-sm" data-reading-field="title" data-reading-module="${m.id}" data-reading-index="${i}" value="${escapeHtml(item.title || '')}" placeholder="Book or article title">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small">Publisher</label>
+                <input class="form-control form-control-sm" data-reading-field="publisher" data-reading-module="${m.id}" data-reading-index="${i}" value="${escapeHtml(item.publisher || '')}" placeholder="Publisher name">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small">Year</label>
+                <input type="number" min="1900" max="${currentYear + 1}" class="form-control form-control-sm" data-reading-field="year" data-reading-module="${m.id}" data-reading-index="${i}" value="${item.year || ''}" placeholder="${currentYear}">
+              </div>
+            </div>
+            <div class="row g-2 mt-1">
+              <div class="col-md-4">
+                <label class="form-label small">ISBN <button type="button" class="btn btn-link btn-sm p-0 ms-1" data-lookup-isbn="${m.id}" data-isbn-index="${i}" title="Look up book details by ISBN">🔍 Lookup</button></label>
+                <input class="form-control form-control-sm" data-reading-field="isbn" data-reading-module="${m.id}" data-reading-index="${i}" value="${escapeHtml(item.isbn || '')}" placeholder="e.g., 978-0-13-468599-1">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small">Type</label>
+                <select class="form-select form-select-sm" data-reading-field="type" data-reading-module="${m.id}" data-reading-index="${i}">
+                  <option value="core" ${(item.type || 'core') === 'core' ? 'selected' : ''}>Core / Essential</option>
+                  <option value="recommended" ${item.type === 'recommended' ? 'selected' : ''}>Recommended</option>
+                  <option value="supplementary" ${item.type === 'supplementary' ? 'selected' : ''}>Supplementary</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small">Notes (optional)</label>
+                <input class="form-control form-control-sm" data-reading-field="notes" data-reading-module="${m.id}" data-reading-index="${i}" value="${escapeHtml(item.notes || '')}" placeholder="e.g., Chapters 1-5">
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Count warnings for this module
+    const oldCount = m.readingList.filter(item => {
+      const yearNum = Number(item.year) || 0;
+      return yearNum > 0 && (currentYear - yearNum) > 5;
+    }).length;
+    const warningBadge = oldCount > 0 ? `<span class="badge text-bg-warning">${oldCount} outdated</span>` : '';
+
+    return `
+      <div class="card border-0 bg-white shadow-sm mb-3" ${isHidden ? 'style="display:none"' : ''} data-module-card="${m.id}">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="fw-semibold">${escapeHtml((m.code ? m.code + ' — ' : '') + m.title)}</div>
+            <div class="d-flex gap-2 align-items-center">
+              ${warningBadge}
+              <span class="badge text-bg-secondary">${m.readingList.length} item${m.readingList.length !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+          <div class="small text-secondary mb-3">Add core and recommended reading for this module. Resources older than 5 years will be flagged.</div>
+          ${items || '<div class="small text-secondary mb-2">No reading list items yet.</div>'}
+          <button class="btn btn-outline-secondary btn-sm" data-add-reading="${m.id}">+ Add reading</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  content.innerHTML = devModeToggleHtml + `
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Reading Lists</h5>
+        <div class="small text-secondary mb-3">Define core and recommended reading for each module. Items published more than 5 years ago will be flagged for review.</div>
+        ${modulePicker}
+        ${modulesForEdit.length ? blocks : '<div class="small text-secondary">No modules available.</div>'}
+      </div>
+    </div>
+  `;
+  wireDevModeToggle();
+  wireReadingLists();
+  return;
+}
+
+
+if (step === "schedule") {
+  const versions = Array.isArray(p.versions) ? p.versions : [];
+  if (!versions.length) {
+    content.innerHTML = devModeToggleHtml + `<div class="alert alert-warning">Add at least one Programme Version first.</div>`;
+    wireDevModeToggle();
+    return;
+  }
+  if (!state.selectedVersionId) state.selectedVersionId = versions[0].id;
+  const v = versions.find(x => x.id === state.selectedVersionId) || versions[0];
+
+  const vSelect = versions.map(x => `<option value="${escapeHtml(x.id)}" ${x.id===v.id?"selected":""}>${escapeHtml(x.code||"")}${x.code?" — ":""}${escapeHtml(x.label||"")}</option>`).join("");
+
+  const modalityLabels = { F2F: "Face-to-face", BLENDED: "Blended", ONLINE: "Fully online" };
+  const modalityKey = v.deliveryModality ? `${v.id}_${v.deliveryModality}` : null;
+
+  // Build module lookup
+  const moduleMap = new Map((p.modules || []).map(m => [m.id, m]));
+
+  // Group stage-level module tables
+  const stageTables = (v.stages || []).sort((a,b) => Number(a.sequence||0) - Number(b.sequence||0)).map((stg) => {
+    const stageModules = (stg.modules || []).map(sm => {
+      const m = moduleMap.get(sm.moduleId);
+      if (!m) return null;
+      
+      // Get effort hours for this version/modality
+      const effort = modalityKey && m.effortHours ? (m.effortHours[modalityKey] || {}) : {};
+      const classroomHrs = Number(effort.classroomHours || 0);
+      const mentoringHrs = Number(effort.mentoringHours || 0);
+      const otherContactHrs = Number(effort.otherContactHours || 0);
+      const contactTotal = classroomHrs + mentoringHrs + otherContactHrs;
+      const directedElearn = Number(effort.directedElearningHours || 0);
+      const independent = Number(effort.independentLearningHours || 0);
+      const workBased = Number(effort.workBasedHours || 0);
+      const otherHrs = Number(effort.otherHours || 0);
+      const totalHours = contactTotal + directedElearn + independent + workBased + otherHrs;
+
+      // Get assessment breakdown
+      const assessments = m.assessments || [];
+      const totalWeight = assessments.reduce((sum, a) => sum + Number(a.weighting || 0), 0);
+      
+      // Categorize assessments for QQI breakdown
+      let caPercent = 0, projectPercent = 0, practicalPercent = 0, examPercent = 0;
+      assessments.forEach(a => {
+        const w = Number(a.weighting || 0);
+        const t = (a.type || "").toLowerCase();
+        if (t.includes("exam")) {
+          examPercent += w;
+        } else if (t.includes("project")) {
+          projectPercent += w;
+        } else if (t.includes("practical") || t.includes("lab") || t.includes("demo")) {
+          practicalPercent += w;
+        } else {
+          caPercent += w;
+        }
+      });
+
+      return {
+        module: m,
+        semester: sm.semester || "",
+        status: "M", // M = Mandatory (default)
+        credits: Number(m.credits || 0),
+        totalHours,
+        contactHours: contactTotal,
+        directedElearn,
+        independent,
+        workBased,
+        caPercent,
+        projectPercent,
+        practicalPercent,
+        examPercent
+      };
+    }).filter(Boolean);
+
+    const stageCredits = stageModules.reduce((sum, sm) => sum + sm.credits, 0);
+    const stageTotalHours = stageModules.reduce((sum, sm) => sum + sm.totalHours, 0);
+
+    const rows = stageModules.map(sm => `
+      <tr>
+        <td class="small" style="max-width:200px;">${escapeHtml(sm.module.title)}</td>
+        <td class="text-center small">${escapeHtml(sm.semester || "—")}</td>
+        <td class="text-center small">${escapeHtml(sm.status)}</td>
+        <td class="text-center small">${p.nfqLevel || "—"}</td>
+        <td class="text-center small fw-semibold">${sm.credits}</td>
+        <td class="text-center small">${sm.totalHours || "—"}</td>
+        <td class="text-center small">${sm.contactHours || "—"}</td>
+        <td class="text-center small">${sm.directedElearn || "—"}</td>
+        <td class="text-center small">${sm.independent || "—"}</td>
+        <td class="text-center small">${sm.workBased || "—"}</td>
+        <td class="text-center small">${sm.caPercent || "—"}</td>
+        <td class="text-center small">${sm.projectPercent || "—"}</td>
+        <td class="text-center small">${sm.practicalPercent || "—"}</td>
+        <td class="text-center small">${sm.examPercent || "—"}</td>
+      </tr>
+    `).join("");
+
+    // Stage totals row
+    const totalsRow = stageModules.length ? `
+      <tr class="fw-semibold" style="background: var(--bs-tertiary-bg);">
+        <td class="small">Stage Total</td>
+        <td></td><td></td><td></td>
+        <td class="text-center small">${stageCredits}</td>
+        <td class="text-center small">${stageTotalHours}</td>
+        <td class="text-center small">${stageModules.reduce((s,m) => s + m.contactHours, 0)}</td>
+        <td class="text-center small">${stageModules.reduce((s,m) => s + m.directedElearn, 0)}</td>
+        <td class="text-center small">${stageModules.reduce((s,m) => s + m.independent, 0)}</td>
+        <td class="text-center small">${stageModules.reduce((s,m) => s + m.workBased, 0)}</td>
+        <td colspan="4"></td>
+      </tr>
+    ` : "";
+
+    return `
+      <div class="card mb-3">
+        <div class="card-header">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="fw-semibold">${escapeHtml(stg.name || `Stage ${stg.sequence}`)}</div>
+            <div class="small text-secondary">
+              Target: ${stg.creditsTarget || 0} ECTS | NFQ Level: ${p.nfqLevel || "—"}
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle mb-0">
+              <thead>
+                <tr>
+                  <th rowspan="2" class="align-middle" style="min-width:180px">Module Title</th>
+                  <th rowspan="2" class="text-center align-middle" style="width:60px">Sem</th>
+                  <th rowspan="2" class="text-center align-middle" style="width:50px">Status</th>
+                  <th rowspan="2" class="text-center align-middle" style="width:50px">NFQ</th>
+                  <th rowspan="2" class="text-center align-middle" style="width:50px">ECTS</th>
+                  <th colspan="5" class="text-center">Total Student Effort (hours)</th>
+                  <th colspan="4" class="text-center">Assessment Strategy (%)</th>
+                </tr>
+                <tr>
+                  <th class="text-center small" style="width:50px">Total</th>
+                  <th class="text-center small" style="width:55px">Contact</th>
+                  <th class="text-center small" style="width:55px">Dir. E-Learn</th>
+                  <th class="text-center small" style="width:60px">Indep. Learn</th>
+                  <th class="text-center small" style="width:55px">Work-based</th>
+                  <th class="text-center small" style="width:40px">CA</th>
+                  <th class="text-center small" style="width:45px">Project</th>
+                  <th class="text-center small" style="width:50px">Practical</th>
+                  <th class="text-center small" style="width:45px">Exam</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows || `<tr><td colspan="14" class="text-muted text-center">No modules assigned to this stage.</td></tr>`}
+                ${totalsRow}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // Programme header info
+  const headerInfo = `
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <table class="table table-sm table-borderless mb-0">
+              <tr><th class="small text-secondary" style="width:140px">Provider:</th><td class="small fw-semibold">National College of Ireland</td></tr>
+              <tr><th class="small text-secondary">Programme Title:</th><td class="small">${escapeHtml(p.title || "—")}</td></tr>
+              <tr><th class="small text-secondary">Award Title:</th><td class="small">${escapeHtml(p.awardType || "—")}</td></tr>
+              <tr><th class="small text-secondary">Version:</th><td class="small">${escapeHtml(v.label || v.code || "—")}</td></tr>
+            </table>
+          </div>
+          <div class="col-md-6">
+            <table class="table table-sm table-borderless mb-0">
+              <tr><th class="small text-secondary" style="width:140px">NFQ Level:</th><td class="small">${p.nfqLevel || "—"}</td></tr>
+              <tr><th class="small text-secondary">Total Credits:</th><td class="small">${p.totalCredits || "—"} ECTS</td></tr>
+              <tr><th class="small text-secondary">Delivery Mode:</th><td class="small">${modalityLabels[v.deliveryModality] || v.deliveryModality || "—"}</td></tr>
+              <tr><th class="small text-secondary">Duration:</th><td class="small">${escapeHtml(v.duration || "—")}</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  content.innerHTML = devModeToggleHtml + `
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+          <div>
+            <h5 class="card-title mb-1">Programme Schedule</h5>
+            <div class="small text-secondary">QQI-style module schedule showing effort hours and assessment strategy per stage.</div>
+          </div>
+          <div class="d-flex gap-2 align-items-center">
+            <select class="form-select" id="scheduleVersionSelect" style="min-width: 260px;">
+              ${vSelect}
+            </select>
+            <button class="btn btn-outline-secondary btn-sm" id="printScheduleBtn" title="Print schedule">
+              <i class="bi bi-printer"></i> Print
+            </button>
+          </div>
+        </div>
+        
+        ${headerInfo}
+        
+        ${(v.stages || []).length ? stageTables : `<div class="alert alert-info">No stages defined for this version. Go to Stage Structure to add stages and assign modules.</div>`}
+        
+        <div class="small text-secondary mt-3">
+          <strong>Legend:</strong> Status: M = Mandatory, E = Elective | CA = Continuous Assessment | Contact = Classroom + Mentoring + Other Contact Hours
+        </div>
+      </div>
+    </div>
+  `;
+  wireDevModeToggle();
+  wireSchedule();
+  return;
+}
+
 
   if (step === "mapping") {
     if (!p.plos.length || !p.modules.length) {
@@ -1415,25 +1980,52 @@ ${modulePicker}
       return;
     }
 
+    const editableIds = editableModuleIds();
+    const isModuleEditor = p.mode === "MODULE_EDITOR";
+    const modulesToShow = isModuleEditor 
+      ? p.modules.filter(m => editableIds.includes(m.id))
+      : p.modules;
+
     const blocks = p.plos.map((o, idx) => {
       const selected = p.ploToModules[o.id] || [];
-      const checks = p.modules.map(m => `
-        <label class="list-group-item d-flex gap-2 align-items-center">
-          <input class="form-check-input m-0" type="checkbox" data-map-plo="${o.id}" data-map-module="${m.id}" ${selected.includes(m.id)?"checked":""}>
-          <span class="small">${escapeHtml((m.code?m.code+" — ":"") + m.title)} <span class="text-secondary">(${Number(m.credits||0)} cr)</span></span>
-        </label>
-      `).join("");
+      
+      // For module editors: show all mappings but only allow editing their modules
+      const checks = p.modules.map(m => {
+        const isEditable = editableIds.includes(m.id);
+        const isChecked = selected.includes(m.id);
+        
+        // In module editor mode, hide modules they can't edit (unless already mapped)
+        if (isModuleEditor && !isEditable && !isChecked) {
+          return '';
+        }
+        
+        const disabled = isModuleEditor && !isEditable;
+        const disabledAttr = disabled ? 'disabled' : '';
+        const disabledClass = disabled ? 'opacity-50' : '';
+        const disabledNote = disabled ? ' <span class="text-secondary fst-italic">(read-only)</span>' : '';
+        
+        return `
+          <label class="list-group-item d-flex gap-2 align-items-center ${disabledClass}">
+            <input class="form-check-input m-0" type="checkbox" data-map-plo="${o.id}" data-map-module="${m.id}" ${isChecked?"checked":""} ${disabledAttr}>
+            <span class="small">${escapeHtml((m.code?m.code+" — ":"") + m.title)} <span class="text-secondary">(${Number(m.credits||0)} cr)</span>${disabledNote}</span>
+          </label>
+        `;
+      }).filter(Boolean).join("");
 
       return `
         <div class="card border-0 bg-white shadow-sm mb-3">
           <div class="card-body">
             <div class="fw-semibold mb-1">PLO ${idx+1}</div>
             <div class="small mb-3">${escapeHtml(o.text || "—")}</div>
-            <div class="list-group">${checks}</div>
+            <div class="list-group">${checks || '<div class="small text-secondary">No modules available to map.</div>'}</div>
           </div>
         </div>
       `;
     }).join("");
+
+    const modeNote = isModuleEditor 
+      ? `<div class="alert alert-info mb-3"><strong>Module Editor Mode:</strong> You can only map PLOs to your assigned modules. Other mappings are shown as read-only.</div>`
+      : '';
 
     content.innerHTML = devModeToggleHtml + `
     // Dev-only UI toggle wiring
@@ -1441,12 +2033,40 @@ ${modulePicker}
       <div class="card shadow-sm">
         <div class="card-body">
           <h5 class="card-title mb-3">Map PLOs to modules (QQI-critical)</h5>
+          ${modeNote}
           ${blocks}
         </div>
       </div>
     `;
     wireDevModeToggle();
     wireMapping();
+    return;
+  }
+
+  // traceability
+  if (step === "traceability") {
+    // Render loading state first, then load standards asynchronously
+    content.innerHTML = devModeToggleHtml + `
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Traceability Matrix</h5>
+          <div class="text-center py-4">
+            <div class="spinner-border text-secondary" role="status"></div>
+            <div class="small text-secondary mt-2">Loading award standards...</div>
+          </div>
+        </div>
+      </div>
+    `;
+    wireDevModeToggle();
+
+    // Load standards and render the full table
+    getAwardStandard().then(standardsData => {
+      renderTraceabilityTable(p, standardsData, devModeToggleHtml);
+    }).catch(err => {
+      console.error('Failed to load standards:', err);
+      // Render without standards coverage check
+      renderTraceabilityTable(p, null, devModeToggleHtml);
+    });
     return;
   }
 
@@ -1475,7 +2095,7 @@ ${modulePicker}
       <div class="fw-semibold mb-2">PLO ↔ Module Mapping Matrix</div>
       <div class="table-responsive">
         <table class="table table-sm table-bordered align-middle mb-0">
-          <thead class="table-light"><tr><th style="min-width:260px">PLO</th>${matrixHeader}</tr></thead>
+          <thead><tr><th style="min-width:260px">PLO</th>${matrixHeader}</tr></thead>
           <tbody>${matrixRows || `<tr><td colspan="${moduleLabels.length+1}" class="text-secondary">Add PLOs and map them to modules to generate a matrix.</td></tr>`}</tbody>
         </table>
       </div>
@@ -1692,37 +2312,37 @@ function wireVersions() {
     const proctorNotes = byId("vproctorNotes");
     if (proctorNotes) proctorNotes.oninput = (e) => { v.onlineProctoredExamsNotes = e.target.value; saveDebounced(); renderHeader(); renderFlags(); };
 
-    // Modalities & patterns
+    // Modality radio buttons & patterns
     const MOD_KEYS = ["F2F","BLENDED","ONLINE"];
-    if (!Array.isArray(v.deliveryModalities)) v.deliveryModalities = [];
     if (!v.deliveryPatterns || typeof v.deliveryPatterns !== "object") v.deliveryPatterns = {};
 
     MOD_KEYS.forEach((mod) => {
-      const cb = document.getElementById(`vmod_${v.id}_${mod}`);
-      if (!cb) return;
-      cb.onchange = (e) => {
-        const checked = e.target.checked;
-        if (checked && !v.deliveryModalities.includes(mod)) v.deliveryModalities.push(mod);
-        if (!checked) v.deliveryModalities = v.deliveryModalities.filter(x => x !== mod);
-        if (checked && !v.deliveryPatterns[mod]) v.deliveryPatterns[mod] = defaultPatternFor(mod);
-        saveDebounced();
-        render(); // re-render pattern cards
+      const radio = document.getElementById(`vmod_${v.id}_${mod}`);
+      if (!radio) return;
+      radio.onchange = (e) => {
+        if (e.target.checked) {
+          v.deliveryModality = mod;
+          if (!v.deliveryPatterns[mod]) v.deliveryPatterns[mod] = defaultPatternFor(mod);
+          saveDebounced();
+          render(); // re-render pattern card
+        }
       };
     });
 
-    (v.deliveryModalities || []).forEach((mod) => {
-      if (!v.deliveryPatterns[mod]) v.deliveryPatterns[mod] = defaultPatternFor(mod);
+    const selectedMod = v.deliveryModality;
+    if (selectedMod) {
+      if (!v.deliveryPatterns[selectedMod]) v.deliveryPatterns[selectedMod] = defaultPatternFor(selectedMod);
 
-      const sync = document.getElementById(`pat_${v.id}_${mod}_sync`);
-      const async = document.getElementById(`pat_${v.id}_${mod}_async`);
-      const campus = document.getElementById(`pat_${v.id}_${mod}_campus`);
+      const sync = document.getElementById(`pat_${v.id}_${selectedMod}_sync`);
+      const async = document.getElementById(`pat_${v.id}_${selectedMod}_async`);
+      const campus = document.getElementById(`pat_${v.id}_${selectedMod}_campus`);
 
       const update = () => {
-        const pat = v.deliveryPatterns[mod] || defaultPatternFor(mod);
+        const pat = v.deliveryPatterns[selectedMod] || defaultPatternFor(selectedMod);
         pat.syncOnlinePct = Number(sync ? sync.value : pat.syncOnlinePct || 0);
         pat.asyncDirectedPct = Number(async ? async.value : pat.asyncDirectedPct || 0);
         pat.onCampusPct = Number(campus ? campus.value : pat.onCampusPct || 0);
-        v.deliveryPatterns[mod] = pat;
+        v.deliveryPatterns[selectedMod] = pat;
         saveDebounced();
         renderFlags();
       };
@@ -1730,7 +2350,7 @@ function wireVersions() {
       if (sync) sync.oninput = update;
       if (async) async.oninput = update;
       if (campus) campus.oninput = update;
-    });
+    }
   });
 }
 
@@ -2025,6 +2645,26 @@ function wireOutcomes(){
       if (!o) return;
       o.text = e.target.value;
       saveDebounced();
+      
+      // Update lint warnings dynamically
+      if (typeof LO_Lint !== 'undefined') {
+        const lintResult = LO_Lint.lintLearningOutcome(e.target.value);
+        const warningsHtml = lintResult.issues.filter(i => i.severity === 'warn').map(issue => `
+          <div class="alert alert-warning py-1 px-2 mb-1 small">
+            <strong>⚠️ "${escapeHtml(issue.match)}"</strong> — ${escapeHtml(issue.message)}
+            ${issue.suggestions.length ? `<br><em>Try: ${issue.suggestions.map(s => escapeHtml(s)).join(", ")}</em>` : ""}
+          </div>
+        `).join("");
+        
+        // Find or create the lint container after the textarea
+        let lintContainer = area.parentElement.querySelector('.plo-lint-warnings');
+        if (!lintContainer) {
+          lintContainer = document.createElement('div');
+          lintContainer.className = 'plo-lint-warnings mt-2';
+          area.insertAdjacentElement('afterend', lintContainer);
+        }
+        lintContainer.innerHTML = warningsHtml;
+      }
     });
   });
 
@@ -2384,8 +3024,814 @@ if (picker) {
     m.mimlos[idx].text = e.target.value;
       saveDebounced();
       renderFlags();
+      
+      // Update lint warnings dynamically
+      if (typeof LO_Lint !== 'undefined') {
+        const lintResult = LO_Lint.lintLearningOutcome(e.target.value);
+        const warningsHtml = lintResult.issues.filter(i => i.severity === 'warn').map(issue => `
+          <div class="alert alert-warning py-1 px-2 mb-0 small">
+            <strong>⚠️ "${escapeHtml(issue.match)}"</strong> — ${escapeHtml(issue.message)}
+            ${issue.suggestions.length ? `<br><em>Try: ${issue.suggestions.map(s => escapeHtml(s)).join(", ")}</em>` : ""}
+          </div>
+        `).join("");
+        
+        // Find or create the lint container after the input
+        let lintContainer = inp.closest('.input-group').parentElement.querySelector('.mimlo-lint-warnings');
+        if (!lintContainer) {
+          lintContainer = document.createElement('div');
+          lintContainer.className = 'mimlo-lint-warnings mt-1';
+          inp.closest('.input-group').insertAdjacentElement('afterend', lintContainer);
+        }
+        lintContainer.innerHTML = warningsHtml;
+      }
     });
   });
+}
+
+function wireEffortHours() {
+  const p = state.programme;
+  p.mode = p.mode || 'PROGRAMME_OWNER';
+
+  const picker = document.getElementById("modulePicker");
+  if (picker) {
+    picker.onchange = () => {
+      state.selectedModuleId = picker.value;
+      render();
+    };
+  }
+
+  // Function to recalculate and update totals for a module row
+  function updateTotals(moduleId, versionModalityKey) {
+    const m = p.modules.find(x => x.id === moduleId);
+    if (!m || !m.effortHours || !m.effortHours[versionModalityKey]) return;
+    
+    const e = m.effortHours[versionModalityKey];
+    const total = Number(e.classroomHours || 0) + Number(e.mentoringHours || 0) + 
+                  Number(e.otherContactHours || 0) + Number(e.directedElearningHours || 0) + 
+                  Number(e.independentLearningHours || 0) + Number(e.otherHours || 0) + 
+                  Number(e.workBasedHours || 0);
+    
+    const expectedTotal = Number(m.credits || 0) * 25;
+    const row = document.querySelector(`tr[data-version-modality="${versionModalityKey}"][data-module-id="${moduleId}"]`);
+    if (row) {
+      const badge = row.querySelector('[data-total-display]');
+      if (badge) {
+        badge.textContent = total;
+        badge.className = 'badge ' + (total === expectedTotal ? 'text-bg-success' : (total > 0 ? 'text-bg-warning' : 'text-bg-secondary'));
+      }
+    }
+  }
+
+  // Wire up all effort hour inputs
+  document.querySelectorAll('[data-effort-field]').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const row = inp.closest('tr');
+      if (!row) return;
+      
+      const moduleId = row.getAttribute('data-module-id');
+      const versionModalityKey = row.getAttribute('data-version-modality');
+      const field = inp.getAttribute('data-effort-field');
+      
+      const m = p.modules.find(x => x.id === moduleId);
+      if (!m) return;
+      
+      m.effortHours = m.effortHours || {};
+      m.effortHours[versionModalityKey] = m.effortHours[versionModalityKey] || {};
+      
+      // Determine if this is a number or text field
+      if (field.endsWith('Hours')) {
+        m.effortHours[versionModalityKey][field] = Number(e.target.value) || 0;
+      } else {
+        m.effortHours[versionModalityKey][field] = e.target.value;
+      }
+      
+      saveDebounced();
+      updateTotals(moduleId, versionModalityKey);
+    });
+  });
+}
+
+function wireReadingLists() {
+  const p = state.programme;
+
+  const picker = document.getElementById("modulePicker");
+  if (picker) {
+    picker.onchange = () => {
+      state.selectedModuleId = picker.value;
+      render();
+    };
+  }
+
+  document.querySelectorAll("[data-add-reading]").forEach(btn => {
+    btn.onclick = () => {
+      const mid = btn.getAttribute("data-add-reading");
+      const m = p.modules.find(x => x.id === mid);
+      if (!m) return;
+      m.readingList = m.readingList || [];
+      m.readingList.push({
+        id: 'reading_' + crypto.randomUUID(),
+        author: '',
+        title: '',
+        publisher: '',
+        year: '',
+        isbn: '',
+        type: 'core',
+        notes: ''
+      });
+      saveDebounced();
+      render();
+    };
+  });
+
+  document.querySelectorAll("[data-remove-reading]").forEach(btn => {
+    btn.onclick = () => {
+      const mid = btn.getAttribute("data-remove-reading");
+      const idx = Number(btn.getAttribute("data-reading-index"));
+      const m = p.modules.find(x => x.id === mid);
+      if (!m) return;
+      m.readingList = (m.readingList || []).filter((_, i) => i !== idx);
+      saveDebounced();
+      render();
+    };
+  });
+
+  document.querySelectorAll("[data-reading-field]").forEach(inp => {
+    inp.addEventListener("input", (e) => {
+      const mid = inp.getAttribute("data-reading-module");
+      const idx = Number(inp.getAttribute("data-reading-index"));
+      const field = inp.getAttribute("data-reading-field");
+      const m = p.modules.find(x => x.id === mid);
+      if (!m) return;
+      m.readingList = m.readingList || [];
+      if (!m.readingList[idx]) return;
+      m.readingList[idx][field] = (field === 'year') ? (e.target.value || '') : e.target.value;
+      saveDebounced();
+      // Re-render if year changed to update warning badges
+      if (field === 'year') render();
+    });
+  });
+
+  document.querySelectorAll("[data-reading-field][data-reading-field='type']").forEach(sel => {
+    sel.addEventListener("change", (e) => {
+      const mid = sel.getAttribute("data-reading-module");
+      const idx = Number(sel.getAttribute("data-reading-index"));
+      const m = p.modules.find(x => x.id === mid);
+      if (!m) return;
+      m.readingList = m.readingList || [];
+      if (!m.readingList[idx]) return;
+      m.readingList[idx].type = e.target.value;
+      saveDebounced();
+    });
+  });
+
+  // ISBN Lookup using Open Library API
+  document.querySelectorAll("[data-lookup-isbn]").forEach(btn => {
+    btn.onclick = async () => {
+      const mid = btn.getAttribute("data-lookup-isbn");
+      const idx = Number(btn.getAttribute("data-isbn-index"));
+      const m = p.modules.find(x => x.id === mid);
+      if (!m || !m.readingList || !m.readingList[idx]) return;
+
+      const item = m.readingList[idx];
+      let isbn = (item.isbn || '').trim();
+      
+      if (!isbn) {
+        alert('Please enter an ISBN first.');
+        return;
+      }
+
+      // Clean ISBN - remove hyphens and spaces
+      isbn = isbn.replace(/[-\s]/g, '');
+      
+      // Basic ISBN validation (10 or 13 digits)
+      if (!/^(\d{10}|\d{13}|\d{9}X)$/i.test(isbn)) {
+        alert('Invalid ISBN format. Please enter a valid 10 or 13 digit ISBN.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Looking up...';
+
+      try {
+        // Try Open Library API first
+        const response = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
+        const data = await response.json();
+        const bookData = data[`ISBN:${isbn}`];
+
+        if (bookData) {
+          // Extract authors - check authors array first, then fall back to by_statement
+          let authors = '';
+          if (bookData.authors && bookData.authors.length > 0) {
+            authors = bookData.authors.map(a => typeof a === 'string' ? a : a.name).join(' & ');
+          } else if (bookData.by_statement) {
+            authors = bookData.by_statement;
+          }
+          
+          // Extract publisher - handle both {name: "..."} and plain string formats
+          let publisher = '';
+          if (bookData.publishers && bookData.publishers.length > 0) {
+            const pub = bookData.publishers[0];
+            publisher = typeof pub === 'string' ? pub : pub.name;
+          }
+          
+          // Extract year from publish_date (handles various formats like "04 / 10 / 2025", "2025", "January 1, 2025")
+          let year = '';
+          if (bookData.publish_date) {
+            const yearMatch = bookData.publish_date.match(/\b(19|20)\d{2}\b/);
+            if (yearMatch) year = yearMatch[0];
+          }
+
+          // Update the reading list item
+          if (authors) item.author = authors;
+          if (bookData.title) item.title = bookData.title;
+          if (publisher) item.publisher = publisher;
+          if (year) item.year = year;
+
+          saveDebounced();
+          render();
+        } else {
+          // Try Google Books API as fallback
+          const gResponse = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+          const gData = await gResponse.json();
+          
+          if (gData.items && gData.items.length > 0) {
+            const vol = gData.items[0].volumeInfo;
+            
+            if (vol.authors) item.author = vol.authors.join(' & ');
+            if (vol.title) item.title = vol.title;
+            if (vol.publisher) item.publisher = vol.publisher;
+            if (vol.publishedDate) {
+              const yearMatch = vol.publishedDate.match(/\d{4}/);
+              if (yearMatch) item.year = yearMatch[0];
+            }
+
+            saveDebounced();
+            render();
+          } else {
+            alert('Book not found. Please check the ISBN or enter details manually.');
+            btn.disabled = false;
+            btn.textContent = '🔍 Lookup';
+          }
+        }
+      } catch (err) {
+        console.error('ISBN lookup error:', err);
+        alert('Failed to look up ISBN. Please check your connection or enter details manually.');
+        btn.disabled = false;
+        btn.textContent = '🔍 Lookup';
+      }
+    };
+  });
+}
+
+function wireSchedule() {
+  const p = state.programme;
+  const versions = Array.isArray(p.versions) ? p.versions : [];
+
+  // Version selector
+  const versionSelect = document.getElementById("scheduleVersionSelect");
+  if (versionSelect) {
+    versionSelect.onchange = () => {
+      state.selectedVersionId = versionSelect.value;
+      render();
+    };
+  }
+
+  // Print button
+  const printBtn = document.getElementById("printScheduleBtn");
+  if (printBtn) {
+    printBtn.onclick = () => {
+      window.print();
+    };
+  }
+}
+
+function renderTraceabilityTable(p, standardsData, devModeToggleHtml) {
+  const content = document.getElementById("content");
+  const traceRows = [];
+  const moduleMap = new Map((p.modules || []).map(m => [m.id, m]));
+  
+  // Get all award standards for the programme's NFQ level
+  const nfqLevel = String(p.nfqLevel || '');
+  const levelStandards = (standardsData?.levels?.[nfqLevel]) || [];
+  
+  // Track which standards are covered by PLOs
+  const coveredStandards = new Set();
+  
+  (p.plos || []).forEach((plo, ploIdx) => {
+    const standardMappings = plo.standardMappings || [];
+    const mappedModuleIds = p.ploToModules?.[plo.id] || [];
+    
+    // If no standard mappings, still show the PLO
+    const standards = standardMappings.length > 0 
+      ? standardMappings 
+      : [{ criteria: '(Not mapped)', thread: '' }];
+    
+    standards.forEach(std => {
+      const standardLabel = std.thread ? `${std.criteria} — ${std.thread}` : std.criteria;
+      
+      // Mark this standard as covered by a PLO
+      if (std.thread) {
+        coveredStandards.add(std.thread);
+      }
+      
+      if (mappedModuleIds.length === 0) {
+        // PLO not mapped to any module
+        traceRows.push({
+          standard: standardLabel,
+          ploNum: ploIdx + 1,
+          ploText: plo.text || '',
+          moduleCode: '—',
+          moduleTitle: '(Not mapped to module)',
+          mimloNum: '—',
+          mimloText: '',
+          assessmentTitle: '',
+          assessmentType: '',
+          assessmentWeight: '',
+          status: 'gap',
+          statusLabel: 'PLO Gap'
+        });
+      } else {
+        mappedModuleIds.forEach(modId => {
+          const mod = moduleMap.get(modId);
+          if (!mod) return;
+          
+          const mimlos = mod.mimlos || [];
+          const assessments = mod.assessments || [];
+          
+          if (mimlos.length === 0) {
+            // Module has no MIMLOs
+            traceRows.push({
+              standard: standardLabel,
+              ploNum: ploIdx + 1,
+              ploText: plo.text || '',
+              moduleCode: mod.code || '',
+              moduleTitle: mod.title || '',
+              mimloNum: '—',
+              mimloText: '(No MIMLOs defined)',
+              assessmentTitle: '',
+              assessmentType: '',
+              assessmentWeight: '',
+              status: 'gap',
+              statusLabel: 'MIMLO Gap'
+            });
+          } else {
+            mimlos.forEach((mimlo, mimloIdx) => {
+              const mimloId = mimlo.id || `mimlo_${mimloIdx}`;
+              // Find assessments that cover this MIMLO
+              const coveringAssessments = assessments.filter(a => 
+                (a.mimloIds || []).includes(mimloId)
+              );
+              
+              if (coveringAssessments.length === 0) {
+                // MIMLO not assessed
+                traceRows.push({
+                  standard: standardLabel,
+                  ploNum: ploIdx + 1,
+                  ploText: plo.text || '',
+                  moduleCode: mod.code || '',
+                  moduleTitle: mod.title || '',
+                  mimloNum: mimloIdx + 1,
+                  mimloText: mimlo.text || '',
+                  assessmentTitle: '—',
+                  assessmentType: '(Not assessed)',
+                  assessmentWeight: '',
+                  status: 'warning',
+                  statusLabel: 'Assessment Gap'
+                });
+              } else {
+                coveringAssessments.forEach(asm => {
+                  traceRows.push({
+                    standard: standardLabel,
+                    ploNum: ploIdx + 1,
+                    ploText: plo.text || '',
+                    moduleCode: mod.code || '',
+                    moduleTitle: mod.title || '',
+                    mimloNum: mimloIdx + 1,
+                    mimloText: mimlo.text || '',
+                    assessmentTitle: asm.title || '',
+                    assessmentType: asm.type || '',
+                    assessmentWeight: asm.weighting ? `${asm.weighting}%` : '',
+                    status: 'ok',
+                    statusLabel: 'Covered'
+                  });
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+  });
+
+  // Find uncovered award standards and add them as critical gaps
+  const uncoveredStandards = levelStandards.filter(std => !coveredStandards.has(std.thread));
+  uncoveredStandards.forEach(std => {
+    const standardLabel = std.thread ? `${std.criteria} — ${std.thread}` : std.criteria;
+    traceRows.unshift({
+      standard: standardLabel,
+      ploNum: '—',
+      ploText: '(No PLO covers this standard)',
+      moduleCode: '—',
+      moduleTitle: '',
+      mimloNum: '—',
+      mimloText: '',
+      assessmentTitle: '',
+      assessmentType: '',
+      assessmentWeight: '',
+      status: 'uncovered',
+      statusLabel: 'Standard Gap'
+    });
+  });
+
+  // Summary stats
+  const totalRows = traceRows.length;
+  const coveredCount = traceRows.filter(r => r.status === 'ok').length;
+  const warningCount = traceRows.filter(r => r.status === 'warning').length;
+  const gapCount = traceRows.filter(r => r.status === 'gap').length;
+  const uncoveredCount = traceRows.filter(r => r.status === 'uncovered').length;
+
+  const statusBadge = (status, label) => {
+    if (status === 'ok') return `<span class="badge text-bg-success">${escapeHtml(label)}</span>`;
+    if (status === 'warning') return `<span class="badge text-bg-warning">${escapeHtml(label)}</span>`;
+    if (status === 'uncovered') return `<span class="badge text-bg-dark">${escapeHtml(label)}</span>`;
+    return `<span class="badge text-bg-danger">${escapeHtml(label)}</span>`;
+  };
+
+  const tableRows = traceRows.map((r, i) => `
+    <tr data-status="${r.status}">
+      <td class="small ${r.status === 'uncovered' ? 'fw-bold' : ''}">${escapeHtml(r.standard)}</td>
+      <td class="small text-nowrap">${r.ploNum !== '—' ? 'PLO ' + r.ploNum : '—'}</td>
+      <td class="small" style="max-width:200px;" title="${escapeHtml(r.ploText)}">${escapeHtml(r.ploText.length > 60 ? r.ploText.slice(0,60) + '…' : r.ploText)}</td>
+      <td class="small text-nowrap">${escapeHtml(r.moduleCode)}</td>
+      <td class="small">${escapeHtml(r.moduleTitle)}</td>
+      <td class="small text-nowrap">${r.mimloNum !== '—' ? 'MIMLO ' + r.mimloNum : '—'}</td>
+      <td class="small" style="max-width:180px;" title="${escapeHtml(r.mimloText)}">${escapeHtml(r.mimloText.length > 50 ? r.mimloText.slice(0,50) + '…' : r.mimloText)}</td>
+      <td class="small">${escapeHtml(r.assessmentTitle)}</td>
+      <td class="small">${escapeHtml(r.assessmentType)}</td>
+      <td class="small text-end">${escapeHtml(r.assessmentWeight)}</td>
+      <td class="small text-center">${statusBadge(r.status, r.statusLabel)}</td>
+    </tr>
+  `).join('');
+
+  const standardsCoverage = levelStandards.length > 0 
+    ? `<div class="mb-3 p-3 ${uncoveredCount > 0 ? 'bg-danger-subtle' : 'bg-success-subtle'} rounded">
+        <div class="fw-semibold mb-1">Award Standards Coverage (NFQ Level ${nfqLevel})</div>
+        <div class="small">${levelStandards.length - uncoveredCount} of ${levelStandards.length} standards covered by PLOs
+          ${uncoveredCount > 0 ? ` — <strong>${uncoveredCount} standard${uncoveredCount > 1 ? 's' : ''} not yet addressed</strong>` : ' ✓'}
+        </div>
+       </div>`
+    : (nfqLevel ? `<div class="alert alert-warning mb-3">No award standards found for NFQ Level ${nfqLevel}. Check that standards.json includes this level.</div>` : '');
+
+  // Build Sankey data from trace rows
+  const sankeyData = buildSankeyData(traceRows, p);
+
+  content.innerHTML = devModeToggleHtml + `
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Traceability Matrix</h5>
+        <p class="small text-secondary mb-3">This shows the full alignment chain from QQI Award Standards → PLOs → Modules → MIMLOs → Assessments. Use the tabs to switch between table and diagram views.</p>
+        
+        ${standardsCoverage}
+        
+        <div class="d-flex flex-wrap gap-3 mb-3 align-items-center">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-success">${coveredCount}</span>
+            <span class="small">Covered</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-warning">${warningCount}</span>
+            <span class="small">Assessment Gaps</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-danger">${gapCount}</span>
+            <span class="small">PLO/MIMLO Gaps</span>
+          </div>
+          ${uncoveredCount > 0 ? `
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-dark">${uncoveredCount}</span>
+            <span class="small">Uncovered Standards</span>
+          </div>
+          ` : ''}
+        </div>
+
+        <!-- Tab navigation -->
+        <ul class="nav nav-tabs mb-3" id="traceabilityTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="table-tab" data-bs-toggle="tab" data-bs-target="#tableView" type="button" role="tab" aria-controls="tableView" aria-selected="true">
+              📋 Table View
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="sankey-tab" data-bs-toggle="tab" data-bs-target="#sankeyView" type="button" role="tab" aria-controls="sankeyView" aria-selected="false">
+              📊 Sankey Diagram
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content" id="traceabilityTabContent">
+          <!-- Table View Tab -->
+          <div class="tab-pane fade show active" id="tableView" role="tabpanel" aria-labelledby="table-tab">
+            <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+              <select class="form-select form-select-sm" id="traceFilterStatus" style="width:auto;">
+                <option value="all">All statuses</option>
+                <option value="ok">Covered only</option>
+                <option value="warning">Assessment gaps</option>
+                <option value="gap">PLO/MIMLO gaps</option>
+                <option value="uncovered">Uncovered standards</option>
+              </select>
+              <select class="form-select form-select-sm" id="traceFilterModule" style="width:auto;">
+                <option value="all">All modules</option>
+                ${(p.modules || []).map(m => `<option value="${escapeHtml(m.code || m.title)}">${escapeHtml(m.code || m.title)}</option>`).join('')}
+              </select>
+              <button class="btn btn-outline-secondary btn-sm" id="traceExportCsv">Export CSV</button>
+            </div>
+
+            ${traceRows.length > 0 ? `
+              <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                <table class="table table-sm table-hover table-bordered align-middle mb-0" id="traceabilityTable">
+                  <thead class="sticky-top" style="background: var(--bs-body-bg);">
+                    <tr>
+                      <th style="min-width:140px;">Award Standard</th>
+                      <th style="min-width:60px;">PLO</th>
+                      <th style="min-width:150px;">PLO Text</th>
+                      <th style="min-width:80px;">Module</th>
+                      <th style="min-width:120px;">Module Title</th>
+                      <th style="min-width:70px;">MIMLO</th>
+                      <th style="min-width:140px;">MIMLO Text</th>
+                      <th style="min-width:100px;">Assessment</th>
+                      <th style="min-width:100px;">Type</th>
+                      <th style="min-width:60px;">Weight</th>
+                      <th style="min-width:80px;">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${tableRows}
+                  </tbody>
+                </table>
+              </div>
+              <div class="small text-secondary mt-2">${totalRows} alignment${totalRows !== 1 ? 's' : ''} shown</div>
+            ` : `
+              <div class="alert alert-info mb-0">No traceability data yet. Add PLOs, map them to modules, define MIMLOs, and create assessments to see the full alignment chain.</div>
+            `}
+          </div>
+
+          <!-- Sankey Diagram Tab -->
+          <div class="tab-pane fade" id="sankeyView" role="tabpanel" aria-labelledby="sankey-tab">
+            ${traceRows.length > 0 ? `
+              <div class="mb-2">
+                <div class="small text-secondary mb-2">Flow diagram showing alignments from Award Standards through to Assessments. Hover over nodes and links for details.</div>
+                <div class="d-flex gap-2 flex-wrap mb-2">
+                  <span class="badge text-bg-success">● Covered</span>
+                  <span class="badge text-bg-warning">● Warning</span>
+                  <span class="badge text-bg-danger">● Gap</span>
+                  <span class="badge text-bg-dark">● Uncovered</span>
+                </div>
+              </div>
+              <div id="sankeyChart" style="width:100%; height:600px; background: var(--bs-body-bg); border-radius: 0.375rem;"></div>
+            ` : `
+              <div class="alert alert-info mb-0">No traceability data yet. Add PLOs, map them to modules, define MIMLOs, and create assessments to see the Sankey diagram.</div>
+            `}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  wireDevModeToggle();
+  wireTraceability();
+  
+  // Render Sankey diagram when data exists
+  if (traceRows.length > 0) {
+    renderSankeyDiagram(sankeyData);
+    // Re-render Sankey when tab is shown (Plotly needs visible container)
+    document.getElementById('sankey-tab')?.addEventListener('shown.bs.tab', () => {
+      renderSankeyDiagram(sankeyData);
+    });
+  }
+}
+
+function wireTraceability() {
+  const filterStatus = document.getElementById('traceFilterStatus');
+  const filterModule = document.getElementById('traceFilterModule');
+  const exportBtn = document.getElementById('traceExportCsv');
+  const table = document.getElementById('traceabilityTable');
+
+  function applyFilters() {
+    if (!table) return;
+    const statusVal = filterStatus?.value || 'all';
+    const moduleVal = filterModule?.value || 'all';
+    
+    table.querySelectorAll('tbody tr').forEach(row => {
+      const rowStatus = row.getAttribute('data-status');
+      const rowModule = row.children[3]?.textContent?.trim() || '';
+      
+      let show = true;
+      if (statusVal !== 'all' && rowStatus !== statusVal) show = false;
+      if (moduleVal !== 'all' && rowModule !== moduleVal) show = false;
+      
+      row.style.display = show ? '' : 'none';
+    });
+  }
+
+  if (filterStatus) filterStatus.onchange = applyFilters;
+  if (filterModule) filterModule.onchange = applyFilters;
+
+  if (exportBtn && table) {
+    exportBtn.onclick = () => {
+      const rows = [];
+      const headers = [];
+      table.querySelectorAll('thead th').forEach(th => headers.push(th.textContent.trim()));
+      rows.push(headers.join(','));
+      
+      table.querySelectorAll('tbody tr').forEach(tr => {
+        if (tr.style.display === 'none') return;
+        const cells = [];
+        tr.querySelectorAll('td').forEach(td => {
+          let val = td.textContent.trim();
+          // Escape quotes and wrap in quotes if contains comma
+          if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+            val = '"' + val.replace(/"/g, '""') + '"';
+          }
+          cells.push(val);
+        });
+        rows.push(cells.join(','));
+      });
+      
+      const csv = rows.join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'traceability_matrix.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+  }
+}
+
+/**
+ * Build Sankey diagram data from trace rows
+ * Creates nodes for: Standards, PLOs, Modules, MIMLOs, Assessments
+ * Creates links between them based on alignments
+ */
+function buildSankeyData(traceRows, programme) {
+  // Node categories and their prefixes
+  const nodeLabels = [];
+  const nodeColors = [];
+  const nodeMap = new Map(); // label -> index
+  
+  // Color palette for categories
+  const categoryColors = {
+    standard: 'rgba(102, 16, 242, 0.8)',   // Purple for standards
+    plo: 'rgba(13, 110, 253, 0.8)',        // Blue for PLOs
+    module: 'rgba(25, 135, 84, 0.8)',      // Green for modules
+    mimlo: 'rgba(255, 193, 7, 0.8)',       // Yellow for MIMLOs
+    assessment: 'rgba(220, 53, 69, 0.8)', // Red for assessments
+    gap: 'rgba(220, 53, 69, 0.9)'          // Red for gap indicator
+  };
+  
+  // Status colors for links
+  const statusColors = {
+    ok: 'rgba(25, 135, 84, 0.4)',       // Green
+    warning: 'rgba(255, 193, 7, 0.4)',  // Yellow
+    gap: 'rgba(220, 53, 69, 0.4)',      // Red
+    uncovered: 'rgba(33, 37, 41, 0.4)'  // Dark
+  };
+  
+  function addNode(label, category) {
+    if (!nodeMap.has(label)) {
+      nodeMap.set(label, nodeLabels.length);
+      nodeLabels.push(label);
+      nodeColors.push(categoryColors[category]);
+    }
+    return nodeMap.get(label);
+  }
+  
+  const links = [];
+  const linkMap = new Map(); // "source-target" -> link index
+  
+  function addLink(sourceIdx, targetIdx, status) {
+    const key = `${sourceIdx}-${targetIdx}`;
+    if (linkMap.has(key)) {
+      // Increment existing link value
+      const idx = linkMap.get(key);
+      links[idx].value += 1;
+    } else {
+      linkMap.set(key, links.length);
+      links.push({
+        source: sourceIdx,
+        target: targetIdx,
+        value: 1,
+        color: statusColors[status] || statusColors.ok
+      });
+    }
+  }
+  
+  // Process trace rows to build nodes and links
+  traceRows.forEach(row => {
+    // Handle uncovered standards - link them to a "gap" node to show they're missing coverage
+    if (row.status === 'uncovered') {
+      const standardNode = addNode(`📋 ${row.standard}`, 'standard');
+      const gapNode = addNode(`⚠️ NO PLO COVERAGE`, 'gap');
+      addLink(standardNode, gapNode, 'uncovered');
+      return;
+    }
+    
+    // Add nodes for each level
+    const standardNode = addNode(`📋 ${row.standard}`, 'standard');
+    
+    if (row.ploNum !== '—') {
+      const ploLabel = `🎯 PLO ${row.ploNum}`;
+      const ploNode = addNode(ploLabel, 'plo');
+      addLink(standardNode, ploNode, row.status);
+      
+      if (row.moduleCode && row.moduleCode !== '—') {
+        const moduleLabel = `📦 ${row.moduleCode}`;
+        const moduleNode = addNode(moduleLabel, 'module');
+        addLink(ploNode, moduleNode, row.status);
+        
+        if (row.mimloNum !== '—') {
+          const mimloLabel = `📝 ${row.moduleCode} MIMLO ${row.mimloNum}`;
+          const mimloNode = addNode(mimloLabel, 'mimlo');
+          addLink(moduleNode, mimloNode, row.status);
+          
+          if (row.assessmentTitle && row.status === 'ok') {
+            const asmLabel = `✅ ${row.assessmentTitle}`;
+            const asmNode = addNode(asmLabel, 'assessment');
+            addLink(mimloNode, asmNode, row.status);
+          }
+        }
+      }
+    }
+  });
+  
+  return {
+    nodes: {
+      label: nodeLabels,
+      color: nodeColors,
+      pad: 15,
+      thickness: 20,
+      line: { color: 'rgba(0,0,0,0.3)', width: 0.5 }
+    },
+    links: {
+      source: links.map(l => l.source),
+      target: links.map(l => l.target),
+      value: links.map(l => l.value),
+      color: links.map(l => l.color)
+    }
+  };
+}
+
+/**
+ * Render Sankey diagram using Plotly
+ */
+function renderSankeyDiagram(sankeyData) {
+  const container = document.getElementById('sankeyChart');
+  if (!container || !window.Plotly) return;
+  
+  // Check if we have any links to display
+  if (sankeyData.links.source.length === 0) {
+    container.innerHTML = '<div class="alert alert-info">No alignment data to visualize. Add mappings between PLOs, modules, and assessments.</div>';
+    return;
+  }
+  
+  // Detect theme for appropriate colors
+  const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+  
+  const trace = {
+    type: 'sankey',
+    orientation: 'h',
+    node: {
+      ...sankeyData.nodes,
+      hovertemplate: '%{label}<extra></extra>'
+    },
+    link: {
+      ...sankeyData.links,
+      hovertemplate: '%{source.label} → %{target.label}<br>Count: %{value}<extra></extra>'
+    }
+  };
+  
+  const layout = {
+    title: {
+      text: 'Alignment Flow: Standards → PLOs → Modules → MIMLOs → Assessments',
+      font: { size: 14, color: isDark ? '#dee2e6' : '#212529' }
+    },
+    font: {
+      size: 11,
+      color: isDark ? '#dee2e6' : '#212529'
+    },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    margin: { l: 10, r: 10, t: 40, b: 10 }
+  };
+  
+  const config = {
+    responsive: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+    displaylogo: false
+  };
+  
+  Plotly.newPlot(container, [trace], layout, config);
 }
 
 function wireMapping(){
