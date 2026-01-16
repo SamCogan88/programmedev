@@ -1415,25 +1415,52 @@ ${modulePicker}
       return;
     }
 
+    const editableIds = editableModuleIds();
+    const isModuleEditor = p.mode === "MODULE_EDITOR";
+    const modulesToShow = isModuleEditor 
+      ? p.modules.filter(m => editableIds.includes(m.id))
+      : p.modules;
+
     const blocks = p.plos.map((o, idx) => {
       const selected = p.ploToModules[o.id] || [];
-      const checks = p.modules.map(m => `
-        <label class="list-group-item d-flex gap-2 align-items-center">
-          <input class="form-check-input m-0" type="checkbox" data-map-plo="${o.id}" data-map-module="${m.id}" ${selected.includes(m.id)?"checked":""}>
-          <span class="small">${escapeHtml((m.code?m.code+" — ":"") + m.title)} <span class="text-secondary">(${Number(m.credits||0)} cr)</span></span>
-        </label>
-      `).join("");
+      
+      // For module editors: show all mappings but only allow editing their modules
+      const checks = p.modules.map(m => {
+        const isEditable = editableIds.includes(m.id);
+        const isChecked = selected.includes(m.id);
+        
+        // In module editor mode, hide modules they can't edit (unless already mapped)
+        if (isModuleEditor && !isEditable && !isChecked) {
+          return '';
+        }
+        
+        const disabled = isModuleEditor && !isEditable;
+        const disabledAttr = disabled ? 'disabled' : '';
+        const disabledClass = disabled ? 'opacity-50' : '';
+        const disabledNote = disabled ? ' <span class="text-secondary fst-italic">(read-only)</span>' : '';
+        
+        return `
+          <label class="list-group-item d-flex gap-2 align-items-center ${disabledClass}">
+            <input class="form-check-input m-0" type="checkbox" data-map-plo="${o.id}" data-map-module="${m.id}" ${isChecked?"checked":""} ${disabledAttr}>
+            <span class="small">${escapeHtml((m.code?m.code+" — ":"") + m.title)} <span class="text-secondary">(${Number(m.credits||0)} cr)</span>${disabledNote}</span>
+          </label>
+        `;
+      }).filter(Boolean).join("");
 
       return `
         <div class="card border-0 bg-white shadow-sm mb-3">
           <div class="card-body">
             <div class="fw-semibold mb-1">PLO ${idx+1}</div>
             <div class="small mb-3">${escapeHtml(o.text || "—")}</div>
-            <div class="list-group">${checks}</div>
+            <div class="list-group">${checks || '<div class="small text-secondary">No modules available to map.</div>'}</div>
           </div>
         </div>
       `;
     }).join("");
+
+    const modeNote = isModuleEditor 
+      ? `<div class="alert alert-info mb-3"><strong>Module Editor Mode:</strong> You can only map PLOs to your assigned modules. Other mappings are shown as read-only.</div>`
+      : '';
 
     content.innerHTML = devModeToggleHtml + `
     // Dev-only UI toggle wiring
@@ -1441,6 +1468,7 @@ ${modulePicker}
       <div class="card shadow-sm">
         <div class="card-body">
           <h5 class="card-title mb-3">Map PLOs to modules (QQI-critical)</h5>
+          ${modeNote}
           ${blocks}
         </div>
       </div>
