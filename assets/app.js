@@ -208,8 +208,8 @@ const defaultProgramme = () => ({
   awardTypeIsOther: false,
   nfqLevel: null,
   school: "",
-  awardStandardId: "",
-  awardStandardName: "",
+  awardStandardIds: [], // up to 2 standards
+  awardStandardNames: [],
 
   // Programme-level structure
   totalCredits: 0,
@@ -273,6 +273,24 @@ function load() {
     const parsed = JSON.parse(raw);
     // shallow merge to preserve new defaults if schema evolves
     state.programme = { ...defaultProgramme(), ...parsed };
+
+// Migration: convert old single standard to array format
+if (typeof state.programme.awardStandardId === 'string') {
+  const oldId = state.programme.awardStandardId || '';
+  const oldName = state.programme.awardStandardName || '';
+  state.programme.awardStandardIds = oldId ? [oldId] : [];
+  state.programme.awardStandardNames = oldName ? [oldName] : [];
+  delete state.programme.awardStandardId;
+  delete state.programme.awardStandardName;
+}
+// Ensure arrays exist
+if (!Array.isArray(state.programme.awardStandardIds)) {
+  state.programme.awardStandardIds = [];
+}
+if (!Array.isArray(state.programme.awardStandardNames)) {
+  state.programme.awardStandardNames = [];
+}
+
 // Migration to schemaVersion 2: programme versions + stages.
 if (!Array.isArray(state.programme.versions)) state.programme.versions = [];
 
@@ -846,14 +864,10 @@ function render() {
               </select>
             </div>
             <div class="col-md-12">
-              <label class="form-label fw-semibold">QQI award standard</label>
-              <select class="form-select" id="standardSelect">
-                <option value="" disabled ${!p.awardStandardId?"selected":""}>Select a standard</option>
-                <option value="qqi-computing-l6-9" ${p.awardStandardId==="qqi-computing-l6-9"?"selected":""}>Computing (Levels 6–9)</option>
-                <option value="qqi-professional-awards-l5-9" ${p.awardStandardId==="qqi-professional-awards-l5-9"?"selected":""}>Professional (Levels 5–9)</option>
-                <option value="qqi-generic-major-masters-l9" ${p.awardStandardId==="qqi-generic-major-masters-l9"?"selected":""}>Generic Major — Masters Degree (Level 9)</option>
-              </select>
-              <div class="form-text">This will drive PLO mapping and autocompletion.</div>
+              <label class="form-label fw-semibold">QQI award standards (up to 2)</label>
+              <div class="small text-secondary mb-2">Select 1-2 award standards. If using 2, you'll map each PLO to criteria from one of them.</div>
+              <div id="standardSelectorsContainer"></div>
+              <div class="form-text">These will drive PLO mapping and autocompletion.</div>
               <div id="standardMismatchAlert" class="mt-2"></div>
             </div>
             <div class="col-12">
@@ -1162,12 +1176,30 @@ if (step === "structure") {
 
   if (step === "outcomes") {
     const rows = (p.plos||[]).map((o, idx) => {
-      const mappings = (o.standardMappings||[]).map((m,i)=>`
-        <span class="badge text-bg-light border me-2 mb-2">
-          ${escapeHtml(m.criteria)} / ${escapeHtml(m.thread)}
-          <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2" data-remove-plo-map="${o.id}" data-remove-plo-map-index="${i}" title="Remove">×</button>
-        </span>
-      `).join("");
+      // Group mappings by standard
+      const mappingsByStandard = {};
+      (o.standardMappings||[]).forEach((m,i) => {
+        const stdId = m.standardId || p.awardStandardIds?.[0] || 'unknown';
+        if (!mappingsByStandard[stdId]) mappingsByStandard[stdId] = [];
+        mappingsByStandard[stdId].push({mapping: m, index: i});
+      });
+      
+      const mappings = Object.entries(mappingsByStandard).map(([stdId, items]) => {
+        const stdIndex = p.awardStandardIds?.indexOf(stdId);
+        const stdName = stdIndex >= 0 ? p.awardStandardNames[stdIndex] : stdId;
+        const showStdHeader = p.awardStandardIds?.length > 1;
+        
+        const badges = items.map(({mapping: m, index: i}) => `
+          <span class="badge text-bg-secondary me-2 mb-2">
+            ${escapeHtml(m.criteria)} / ${escapeHtml(m.thread)}
+            <button type="button" class="btn btn-sm btn-link text-white opacity-75 p-0 ms-2" data-remove-plo-map="${o.id}" data-remove-plo-map-index="${i}" title="Remove">×</button>
+          </span>
+        `).join('');
+        
+        return showStdHeader 
+          ? `<div class="mb-2"><div class="small fw-semibold text-secondary mb-1">${escapeHtml(stdName)}</div>${badges}</div>`
+          : badges;
+      }).join("");
 
       // Lint the PLO text for problematic verbs
       const lintResult = (typeof LO_Lint !== 'undefined') ? LO_Lint.lintLearningOutcome(o.text || "") : { issues: [] };
@@ -1191,9 +1223,17 @@ if (step === "structure") {
 
           <div class="mt-3">
             <div class="fw-semibold small mb-2">Map this PLO to QQI award standards</div>
-            ${!p.awardStandardId ? `
+            ${!p.awardStandardIds || !p.awardStandardIds.length ? `
               <div class="small text-danger">Select a QQI award standard in Identity to enable mapping.</div>
             ` : `
+              ${p.awardStandardIds.length > 1 ? `
+                <div class="mb-2">
+                  <label class="form-label small mb-1">Select which standard to map to:</label>
+                  <select class="form-select form-select-sm" data-plo-standard-selector="${o.id}" style="max-width: 400px;">
+                    ${p.awardStandardIds.map((stdId, idx) => `<option value="${escapeHtml(stdId)}">${escapeHtml(p.awardStandardNames[idx] || stdId)}</option>`).join('')}
+                  </select>
+                </div>
+              ` : ''}
               <div class="d-flex flex-wrap gap-2 align-items-end">
                 <div style="min-width:220px">
                   <label class="form-label small mb-1">Criteria</label>
@@ -2101,14 +2141,17 @@ if (step === "schedule") {
     `;
     wireDevModeToggle();
 
-    // Load standards and render the full table
-    getAwardStandardById(p.awardStandardId).then(standardsData => {
-      renderTraceabilityTable(p, standardsData, devModeToggleHtml);
-    }).catch(err => {
-      console.error('Failed to load standards:', err);
-      // Render without standards coverage check
-      renderTraceabilityTable(p, null, devModeToggleHtml);
-    });
+    // Load all selected award standards and render the full table
+    const standardsIds = p.awardStandardIds || [];
+    Promise.all(standardsIds.map(stdId => getAwardStandardById(stdId)))
+      .then(standardsDataArray => {
+        renderTraceabilityTable(p, standardsDataArray, devModeToggleHtml);
+      })
+      .catch(err => {
+        console.error('Failed to load standards:', err);
+        // Render without standards coverage check
+        renderTraceabilityTable(p, null, devModeToggleHtml);
+      });
     return;
   }
 
@@ -2528,23 +2571,31 @@ function wireIdentity(){
   async function refreshStandardLevelMismatch(){
     if (!mismatchHost) return;
     mismatchHost.innerHTML = "";
-    if (!p.awardStandardId) return;
+    if (!p.awardStandardIds || !p.awardStandardIds.length) return;
 
-    let std = null;
-    try {
-      std = await getAwardStandardById(p.awardStandardId);
-    } catch (e) {
-      return; // can't validate without standards
+    // Check all selected standards for level mismatches
+    const mismatches = [];
+    for (const stdId of p.awardStandardIds) {
+      let std = null;
+      try {
+        std = await getAwardStandardById(stdId);
+      } catch (e) {
+        continue;
+      }
+      const supportedLevels = Array.isArray(std?.levels) ? std.levels.map(Number).filter(n => Number.isFinite(n)) : [];
+      const nfqNum = Number(p.nfqLevel);
+
+      if (supportedLevels.length && Number.isFinite(nfqNum) && !supportedLevels.includes(nfqNum)) {
+        mismatches.push({ std, supportedLevels, target: supportedLevels[0] });
+      }
     }
-    const supportedLevels = Array.isArray(std?.levels) ? std.levels.map(Number).filter(n => Number.isFinite(n)) : [];
-    const nfqNum = Number(p.nfqLevel);
 
-    if (!supportedLevels.length || !Number.isFinite(nfqNum) || supportedLevels.includes(nfqNum)) {
+    if (mismatches.length === 0) {
       mismatchHost.innerHTML = "";
       return;
     }
 
-    const target = supportedLevels[0];
+    const firstMismatch = mismatches[0];
     mismatchHost.innerHTML = `
       <div class="alert alert-warning mb-0 d-flex justify-content-between align-items-start" style="gap:12px;">
         <div>
@@ -2552,14 +2603,14 @@ function wireIdentity(){
           <div>“${escapeHtml(std.title || std.standard_name || std.standardName || std.standard_id || "Selected award standard") }” supports level(s) <span class="fw-semibold">${escapeHtml(supportedLevels.join(", "))}</span>. You currently have level <span class="fw-semibold">${escapeHtml(String(p.nfqLevel ?? ""))}</span>.</div>
           <div class="text-secondary">Change the NFQ level or choose a different award standard.</div>
         </div>
-        ${target ? `<button type="button" class="btn btn-sm btn-warning" id="btnFixIdentityLevel">Set to ${target}</button>` : ``}
+        ${firstMismatch.target ? `<button type="button" class="btn btn-sm btn-warning" id="btnFixIdentityLevel">Set to ${firstMismatch.target}</button>` : ``}
       </div>
     `;
     const btn = document.getElementById("btnFixIdentityLevel");
     if (btn) {
       btn.onclick = () => {
-        p.nfqLevel = target;
-        if (levelInput) levelInput.value = String(target);
+        p.nfqLevel = firstMismatch.target;
+        if (levelInput) levelInput.value = String(firstMismatch.target);
         saveDebounced();
         renderFlags();
         refreshStandardLevelMismatch();
@@ -2572,21 +2623,84 @@ function wireIdentity(){
   if (tc) tc.addEventListener("input", (e)=>{ p.totalCredits = e.target.value ? Number(e.target.value) : ""; saveDebounced(); });
   const schoolSelect = document.getElementById("schoolSelect");
   if (schoolSelect) schoolSelect.addEventListener("change", (e)=>{ p.school = e.target.value; saveDebounced(); });
-  const standardSelect = document.getElementById("standardSelect");
-  if (standardSelect) {
-    standardSelect.addEventListener("change", async (e) => {
-      p.awardStandardId = e.target.value || "";
-      try {
-        const s = await getAwardStandardById(p.awardStandardId);
-        p.awardStandardName = s?.standard_name || s?.standardName || (p.awardStandardId ? "QQI Award Standard" : "");
-      } catch (err) {
-        // If standards.json can't be loaded (e.g., file://), keep the selection but leave name generic.
-        p.awardStandardName = p.awardStandardId ? "QQI Award Standard" : "";
+  
+  // Ensure arrays exist
+  if (!Array.isArray(p.awardStandardIds)) p.awardStandardIds = [];
+  if (!Array.isArray(p.awardStandardNames)) p.awardStandardNames = [];
+  
+  // Render standard selectors (up to 2)
+  const container = document.getElementById("standardSelectorsContainer");
+  if (container) {
+    function renderStandardSelectors() {
+      const numSelectors = Math.min(p.awardStandardIds.length + 1, 2);
+      let html = '';
+      
+      for (let i = 0; i < numSelectors; i++) {
+        const selectedId = p.awardStandardIds[i] || '';
+        const canRemove = i > 0 || p.awardStandardIds.length > 1;
+        
+        html += `
+          <div class="d-flex gap-2 mb-2">
+            <select class="form-select standard-selector" data-index="${i}">
+              <option value="" ${!selectedId ? "selected" : ""}>Select a standard${i > 0 ? ' (optional)' : ''}</option>
+              <option value="qqi-computing-l6-9" ${selectedId === "qqi-computing-l6-9" ? "selected" : ""}>Computing (Levels 6–9)</option>
+              <option value="qqi-professional-awards-l5-9" ${selectedId === "qqi-professional-awards-l5-9" ? "selected" : ""}>Professional (Levels 5–9)</option>
+              <option value="qqi-generic-major-masters-l9" ${selectedId === "qqi-generic-major-masters-l9" ? "selected" : ""}>Generic Major — Masters Degree (Level 9)</option>
+            </select>
+            ${canRemove && selectedId ? `<button type="button" class="btn btn-outline-danger remove-standard" data-index="${i}">×</button>` : ''}
+          </div>
+        `;
       }
-      saveDebounced();
-      renderFlags();
-      refreshStandardLevelMismatch();
-    });
+      
+      container.innerHTML = html;
+      
+      // Wire up selectors
+      container.querySelectorAll('.standard-selector').forEach(select => {
+        select.addEventListener('change', async (e) => {
+          const index = parseInt(e.target.getAttribute('data-index'));
+          const newValue = e.target.value;
+          
+          if (newValue) {
+            // Update or add standard
+            p.awardStandardIds[index] = newValue;
+            try {
+              const s = await getAwardStandardById(newValue);
+              p.awardStandardNames[index] = s?.standard_name || s?.standardName || "QQI Award Standard";
+            } catch (err) {
+              p.awardStandardNames[index] = "QQI Award Standard";
+            }
+          } else {
+            // Remove empty slot
+            p.awardStandardIds.splice(index, 1);
+            p.awardStandardNames.splice(index, 1);
+          }
+          
+          // Clean up arrays - remove empty entries
+          p.awardStandardIds = p.awardStandardIds.filter(id => id);
+          p.awardStandardNames = p.awardStandardNames.filter(name => name);
+          
+          saveDebounced();
+          renderFlags();
+          refreshStandardLevelMismatch();
+          renderStandardSelectors();
+        });
+      });
+      
+      // Wire up remove buttons
+      container.querySelectorAll('.remove-standard').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const index = parseInt(e.target.getAttribute('data-index'));
+          p.awardStandardIds.splice(index, 1);
+          p.awardStandardNames.splice(index, 1);
+          saveDebounced();
+          renderFlags();
+          refreshStandardLevelMismatch();
+          renderStandardSelectors();
+        });
+      });
+    }
+    
+    renderStandardSelectors();
   }
   document.getElementById("intakeInput").addEventListener("input", (e)=>{ p.intakeMonths = e.target.value.split(",").map(s=>s.trim()).filter(Boolean); saveDebounced(); });
 
@@ -2754,9 +2868,80 @@ function wireOutcomes(){
   });
 
   // Standards mapping UI (only enabled once an award standard is selected)
-  if (!p.awardStandardId) return;
+  if (!p.awardStandardIds || !p.awardStandardIds.length) return;
 
-  getAwardStandardById(p.awardStandardId).then(std => {
+  // Track which standard is currently selected for each PLO (default to first)
+  const ploSelectedStandards = {};
+  
+  // Wire up standard selector dropdowns (if there are multiple standards)
+  document.querySelectorAll("[data-plo-standard-selector]").forEach(sel => {
+    const ploId = sel.getAttribute("data-plo-standard-selector");
+    ploSelectedStandards[ploId] = sel.value || p.awardStandardIds[0];
+    
+    sel.addEventListener("change", () => {
+      ploSelectedStandards[ploId] = sel.value;
+      // Re-populate the criteria dropdown for this PLO based on new standard
+      populatePloMappingControls(ploId);
+    });
+  });
+
+  async function populatePloMappingControls(ploId) {
+    const selectedStandardId = ploSelectedStandards[ploId] || p.awardStandardIds[0];
+    const std = await getAwardStandardById(selectedStandardId);
+    const level = String(p.nfqLevel || "");
+    const criteriaList = Object.keys(std.index || {}).sort((a,b)=>a.localeCompare(b));
+
+    const criteriaSel = document.querySelector(`[data-plo-map-criteria="${ploId}"]`);
+    const threadSel = document.querySelector(`[data-plo-map-thread="${ploId}"]`);
+    const descEl = document.querySelector(`[data-plo-map-desc="${ploId}"]`);
+    
+    if (!criteriaSel || !threadSel) return;
+
+    function setOptions(el, opts, placeholder="Select..."){
+      el.innerHTML = "";
+      const ph = document.createElement("option");
+      ph.value = "";
+      ph.textContent = placeholder;
+      el.appendChild(ph);
+      opts.forEach(o=>{
+        const opt = document.createElement("option");
+        opt.value=o;
+        opt.textContent=o;
+        el.appendChild(opt);
+      });
+    }
+
+    setOptions(criteriaSel, criteriaList, "Select criteria...");
+    setOptions(threadSel, [], "Select thread...");
+
+    criteriaSel.onchange = () => {
+      const criteria = criteriaSel.value;
+      if (!criteria) {
+        setOptions(threadSel, [], "Select thread...");
+        if (descEl) descEl.textContent = "";
+        return;
+      }
+      const threads = Object.keys(std.index[criteria] || {}).sort((a,b)=>a.localeCompare(b));
+      setOptions(threadSel, threads, "Select thread...");
+      threadSel.onchange = () => {
+        const thread = threadSel.value;
+        if (!thread || !descEl) return;
+        const desc = (std.index[criteria][thread][level] || "").toString();
+        descEl.textContent = desc || "(No description for this level)";
+      };
+    };
+  }
+
+  // Initialize all PLO mapping controls
+  p.plos.forEach(plo => {
+    ploSelectedStandards[plo.id] = p.awardStandardIds[0]; // default to first
+  });
+
+  // Populate controls for each PLO
+  Promise.all(p.plos.map(plo => populatePloMappingControls(plo.id)));
+
+  // Load first standard for summary and mismatch checking
+  getAwardStandardById(p.awardStandardIds[0]).then(std => {
     const level = String(p.nfqLevel || "");
     const criteriaList = Object.keys(std.index || {}).sort((a,b)=>a.localeCompare(b));
 
@@ -2801,12 +2986,31 @@ function wireOutcomes(){
         snap.innerHTML = `<div class="text-secondary">Add PLOs to see a mapping snapshot.</div>`;
       } else {
         const rowsHtml = plos.map((o, i) => {
-          const maps = (o.standardMappings || []).map(m => {
-            const desc = (std.index?.[m.criteria]?.[m.thread]?.[level] || "").toString();
-            const shortDesc = desc.length > 180 ? (desc.slice(0, 180) + "…") : desc;
-            return `<li><span class="fw-semibold">${escapeHtml(m.criteria)} / ${escapeHtml(m.thread)}</span><div class="text-secondary">${escapeHtml(shortDesc)}</div></li>`;
+          // Group mappings by standard
+          const mappingsByStandard = {};
+          (o.standardMappings || []).forEach(m => {
+            const stdId = m.standardId || p.awardStandardIds?.[0] || 'unknown';
+            if (!mappingsByStandard[stdId]) mappingsByStandard[stdId] = [];
+            mappingsByStandard[stdId].push(m);
+          });
+          
+          const mapsHtml = Object.entries(mappingsByStandard).map(([stdId, mappings]) => {
+            const stdIndex = p.awardStandardIds?.indexOf(stdId);
+            const stdName = stdIndex >= 0 ? p.awardStandardNames[stdIndex] : stdId;
+            const showStdHeader = p.awardStandardIds?.length > 1;
+            
+            const items = mappings.map(m => {
+              const desc = (std.index?.[m.criteria]?.[m.thread]?.[level] || "").toString();
+              const shortDesc = desc.length > 180 ? (desc.slice(0, 180) + "…") : desc;
+              return `<li><span class="fw-semibold">${escapeHtml(m.criteria)} / ${escapeHtml(m.thread)}</span><div class="text-secondary">${escapeHtml(shortDesc)}</div></li>`;
+            }).join("");
+            
+            return showStdHeader
+              ? `<div class="mb-2"><div class="small fw-semibold">${escapeHtml(stdName)}</div><ul class="mb-0 ps-3">${items}</ul></div>`
+              : `<ul class="mb-0 ps-3">${items}</ul>`;
           }).join("");
-          const mapsBlock = maps ? `<ul class="mb-0 ps-3">${maps}</ul>` : `<span class="text-secondary">No mappings yet</span>`;
+          
+          const mapsBlock = mapsHtml || `<span class="text-secondary">No mappings yet</span>`;
           return `<tr><td class="text-nowrap">PLO ${i+1}</td><td>${escapeHtml(o.text||"")}</td><td>${mapsBlock}</td></tr>`;
         }).join("");
         snap.innerHTML = `
@@ -2912,10 +3116,13 @@ function wireOutcomes(){
         const o = p.plos.find(x => x.id === ploId);
         if (!o) return;
 
-        // Avoid duplicates
-        const exists = (o.standardMappings||[]).some(x => x.criteria===c && x.thread===t);
+        // Get the selected standard for this PLO
+        const selectedStandardId = ploSelectedStandards[ploId] || p.awardStandardIds[0];
+
+        // Avoid duplicates (check criteria, thread, and standard)
+        const exists = (o.standardMappings||[]).some(x => x.criteria===c && x.thread===t && x.standardId===selectedStandardId);
         if (!exists) {
-          o.standardMappings.push({ criteria: c, thread: t });
+          o.standardMappings.push({ criteria: c, thread: t, standardId: selectedStandardId });
           saveDebounced();
           renderFlags();
           render();
@@ -3457,17 +3664,29 @@ function wireSchedule() {
   }
 }
 
-function renderTraceabilityTable(p, standardsData, devModeToggleHtml) {
+function renderTraceabilityTable(p, standardsDataArray, devModeToggleHtml) {
   const content = document.getElementById("content");
   const traceRows = [];
   const moduleMap = new Map((p.modules || []).map(m => [m.id, m]));
   
-  // Get all award standards for the programme's NFQ level
-  const nfqLevel = String(p.nfqLevel || '');
-  const levelStandards = (standardsData?.levels?.[nfqLevel]) || [];
+  // Handle both single and multiple standards
+  const standardsList = Array.isArray(standardsDataArray) ? standardsDataArray : (standardsDataArray ? [standardsDataArray] : []);
   
-  // Track which standards are covered by PLOs
-  const coveredStandards = new Set();
+  // Get all award standards for the programme's NFQ level, grouped by award standard
+  const nfqLevel = String(p.nfqLevel || '');
+  const standardsByAward = new Map();
+  standardsList.forEach((std, idx) => {
+    const awardStdId = p.awardStandardIds?.[idx] || (std?.standard_id || 'unknown');
+    const awardStdName = p.awardStandardNames?.[idx] || (std?.standard_name || 'Unknown Standard');
+    const levelStandards = (std?.levels?.[nfqLevel]) || [];
+    standardsByAward.set(awardStdId, { name: awardStdName, standards: levelStandards });
+  });
+  
+  // Track which standards are covered by PLOs, organized by award standard
+  const coveredStandardsByAward = new Map();
+  standardsByAward.forEach((data, awardId) => {
+    coveredStandardsByAward.set(awardId, new Set());
+  });
   
   (p.plos || []).forEach((plo, ploIdx) => {
     const standardMappings = plo.standardMappings || [];
@@ -3476,20 +3695,24 @@ function renderTraceabilityTable(p, standardsData, devModeToggleHtml) {
     // If no standard mappings, still show the PLO
     const standards = standardMappings.length > 0 
       ? standardMappings 
-      : [{ criteria: '(Not mapped)', thread: '' }];
+      : [{ criteria: '(Not mapped)', thread: '', standardId: null }];
     
     standards.forEach(std => {
       const standardLabel = std.thread ? `${std.criteria} — ${std.thread}` : std.criteria;
       
+      // Determine which award standard this mapping belongs to
+      const awardId = std.standardId || p.awardStandardIds?.[0] || 'unknown';
+      
       // Mark this standard as covered by a PLO
-      if (std.thread) {
-        coveredStandards.add(std.thread);
+      if (std.thread && coveredStandardsByAward.has(awardId)) {
+        coveredStandardsByAward.get(awardId).add(std.thread);
       }
       
       if (mappedModuleIds.length === 0) {
         // PLO not mapped to any module
         traceRows.push({
           standard: standardLabel,
+          awardStandardId: awardId,
           ploNum: ploIdx + 1,
           ploText: plo.text || '',
           moduleCode: '—',
@@ -3514,6 +3737,7 @@ function renderTraceabilityTable(p, standardsData, devModeToggleHtml) {
             // Module has no MIMLOs
             traceRows.push({
               standard: standardLabel,
+              awardStandardId: awardId,
               ploNum: ploIdx + 1,
               ploText: plo.text || '',
               moduleCode: mod.code || '',
@@ -3538,6 +3762,7 @@ function renderTraceabilityTable(p, standardsData, devModeToggleHtml) {
                 // MIMLO not assessed
                 traceRows.push({
                   standard: standardLabel,
+                  awardStandardId: awardId,
                   ploNum: ploIdx + 1,
                   ploText: plo.text || '',
                   moduleCode: mod.code || '',
@@ -3554,6 +3779,7 @@ function renderTraceabilityTable(p, standardsData, devModeToggleHtml) {
                 coveringAssessments.forEach(asm => {
                   traceRows.push({
                     standard: standardLabel,
+                    awardStandardId: awardId,
                     ploNum: ploIdx + 1,
                     ploText: plo.text || '',
                     moduleCode: mod.code || '',
@@ -3575,23 +3801,26 @@ function renderTraceabilityTable(p, standardsData, devModeToggleHtml) {
     });
   });
 
-  // Find uncovered award standards and add them as critical gaps
-  const uncoveredStandards = levelStandards.filter(std => !coveredStandards.has(std.thread));
-  uncoveredStandards.forEach(std => {
-    const standardLabel = std.thread ? `${std.criteria} — ${std.thread}` : std.criteria;
-    traceRows.unshift({
-      standard: standardLabel,
-      ploNum: '—',
-      ploText: '(No PLO covers this standard)',
-      moduleCode: '—',
-      moduleTitle: '',
-      mimloNum: '—',
-      mimloText: '',
-      assessmentTitle: '',
-      assessmentType: '',
-      assessmentWeight: '',
-      status: 'uncovered',
-      statusLabel: 'Standard Gap'
+  // Find uncovered award standards for each award and add them as critical gaps
+  standardsByAward.forEach((awardInfo, awardStdId) => {
+    const uncoveredStandards = awardInfo.standards.filter(std => !coveredStandardsByAward.get(awardStdId)?.has(std.thread));
+    uncoveredStandards.forEach(std => {
+      const standardLabel = std.thread ? `${std.criteria} — ${std.thread}` : std.criteria;
+      traceRows.unshift({
+        standard: standardLabel,
+        awardStandardId: awardStdId,
+        ploNum: '—',
+        ploText: '(No PLO covers this standard)',
+        moduleCode: '—',
+        moduleTitle: '',
+        mimloNum: '—',
+        mimloText: '',
+        assessmentTitle: '',
+        assessmentType: '',
+        assessmentWeight: '',
+        status: 'uncovered',
+        statusLabel: 'Standard Gap'
+      });
     });
   });
 
@@ -3602,6 +3831,21 @@ function renderTraceabilityTable(p, standardsData, devModeToggleHtml) {
   const gapCount = traceRows.filter(r => r.status === 'gap').length;
   const uncoveredCount = traceRows.filter(r => r.status === 'uncovered').length;
 
+  // Build coverage summary by award standard
+  const coverageSummaryByAward = Array.from(standardsByAward.entries()).map(([awardStdId, awardInfo]) => {
+    const awardRows = traceRows.filter(r => r.awardStandardId === awardStdId);
+    const awardUncovered = awardRows.filter(r => r.status === 'uncovered').length;
+    const awardTotal = awardInfo.standards.length;
+    const awardCovered = awardTotal - awardUncovered;
+    return {
+      awardStdId,
+      awardStdName: awardInfo.name,
+      total: awardTotal,
+      covered: awardCovered,
+      uncovered: awardUncovered
+    };
+  });
+
   const statusBadge = (status, label) => {
     if (status === 'ok') return `<span class="badge text-bg-success">${escapeHtml(label)}</span>`;
     if (status === 'warning') return `<span class="badge text-bg-warning">${escapeHtml(label)}</span>`;
@@ -3609,29 +3853,58 @@ function renderTraceabilityTable(p, standardsData, devModeToggleHtml) {
     return `<span class="badge text-bg-danger">${escapeHtml(label)}</span>`;
   };
 
-  const tableRows = traceRows.map((r, i) => `
-    <tr data-status="${r.status}">
-      <td class="small ${r.status === 'uncovered' ? 'fw-bold' : ''}">${escapeHtml(r.standard)}</td>
-      <td class="small text-nowrap">${r.ploNum !== '—' ? 'PLO ' + r.ploNum : '—'}</td>
-      <td class="small" style="max-width:200px;" title="${escapeHtml(r.ploText)}">${escapeHtml(r.ploText.length > 60 ? r.ploText.slice(0,60) + '…' : r.ploText)}</td>
-      <td class="small text-nowrap">${escapeHtml(r.moduleCode)}</td>
-      <td class="small">${escapeHtml(r.moduleTitle)}</td>
-      <td class="small text-nowrap">${r.mimloNum !== '—' ? 'MIMLO ' + r.mimloNum : '—'}</td>
-      <td class="small" style="max-width:180px;" title="${escapeHtml(r.mimloText)}">${escapeHtml(r.mimloText.length > 50 ? r.mimloText.slice(0,50) + '…' : r.mimloText)}</td>
-      <td class="small">${escapeHtml(r.assessmentTitle)}</td>
-      <td class="small">${escapeHtml(r.assessmentType)}</td>
-      <td class="small text-end">${escapeHtml(r.assessmentWeight)}</td>
-      <td class="small text-center">${statusBadge(r.status, r.statusLabel)}</td>
-    </tr>
-  `).join('');
+  // Group trace rows by award standard for display
+  const tableRowsByAward = new Map();
+  Array.from(standardsByAward.entries()).forEach(([awardStdId, awardInfo]) => {
+    tableRowsByAward.set(awardStdId, []);
+  });
+  
+  traceRows.forEach(r => {
+    const awardStdId = r.awardStandardId || Array.from(standardsByAward.keys())[0];
+    if (tableRowsByAward.has(awardStdId)) {
+      tableRowsByAward.get(awardStdId).push(r);
+    }
+  });
 
-  const standardsCoverage = levelStandards.length > 0 
-    ? `<div class="mb-3 p-3 ${uncoveredCount > 0 ? 'bg-danger-subtle' : 'bg-success-subtle'} rounded">
-        <div class="fw-semibold mb-1">Award Standards Coverage (NFQ Level ${nfqLevel})</div>
-        <div class="small">${levelStandards.length - uncoveredCount} of ${levelStandards.length} standards covered by PLOs
-          ${uncoveredCount > 0 ? ` — <strong>${uncoveredCount} standard${uncoveredCount > 1 ? 's' : ''} not yet addressed</strong>` : ' ✓'}
-        </div>
-       </div>`
+  const tableRows = Array.from(tableRowsByAward.entries()).map(([awardStdId, rows]) => {
+    const awardInfo = standardsByAward.get(awardStdId);
+    const awardHeaderHtml = `
+      <tr class="table-secondary">
+        <td colspan="11" class="fw-semibold">${escapeHtml(awardInfo.name)}</td>
+      </tr>`;
+    
+    const rowsHtml = rows.map((r, i) => `
+      <tr data-status="${r.status}">
+        <td class="small ${r.status === 'uncovered' ? 'fw-bold' : ''}">${escapeHtml(r.standard)}</td>
+        <td class="small text-nowrap">${r.ploNum !== '—' ? 'PLO ' + r.ploNum : '—'}</td>
+        <td class="small" style="max-width:200px;" title="${escapeHtml(r.ploText)}">${escapeHtml(r.ploText.length > 60 ? r.ploText.slice(0,60) + '…' : r.ploText)}</td>
+        <td class="small text-nowrap">${escapeHtml(r.moduleCode)}</td>
+        <td class="small">${escapeHtml(r.moduleTitle)}</td>
+        <td class="small text-nowrap">${r.mimloNum !== '—' ? 'MIMLO ' + r.mimloNum : '—'}</td>
+        <td class="small" style="max-width:180px;" title="${escapeHtml(r.mimloText)}">${escapeHtml(r.mimloText.length > 50 ? r.mimloText.slice(0,50) + '…' : r.mimloText)}</td>
+        <td class="small">${escapeHtml(r.assessmentTitle)}</td>
+        <td class="small">${escapeHtml(r.assessmentType)}</td>
+        <td class="small text-end">${escapeHtml(r.assessmentWeight)}</td>
+        <td class="small text-center">${statusBadge(r.status, r.statusLabel)}</td>
+      </tr>
+    `).join('');
+    
+    return awardHeaderHtml + rowsHtml;
+  }).join('');
+
+  const standardsCoverage = coverageSummaryByAward.length > 0
+    ? `<div class="mb-3">
+        ${coverageSummaryByAward.map(summary => {
+          const hasCoverage = summary.total > 0;
+          const isCovered = summary.uncovered === 0;
+          return `<div class="mb-2 p-3 ${isCovered ? 'bg-success-subtle' : 'bg-danger-subtle'} rounded">
+            <div class="fw-semibold mb-1">${escapeHtml(summary.awardStdName)}</div>
+            <div class="small">${summary.covered} of ${summary.total} standards covered by PLOs
+              ${!isCovered ? ` — <strong>${summary.uncovered} standard${summary.uncovered > 1 ? 's' : ''} not yet addressed</strong>` : ' ✓'}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`
     : (nfqLevel ? `<div class="alert alert-warning mb-3">No award standards found for NFQ Level ${nfqLevel}. Check that standards.json includes this level.</div>` : '');
 
   // Build Sankey data from trace rows
@@ -3882,14 +4155,16 @@ function buildSankeyData(traceRows, programme) {
   traceRows.forEach(row => {
     // Handle uncovered standards - link them to a "gap" node to show they're missing coverage
     if (row.status === 'uncovered') {
-      const standardNode = addNode(`📋 ${row.standard}`, 'standard');
+      const awardPrefix = row.awardStandardId ? `[${row.awardStandardId}] ` : '';
+      const standardNode = addNode(`📋 ${awardPrefix}${row.standard}`, 'standard');
       const gapNode = addNode(`⚠️ NO PLO COVERAGE`, 'gap');
       addLink(standardNode, gapNode, 'uncovered');
       return;
     }
     
     // Add nodes for each level
-    const standardNode = addNode(`📋 ${row.standard}`, 'standard');
+    const awardPrefix = row.awardStandardId ? `[${row.awardStandardId}] ` : '';
+    const standardNode = addNode(`📋 ${awardPrefix}${row.standard}`, 'standard');
     
     if (row.ploNum !== '—') {
       const ploLabel = `🎯 PLO ${row.ploNum}`;
@@ -4020,8 +4295,8 @@ function initNavButtons(){
         alert("Enter the total programme credits (ECTS) in Identity before continuing.");
         return;
       }
-      if (!state.programme.awardStandardId) {
-        alert("Select a QQI award standard in Identity before continuing.");
+      if (!state.programme.awardStandardIds || !state.programme.awardStandardIds.length) {
+        alert("Select at least one QQI award standard in Identity before continuing.");
         return;
       }
     }
@@ -4052,7 +4327,25 @@ function initNavButtons(){
       const text = await file.text();
       const json = JSON.parse(text);
       // basic shape check
-      state.programme = { ...defaultProgramme(), ...json, schemaVersion: 1 };
+      state.programme = { ...defaultProgramme(), ...json, schemaVersion: 2 };
+      
+      // Migration: convert old single standard to array format
+      if (typeof state.programme.awardStandardId === 'string') {
+        const oldId = state.programme.awardStandardId || '';
+        const oldName = state.programme.awardStandardName || '';
+        state.programme.awardStandardIds = oldId ? [oldId] : [];
+        state.programme.awardStandardNames = oldName ? [oldName] : [];
+        delete state.programme.awardStandardId;
+        delete state.programme.awardStandardName;
+      }
+      // Ensure arrays exist
+      if (!Array.isArray(state.programme.awardStandardIds)) {
+        state.programme.awardStandardIds = [];
+      }
+      if (!Array.isArray(state.programme.awardStandardNames)) {
+        state.programme.awardStandardNames = [];
+      }
+      
       saveNow();
       state.stepIndex = 0;
       render();
