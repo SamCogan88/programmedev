@@ -218,7 +218,7 @@ const defaultProgramme = () => ({
   ploToModules: {}, // ploId -> [moduleId]
 
   // Versions (FT/PT/Online variants)
-  versions: [], // [{id, label, code, duration, intakes[], targetCohortSize, numberOfGroups, deliveryModalities[], deliveryPatterns{}, onlineProctoredExams, onlineProctoredExamsNotes, stages[] }]
+  versions: [], // [{id, label, code, duration, intakes[], targetCohortSize, numberOfGroups, deliveryModality, deliveryPatterns{}, onlineProctoredExams, onlineProctoredExamsNotes, stages[] }]
 
   updatedAt: null,
 });
@@ -299,18 +299,20 @@ if (!Array.isArray(state.programme.versions)) state.programme.versions = [];
 if (state.programme.versions.length === 0) {
   const v = defaultVersion();
   // Prefer legacy fields if present
-  const legacyModalities = Array.isArray(state.programme.deliveryModalities)
-    ? state.programme.deliveryModalities
-    : (state.programme.deliveryMode ? [state.programme.deliveryMode] : []);
+  // Migrate old deliveryMode/deliveryModalities to new deliveryModality
+  const legacyModality = Array.isArray(state.programme.deliveryModalities)
+    ? state.programme.deliveryModalities[0] // Take first from old array
+    : (state.programme.deliveryMode || "F2F");
 
-  v.deliveryModalities = legacyModalities;
+  v.deliveryModality = legacyModality;
   v.deliveryPatterns = (state.programme.deliveryPatterns && typeof state.programme.deliveryPatterns === "object")
     ? state.programme.deliveryPatterns
     : {};
 
-  v.deliveryModalities.forEach((mod) => {
-    if (!v.deliveryPatterns[mod]) v.deliveryPatterns[mod] = defaultPatternFor(mod);
-  });
+  // Ensure pattern exists for selected modality
+  if (v.deliveryModality && !v.deliveryPatterns[v.deliveryModality]) {
+    v.deliveryPatterns[v.deliveryModality] = defaultPatternFor(v.deliveryModality);
+  }
 
   v.deliveryNotes = state.programme.deliveryNotes || "";
   v.onlineProctoredExams = state.programme.onlineProctoredExams || "TBC";
@@ -396,8 +398,9 @@ function validateProgramme(p) {
         labels.add(norm);
       }
 
-      // Delivery patterns per selected modality must sum to 100
-      (v.deliveryModalities || []).forEach((mod) => {
+      // Delivery pattern for selected modality must sum to 100
+      if (v.deliveryModality) {
+        const mod = v.deliveryModality;
         const pat = (v.deliveryPatterns || {})[mod];
         if (!pat) {
           flags.push({ type: "error", msg: `${prefix}: missing delivery pattern for ${mod}.`, step: "versions" });
@@ -407,7 +410,7 @@ function validateProgramme(p) {
         if (total !== 100) {
           flags.push({ type: "error", msg: `${prefix}: ${mod} delivery pattern must total 100% (currently ${total}%).`, step: "versions" });
         }
-      });
+      }
 
       if ((v.onlineProctoredExams || "TBC") === "YES" && !(v.onlineProctoredExamsNotes || "").trim()) {
         flags.push({ type: "warn", msg: `${prefix}: online proctored exams marked YES but notes are empty.`, step: "versions" });
@@ -459,18 +462,16 @@ function validateProgramme(p) {
 
 
 function deliveryPatternsHtml(p){
-  const mods = Array.isArray(p.deliveryModalities) ? p.deliveryModalities : [];
+  // Note: p here is a version object from the context where this is called
+  const mod = p.deliveryModality;
   const patterns = (p.deliveryPatterns && typeof p.deliveryPatterns === "object") ? p.deliveryPatterns : {};
-  if (mods.length === 0) return '<span class="text-muted">—</span>';
+  if (!mod) return '<span class="text-muted">—</span>';
   const label = (k) => (k==="F2F"?"Face-to-face":k==="BLENDED"?"Blended":k==="ONLINE"?"Fully online":k);
-  const rows = mods.map((m)=>{
-    const pat = patterns[m] || defaultPatternFor(m);
-    const a = Number(pat.syncOnlinePct ?? 0);
-    const b = Number(pat.asyncDirectedPct ?? 0);
-    const c = Number(pat.onCampusPct ?? 0);
-    return `<div><span class="fw-semibold">${escapeHtml(label(m))}:</span> ${a}% sync online, ${b}% async directed, ${c}% on campus</div>`;
-  }).join("");
-  return rows;
+  const pat = patterns[mod] || defaultPatternFor(mod);
+  const a = Number(pat.syncOnlinePct ?? 0);
+  const b = Number(pat.asyncDirectedPct ?? 0);
+  const c = Number(pat.onCampusPct ?? 0);
+  return `<div><span class="fw-semibold">${escapeHtml(label(mod))}:</span> ${a}% sync online, ${b}% async directed, ${c}% on campus</div>`;
 }
 function completionPercent(p) {
   let total = 10, done = 0;
@@ -483,7 +484,7 @@ function completionPercent(p) {
 
   if (Array.isArray(p.versions) && p.versions.length > 0) done++;
   const v0 = (p.versions || [])[0];
-  if (v0 && (v0.deliveryModalities || []).length > 0) done++;
+  if (v0 && v0.deliveryModality && Object.keys(v0.deliveryPatterns || {}).length > 0) done++;
   if (v0 && (v0.targetCohortSize || 0) > 0) done++;
   if (v0 && Array.isArray(v0.stages) && v0.stages.length > 0) done++;
 
@@ -506,8 +507,76 @@ function renderHeader() {
   const badge = document.getElementById("completionBadge");
   badge.textContent = `${comp}% complete`;
   badge.className = "badge " + (comp >= 75 ? "text-bg-success" : comp >= 40 ? "text-bg-warning" : "text-bg-secondary");
+  
+  // Generate to-do list for popover
+  const flags = validateProgramme(p);
+  const todoHtml = generateTodoList(flags);
+  
+  // Set popover content
+  badge.setAttribute("data-bs-toggle", "popover");
+  badge.setAttribute("data-bs-trigger", "hover");
+  badge.setAttribute("data-bs-html", "true");
+  badge.setAttribute("data-bs-placement", "bottom");
+  badge.setAttribute("data-bs-title", comp === 100 ? "✓ All Complete!" : "Items to complete");
+  badge.setAttribute("data-bs-content", todoHtml);
+  badge.style.cursor = comp === 100 ? "default" : "pointer";
+  
+  // Dispose existing popover and create new one
+  const existingPopover = bootstrap.Popover.getInstance(badge);
+  if (existingPopover) existingPopover.dispose();
+  new bootstrap.Popover(badge, {
+    trigger: "hover",
+    html: true,
+    placement: "bottom"
+  });
+  
   const ss = document.getElementById("saveStatus");
   ss.textContent = state.saving ? "Saving…" : (state.lastSaved ? `Saved ${new Date(state.lastSaved).toLocaleString()}` : "Not saved yet");
+}
+
+function generateTodoList(flags) {
+  if (!flags || flags.length === 0) {
+    return `<div class="small text-success"><strong>✓ All requirements met!</strong></div>`;
+  }
+  
+  // Group flags by step
+  const byStep = {};
+  flags.forEach(f => {
+    if (!byStep[f.step]) byStep[f.step] = [];
+    byStep[f.step].push(f);
+  });
+  
+  // Find step labels
+  const aSteps = activeSteps();
+  const stepMap = {};
+  aSteps.forEach(s => {
+    stepMap[s.key] = s.title;
+  });
+  
+  // Build HTML
+  let html = `<div class="small" style="max-width: 300px; max-height: 300px; overflow-y: auto;">`;
+  
+  Object.entries(byStep).forEach(([step, items]) => {
+    const stepTitle = stepMap[step] || step;
+    const errorCount = items.filter(f => f.type === "error").length;
+    const warnCount = items.filter(f => f.type === "warn").length;
+    
+    html += `<div class="mb-2">`;
+    html += `<div class="fw-semibold text-primary">${escapeHtml(stepTitle)}</div>`;
+    
+    items.forEach(f => {
+      const icon = f.type === "error" ? "⚠️" : "ℹ️";
+      const cls = f.type === "error" ? "text-danger" : "text-warning";
+      html += `<div class="${cls} ms-2 small" style="margin-bottom: 4px;">
+        ${icon} ${escapeHtml(f.msg)}
+      </div>`;
+    });
+    
+    html += `</div>`;
+  });
+  
+  html += `</div>`;
+  return html;
 }
 
 function renderSteps() {
@@ -2188,12 +2257,12 @@ if (step === "schedule") {
   `;
 
   const versionCards = versions.map((v, idx) => {
-    const mods = Array.isArray(v.deliveryModalities) ? v.deliveryModalities : [];
+    const mod = v.deliveryModality;
     const patterns = v.deliveryPatterns || {};
-    const modLines = mods.map(mod => {
+    const modLines = mod ? (() => {
       const pat = patterns[mod] || defaultPatternFor(mod);
       return `<div class="small"><span class="fw-semibold">${escapeHtml(mod)}</span>: ${Number(pat.syncOnlinePct||0)}% sync online, ${Number(pat.asyncDirectedPct||0)}% async directed, ${Number(pat.onCampusPct||0)}% on-campus</div>`;
-    }).join("");
+    })() : "";
 
     const stages = (v.stages || []).slice().sort((a,b)=>Number(a.sequence||0)-Number(b.sequence||0));
     const stageLines = stages.map(s => {

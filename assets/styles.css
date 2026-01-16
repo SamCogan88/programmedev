@@ -135,7 +135,41 @@ pre.jsonbox{
   text-decoration: underline;
 }
 
-.flags-summary {
-  padding-bottom: 0.5rem;
+/* Completion badge styling */
+#completionBadge {
+  padding: 0.4rem 0.8rem;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  display: inline-block;
+  border-radius: 0.5rem;
+}
+
+#completionBadge:hover:not(:has(~ .popover)) {
+  transform: scale(1.05);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+#completionBadge.text-bg-success {
+  cursor: default;
+}
+
+#completionBadge.text-bg-success:hover {
+  transform: none;
+}
+
+/* Popover styling */
+.popover {
+  border-radius: 0.5rem;
+  border: 1px solid var(--bs-border-color);
+}
+
+.popover-header {
+  background-color: var(--bs-primary-bg-subtle);
   border-bottom: 1px solid var(--bs-border-color);
+  font-weight: 600;
+}
+
+.popover-body {
+  padding: 0.75rem;
+  background-color: var(--bs-body-bg);
 }
