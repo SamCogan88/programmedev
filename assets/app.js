@@ -65,6 +65,7 @@ const steps = [
   { key: "stages", title: "Stage Structure" },
   { key: "structure", title: "Credits & Modules" },
   { key: "mimlos", title: "MIMLOs" },
+  { key: "effort-hours", title: "Effort Hours" },
   { key: "assessments", title: "Assessments" },
   { key: "reading-lists", title: "Reading Lists" },
   { key: "mapping", title: "Mapping" },
@@ -75,7 +76,7 @@ const steps = [
 function activeSteps() {
   const p = state?.programme || {};
   if (p.mode === "MODULE_EDITOR") {
-    const allowed = new Set(["mimlos", "assessments", "reading-lists", "mapping", "traceability", "snapshot"]);
+    const allowed = new Set(["mimlos", "effort-hours", "assessments", "reading-lists", "mapping", "traceability", "snapshot"]);
     return steps.filter(s => allowed.has(s.key));
   }
   return steps;
@@ -231,7 +232,7 @@ const defaultVersion = () => ({
   targetCohortSize: 0,
   numberOfGroups: 0,
 
-  deliveryModalities: [], // F2F | BLENDED | ONLINE
+  deliveryModality: "F2F", // F2F | BLENDED | ONLINE
   deliveryPatterns: {},   // modality -> { syncOnlinePct, asyncDirectedPct, onCampusPct }
   deliveryNotes: "",
 
@@ -824,41 +825,41 @@ function render() {
     const vCards = versions.map((v, idx) => {
       const intakeVal = (v.intakes || []).join(", ");
       const isActive = state.selectedVersionId ? (state.selectedVersionId === v.id) : (idx === 0);
-      const modsSelected = Array.isArray(v.deliveryModalities) ? v.deliveryModalities : [];
-      const modChecks = modDefs.map(m => `
+      const selectedMod = v.deliveryModality || "";
+      const modRadios = modDefs.map(m => `
         <div class="form-check form-check-inline">
-          <input class="form-check-input" type="checkbox" id="vmod_${v.id}_${m.key}" ${modsSelected.includes(m.key)?"checked":""}>
+          <input class="form-check-input" type="radio" name="vmod_${v.id}" id="vmod_${v.id}_${m.key}" value="${m.key}" ${selectedMod === m.key ? "checked" : ""}>
           <label class="form-check-label" for="vmod_${v.id}_${m.key}">${escapeHtml(m.label)}</label>
         </div>
       `).join("");
 
-      const patternCards = modsSelected.map(mod => {
-        const pat = (v.deliveryPatterns || {})[mod] || defaultPatternFor(mod);
+      const patternCard = selectedMod ? (() => {
+        const pat = (v.deliveryPatterns || {})[selectedMod] || defaultPatternFor(selectedMod);
         return `
           <div class="card mt-2">
             <div class="card-body">
               <div class="d-flex align-items-center justify-content-between">
-                <div class="fw-semibold">${escapeHtml(mod)} delivery pattern (must total 100%)</div>
+                <div class="fw-semibold">${escapeHtml(selectedMod)} delivery pattern (must total 100%)</div>
                 <span class="small">${tagHtml(sumPattern(pat)===100?"ok":"warn")} <span class="text-secondary">${sumPattern(pat)}%</span></span>
               </div>
               <div class="row g-2 mt-2">
                 <div class="col-md-4">
                   <label class="form-label">Synchronous Online Classes %</label>
-                  <input type="number" min="0" max="100" class="form-control" id="pat_${v.id}_${mod}_sync" value="${Number(pat.syncOnlinePct||0)}">
+                  <input type="number" min="0" max="100" class="form-control" id="pat_${v.id}_${selectedMod}_sync" value="${Number(pat.syncOnlinePct||0)}">
                 </div>
                 <div class="col-md-4">
                   <label class="form-label">Asynchronous Directed Learning %</label>
-                  <input type="number" min="0" max="100" class="form-control" id="pat_${v.id}_${mod}_async" value="${Number(pat.asyncDirectedPct||0)}">
+                  <input type="number" min="0" max="100" class="form-control" id="pat_${v.id}_${selectedMod}_async" value="${Number(pat.asyncDirectedPct||0)}">
                 </div>
                 <div class="col-md-4">
                   <label class="form-label">On Campus Learning Event %</label>
-                  <input type="number" min="0" max="100" class="form-control" id="pat_${v.id}_${mod}_campus" value="${Number(pat.onCampusPct||0)}">
+                  <input type="number" min="0" max="100" class="form-control" id="pat_${v.id}_${selectedMod}_campus" value="${Number(pat.onCampusPct||0)}">
                 </div>
               </div>
             </div>
           </div>
         `;
-      }).join("");
+      })() : `<div class="small text-secondary mt-2">Select a delivery modality to define delivery patterns.</div>`;
 
       const proctorYes = (v.onlineProctoredExams || "TBC") === "YES";
       const proctorNotesStyle = proctorYes ? "" : "d-none";
@@ -899,9 +900,9 @@ function render() {
                 <input type="number" min="0" class="form-control" id="vgroups_${v.id}" value="${Number(v.numberOfGroups||0)}">
               </div>
               <div class="col-12">
-                <label class="form-label fw-semibold">Delivery modalities</label>
-                <div>${modChecks}</div>
-                ${patternCards || `<div class="small text-secondary mt-2">Select one or more modalities to define delivery patterns.</div>`}
+                <label class="form-label fw-semibold">Delivery modality</label>
+                <div>${modRadios}</div>
+                ${patternCard}
               </div>
               <div class="col-12">
                 <label class="form-label fw-semibold">Delivery notes</label>
@@ -1231,6 +1232,207 @@ const modulePicker = canPickModule ? `
     wireMimlos();
     return;
   }
+
+
+if (step === "effort-hours") {
+  const editableIds = editableModuleIds();
+  const selectedId = getSelectedModuleId();
+  const modulesForEdit = (p.modules || []).filter(m => editableIds.includes(m.id));
+  const canPickModule = (state.programme.mode === "MODULE_EDITOR" && editableIds.length > 1);
+
+  const modulePicker = canPickModule ? `
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Assigned module</label>
+        <select class="form-select" id="modulePicker">
+          ${modulesForEdit.map(m => `<option value="${m.id}" ${m.id===selectedId?"selected":""}>${escapeHtml(m.code || "")} — ${escapeHtml(m.title || "")}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+  ` : "";
+
+  // Build version/modality combinations from programme versions
+  const versions = Array.isArray(p.versions) ? p.versions : [];
+  const modalityLabels = { F2F: "Face-to-face", BLENDED: "Blended", ONLINE: "Fully online" };
+  const versionModalities = versions
+    .filter(v => v.deliveryModality) // Only versions with a modality selected
+    .map(v => ({
+      key: `${v.id}_${v.deliveryModality}`,
+      versionId: v.id,
+      modality: v.deliveryModality,
+      label: `${v.label || v.code || 'Version'} — ${modalityLabels[v.deliveryModality] || v.deliveryModality}`
+    }));
+
+  const blocks = modulesForEdit.map(m => {
+    // Ensure effortHours structure exists for each version/modality
+    m.effortHours = m.effortHours || {};
+    versionModalities.forEach(vm => {
+      m.effortHours[vm.key] = m.effortHours[vm.key] || {
+        classroomHours: 0,
+        classroomRatio: "1:60",
+        mentoringHours: 0,
+        mentoringRatio: "1:25",
+        otherContactHours: 0,
+        otherContactRatio: "",
+        otherContactSpecify: "",
+        directedElearningHours: 0,
+        independentLearningHours: 0,
+        otherHours: 0,
+        otherHoursSpecify: "",
+        workBasedHours: 0
+      };
+    });
+
+    const isHidden = (state.programme.mode === "MODULE_EDITOR" && editableIds.length > 1 && m.id !== selectedId);
+    
+    // Calculate totals for each version/modality
+    const getTotalHours = (key) => {
+      const e = m.effortHours[key] || {};
+      return Number(e.classroomHours || 0) + Number(e.mentoringHours || 0) + 
+             Number(e.otherContactHours || 0) + Number(e.directedElearningHours || 0) + 
+             Number(e.independentLearningHours || 0) + Number(e.otherHours || 0) + 
+             Number(e.workBasedHours || 0);
+    };
+
+    // Expected total based on credits (1 ECTS = 25 hours typically)
+    const expectedTotal = Number(m.credits || 0) * 25;
+
+    const modalityRows = versionModalities.map(vm => {
+      const e = m.effortHours[vm.key] || {};
+      const total = getTotalHours(vm.key);
+      const totalClass = total === expectedTotal ? 'text-bg-success' : (total > 0 ? 'text-bg-warning' : 'text-bg-secondary');
+      
+      return `
+        <tr data-version-modality="${vm.key}" data-module-id="${m.id}">
+          <td class="fw-semibold align-middle">${escapeHtml(vm.label)}</td>
+          <td>
+            <input type="number" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="classroomHours" value="${e.classroomHours || 0}" min="0">
+          </td>
+          <td>
+            <input type="text" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="classroomRatio" value="${escapeHtml(e.classroomRatio || '1:60')}" placeholder="1:60">
+          </td>
+          <td>
+            <input type="number" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="mentoringHours" value="${e.mentoringHours || 0}" min="0">
+          </td>
+          <td>
+            <input type="text" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="mentoringRatio" value="${escapeHtml(e.mentoringRatio || '1:25')}" placeholder="1:25">
+          </td>
+          <td>
+            <input type="number" class="form-control form-control-sm" style="width:60px" 
+              data-effort-field="otherContactHours" value="${e.otherContactHours || 0}" min="0">
+          </td>
+          <td>
+            <input type="text" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="otherContactRatio" value="${escapeHtml(e.otherContactRatio || '')}" placeholder="1:X">
+          </td>
+          <td>
+            <input type="text" class="form-control form-control-sm" style="width:90px" 
+              data-effort-field="otherContactSpecify" value="${escapeHtml(e.otherContactSpecify || '')}" placeholder="Specify...">
+          </td>
+          <td>
+            <input type="number" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="directedElearningHours" value="${e.directedElearningHours || 0}" min="0">
+          </td>
+          <td>
+            <input type="number" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="independentLearningHours" value="${e.independentLearningHours || 0}" min="0">
+          </td>
+          <td>
+            <input type="number" class="form-control form-control-sm" style="width:60px" 
+              data-effort-field="otherHours" value="${e.otherHours || 0}" min="0">
+          </td>
+          <td>
+            <input type="text" class="form-control form-control-sm" style="width:90px" 
+              data-effort-field="otherHoursSpecify" value="${escapeHtml(e.otherHoursSpecify || '')}" placeholder="Specify...">
+          </td>
+          <td>
+            <input type="number" class="form-control form-control-sm" style="width:70px" 
+              data-effort-field="workBasedHours" value="${e.workBasedHours || 0}" min="0">
+          </td>
+          <td class="text-center align-middle">
+            <span class="badge ${totalClass}" data-total-display>${total}</span>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    const noVersionsMsg = versionModalities.length === 0 
+      ? `<div class="alert alert-info mb-0">No programme versions with delivery modalities defined. Go to the Programme Versions step to add versions and select their delivery modality.</div>` 
+      : "";
+
+    return `
+      <div class="card border-0 bg-white shadow-sm mb-4" ${isHidden ? 'style="display:none"' : ""} data-module-card="${m.id}">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="fw-semibold">${escapeHtml((m.code ? m.code + " — " : "") + m.title)}</div>
+            <div class="small text-secondary">
+              ${m.credits} ECTS × 25 = <strong>${expectedTotal}</strong> expected hours
+            </div>
+          </div>
+          
+          ${noVersionsMsg || `
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle mb-0" data-effort-table="${m.id}">
+              <thead class="table-light">
+                <tr>
+                  <th rowspan="2" class="align-middle" style="min-width:150px">Version / Modality</th>
+                  <th colspan="2" class="text-center">Classroom &amp; Demonstrations</th>
+                  <th colspan="2" class="text-center">Mentoring &amp; Small-group</th>
+                  <th colspan="3" class="text-center">Other Contact (specify)</th>
+                  <th rowspan="2" class="text-center align-middle" style="min-width:80px">Directed<br>E-learning</th>
+                  <th rowspan="2" class="text-center align-middle" style="min-width:80px">Independent<br>Learning</th>
+                  <th colspan="2" class="text-center">Other Hours (specify)</th>
+                  <th rowspan="2" class="text-center align-middle" style="min-width:80px">Work-based<br>Learning</th>
+                  <th rowspan="2" class="text-center align-middle" style="min-width:70px">Total<br>Effort</th>
+                </tr>
+                <tr>
+                  <th class="text-center small">Hours</th>
+                  <th class="text-center small">Min Ratio</th>
+                  <th class="text-center small">Hours</th>
+                  <th class="text-center small">Min Ratio</th>
+                  <th class="text-center small">Hours</th>
+                  <th class="text-center small">Ratio</th>
+                  <th class="text-center small">Type</th>
+                  <th class="text-center small">Hours</th>
+                  <th class="text-center small">Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${modalityRows}
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="small text-secondary mt-2">
+            <strong>Tip:</strong> Total effort hours should equal ${expectedTotal} (based on ${m.credits} ECTS credits × 25 hours per credit).
+          </div>
+          `}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  content.innerHTML = devModeToggleHtml + `
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Effort Hours by Version / Modality</h5>
+        <p class="small text-secondary mb-3">
+          Define how student learning effort is distributed across different activity types for each programme version and delivery modality.
+          This helps demonstrate the workload balance and staffing requirements (teacher/learner ratios).
+        </p>
+        ${modulePicker}
+        ${modulesForEdit.length ? blocks : `<div class="small text-secondary">Add modules first (Credits & Modules step).</div>`}
+      </div>
+    </div>
+  `;
+  wireDevModeToggle();
+  wireEffortHours();
+  return;
+}
 
 
 if (step === "assessments") {
@@ -1868,37 +2070,37 @@ function wireVersions() {
     const proctorNotes = byId("vproctorNotes");
     if (proctorNotes) proctorNotes.oninput = (e) => { v.onlineProctoredExamsNotes = e.target.value; saveDebounced(); renderHeader(); renderFlags(); };
 
-    // Modalities & patterns
+    // Modality radio buttons & patterns
     const MOD_KEYS = ["F2F","BLENDED","ONLINE"];
-    if (!Array.isArray(v.deliveryModalities)) v.deliveryModalities = [];
     if (!v.deliveryPatterns || typeof v.deliveryPatterns !== "object") v.deliveryPatterns = {};
 
     MOD_KEYS.forEach((mod) => {
-      const cb = document.getElementById(`vmod_${v.id}_${mod}`);
-      if (!cb) return;
-      cb.onchange = (e) => {
-        const checked = e.target.checked;
-        if (checked && !v.deliveryModalities.includes(mod)) v.deliveryModalities.push(mod);
-        if (!checked) v.deliveryModalities = v.deliveryModalities.filter(x => x !== mod);
-        if (checked && !v.deliveryPatterns[mod]) v.deliveryPatterns[mod] = defaultPatternFor(mod);
-        saveDebounced();
-        render(); // re-render pattern cards
+      const radio = document.getElementById(`vmod_${v.id}_${mod}`);
+      if (!radio) return;
+      radio.onchange = (e) => {
+        if (e.target.checked) {
+          v.deliveryModality = mod;
+          if (!v.deliveryPatterns[mod]) v.deliveryPatterns[mod] = defaultPatternFor(mod);
+          saveDebounced();
+          render(); // re-render pattern card
+        }
       };
     });
 
-    (v.deliveryModalities || []).forEach((mod) => {
-      if (!v.deliveryPatterns[mod]) v.deliveryPatterns[mod] = defaultPatternFor(mod);
+    const selectedMod = v.deliveryModality;
+    if (selectedMod) {
+      if (!v.deliveryPatterns[selectedMod]) v.deliveryPatterns[selectedMod] = defaultPatternFor(selectedMod);
 
-      const sync = document.getElementById(`pat_${v.id}_${mod}_sync`);
-      const async = document.getElementById(`pat_${v.id}_${mod}_async`);
-      const campus = document.getElementById(`pat_${v.id}_${mod}_campus`);
+      const sync = document.getElementById(`pat_${v.id}_${selectedMod}_sync`);
+      const async = document.getElementById(`pat_${v.id}_${selectedMod}_async`);
+      const campus = document.getElementById(`pat_${v.id}_${selectedMod}_campus`);
 
       const update = () => {
-        const pat = v.deliveryPatterns[mod] || defaultPatternFor(mod);
+        const pat = v.deliveryPatterns[selectedMod] || defaultPatternFor(selectedMod);
         pat.syncOnlinePct = Number(sync ? sync.value : pat.syncOnlinePct || 0);
         pat.asyncDirectedPct = Number(async ? async.value : pat.asyncDirectedPct || 0);
         pat.onCampusPct = Number(campus ? campus.value : pat.onCampusPct || 0);
-        v.deliveryPatterns[mod] = pat;
+        v.deliveryPatterns[selectedMod] = pat;
         saveDebounced();
         renderFlags();
       };
@@ -1906,7 +2108,7 @@ function wireVersions() {
       if (sync) sync.oninput = update;
       if (async) async.oninput = update;
       if (campus) campus.oninput = update;
-    });
+    }
   });
 }
 
@@ -2560,6 +2762,69 @@ if (picker) {
     m.mimlos[idx].text = e.target.value;
       saveDebounced();
       renderFlags();
+    });
+  });
+}
+
+function wireEffortHours() {
+  const p = state.programme;
+  p.mode = p.mode || 'PROGRAMME_OWNER';
+
+  const picker = document.getElementById("modulePicker");
+  if (picker) {
+    picker.onchange = () => {
+      state.selectedModuleId = picker.value;
+      render();
+    };
+  }
+
+  // Function to recalculate and update totals for a module row
+  function updateTotals(moduleId, versionModalityKey) {
+    const m = p.modules.find(x => x.id === moduleId);
+    if (!m || !m.effortHours || !m.effortHours[versionModalityKey]) return;
+    
+    const e = m.effortHours[versionModalityKey];
+    const total = Number(e.classroomHours || 0) + Number(e.mentoringHours || 0) + 
+                  Number(e.otherContactHours || 0) + Number(e.directedElearningHours || 0) + 
+                  Number(e.independentLearningHours || 0) + Number(e.otherHours || 0) + 
+                  Number(e.workBasedHours || 0);
+    
+    const expectedTotal = Number(m.credits || 0) * 25;
+    const row = document.querySelector(`tr[data-version-modality="${versionModalityKey}"][data-module-id="${moduleId}"]`);
+    if (row) {
+      const badge = row.querySelector('[data-total-display]');
+      if (badge) {
+        badge.textContent = total;
+        badge.className = 'badge ' + (total === expectedTotal ? 'text-bg-success' : (total > 0 ? 'text-bg-warning' : 'text-bg-secondary'));
+      }
+    }
+  }
+
+  // Wire up all effort hour inputs
+  document.querySelectorAll('[data-effort-field]').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const row = inp.closest('tr');
+      if (!row) return;
+      
+      const moduleId = row.getAttribute('data-module-id');
+      const versionModalityKey = row.getAttribute('data-version-modality');
+      const field = inp.getAttribute('data-effort-field');
+      
+      const m = p.modules.find(x => x.id === moduleId);
+      if (!m) return;
+      
+      m.effortHours = m.effortHours || {};
+      m.effortHours[versionModalityKey] = m.effortHours[versionModalityKey] || {};
+      
+      // Determine if this is a number or text field
+      if (field.endsWith('Hours')) {
+        m.effortHours[versionModalityKey][field] = Number(e.target.value) || 0;
+      } else {
+        m.effortHours[versionModalityKey][field] = e.target.value;
+      }
+      
+      saveDebounced();
+      updateTotals(moduleId, versionModalityKey);
     });
   });
 }
