@@ -961,16 +961,20 @@ function render() {
       { key: "ONLINE", label: "Fully online" },
     ];
 
-    const vCards = versions.map((v, idx) => {
+    const vItems = versions.map((v, idx) => {
       const intakeVal = (v.intakes || []).join(", ");
       const isActive = state.selectedVersionId ? (state.selectedVersionId === v.id) : (idx === 0);
       const selectedMod = v.deliveryModality || "";
+      const collapseId = `ver_${v.id}_collapse`;
+      const headingId = `ver_${v.id}_heading`;
       const modRadios = modDefs.map(m => `
         <div class="form-check form-check-inline">
           <input class="form-check-input" type="radio" name="vmod_${v.id}" id="vmod_${v.id}_${m.key}" value="${m.key}" ${selectedMod === m.key ? "checked" : ""}>
           <label class="form-check-label" for="vmod_${v.id}_${m.key}">${escapeHtml(m.label)}</label>
         </div>
       `).join("");
+
+      const modSummary = selectedMod ? (modDefs.find(m => m.key === selectedMod)?.label || selectedMod) : "Choose modality";
 
       const patternCard = selectedMod ? (() => {
         const pat = (v.deliveryPatterns || {})[selectedMod] || defaultPatternFor(selectedMod);
@@ -1004,63 +1008,71 @@ function render() {
       const proctorNotesStyle = proctorYes ? "" : "d-none";
 
       return `
-        <div class="card mb-3">
-          <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
-            <div class="fw-semibold">Version ${idx+1}: ${escapeHtml(v.label || "(untitled)")}</div>
-            <div class="d-flex gap-2 align-items-center">
-              <button class="btn btn-sm ${isActive?"btn-primary":"btn-outline-primary"}" id="setActive_${v.id}">${isActive?"Active for stages":"Set active"}</button>
-              <button class="btn btn-sm btn-outline-danger" id="removeVer_${v.id}">Remove</button>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label fw-semibold">Version label</label>
-                <input class="form-control" id="vlabel_${v.id}" value="${escapeHtml(v.label||"")}">
+        <div class="accordion-item bg-body">
+          <h2 class="accordion-header" id="${headingId}">
+            <button class="accordion-button ${isActive?"":"collapsed"} w-100" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isActive}" aria-controls="${collapseId}">
+              <div class="d-flex w-100 align-items-center gap-2">
+                <div class="flex-grow-1">
+                  <div class="fw-semibold">Version ${idx+1}: <span data-version-label="${v.id}">${escapeHtml(v.label || "(untitled)")}</span></div>
+                  <div class="small text-secondary"><span data-version-code="${v.id}">${escapeHtml(v.code || "No code")}</span> • ${modSummary} • <span data-version-intakes="${v.id}">${escapeHtml(intakeVal || "No intakes")}</span></div>
+                </div>
+                <div class="header-actions d-flex align-items-center gap-2 me-2">
+                  <span class="btn btn-sm btn-outline-danger" id="removeVer_${v.id}" role="button">Remove</span>
+                </div>
               </div>
-              <div class="col-md-2">
-                <label class="form-label fw-semibold">Code</label>
-                <input class="form-control" id="vcode_${v.id}" value="${escapeHtml(v.code||"")}">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label fw-semibold">Duration</label>
-                <input class="form-control" id="vduration_${v.id}" value="${escapeHtml(v.duration||"")}" placeholder="e.g., 1 year FT / 2 years PT">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label fw-semibold">Intakes</label>
-                <input class="form-control" id="vintakes_${v.id}" value="${escapeHtml(intakeVal)}" placeholder="Comma-separated, e.g., Sep, Jan">
-              </div>
-              <div class="col-md-3">
-                <label class="form-label fw-semibold">Target cohort size</label>
-                <input type="number" min="0" class="form-control" id="vcohort_${v.id}" value="${Number(v.targetCohortSize||0)}">
-              </div>
-              <div class="col-md-3">
-                <label class="form-label fw-semibold">Number of groups</label>
-                <input type="number" min="0" class="form-control" id="vgroups_${v.id}" value="${Number(v.numberOfGroups||0)}">
-              </div>
-              <div class="col-12">
-                <label class="form-label fw-semibold">Delivery modality</label>
-                <div>${modRadios}</div>
-                ${patternCard}
-              </div>
-              <div class="col-12">
-                <label class="form-label fw-semibold">Delivery notes</label>
-                <textarea class="form-control" rows="3" id="vnotes_${v.id}" placeholder="High-level plan: where learning happens, key touchpoints.">${escapeHtml(v.deliveryNotes||"")}</textarea>
-              </div>
-              <div class="col-md-4">
-                <label class="form-label fw-semibold">Online proctored exams?</label>
-                <select class="form-select" id="vproctor_${v.id}">
-                  <option value="TBC" ${(v.onlineProctoredExams||"TBC")==="TBC"?"selected":""}>TBC</option>
-                  <option value="NO" ${(v.onlineProctoredExams||"TBC")==="NO"?"selected":""}>No</option>
-                  <option value="YES" ${(v.onlineProctoredExams||"TBC")==="YES"?"selected":""}>Yes</option>
-                </select>
-              </div>
-              <div class="col-12 ${proctorNotesStyle}" id="vproctorNotesWrap_${v.id}">
-                <label class="form-label fw-semibold">Proctoring notes</label>
-                <textarea class="form-control" rows="2" id="vproctorNotes_${v.id}" placeholder="What is proctored, when, and why?">${escapeHtml(v.onlineProctoredExamsNotes||"")}</textarea>
-              </div>
-              <div class="col-12">
-                <div class="small text-secondary">Stages in this version: <span class="fw-semibold">${(v.stages||[]).length}</span> (define in the next step).</div>
+            </button>
+          </h2>
+          <div id="${collapseId}" class="accordion-collapse collapse ${isActive?"show":""}" aria-labelledby="${headingId}">
+            <div class="accordion-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Version label</label>
+                  <input class="form-control" id="vlabel_${v.id}" value="${escapeHtml(v.label||"")}" >
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label fw-semibold">Code</label>
+                  <input class="form-control" id="vcode_${v.id}" value="${escapeHtml(v.code||"")}" >
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Duration</label>
+                  <input class="form-control" id="vduration_${v.id}" value="${escapeHtml(v.duration||"")}" placeholder="e.g., 1 year FT / 2 years PT">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Intakes</label>
+                  <input class="form-control" id="vintakes_${v.id}" value="${escapeHtml(intakeVal)}" placeholder="Comma-separated, e.g., Sep, Jan">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-semibold">Target cohort size</label>
+                  <input type="number" min="0" class="form-control" id="vcohort_${v.id}" value="${Number(v.targetCohortSize||0)}">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-semibold">Number of groups</label>
+                  <input type="number" min="0" class="form-control" id="vgroups_${v.id}" value="${Number(v.numberOfGroups||0)}">
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-semibold">Delivery modality</label>
+                  <div>${modRadios}</div>
+                  ${patternCard}
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-semibold">Delivery notes</label>
+                  <textarea class="form-control" rows="3" id="vnotes_${v.id}" placeholder="High-level plan: where learning happens, key touchpoints.">${escapeHtml(v.deliveryNotes||"")}</textarea>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold">Online proctored exams?</label>
+                  <select class="form-select" id="vproctor_${v.id}">
+                    <option value="TBC" ${(v.onlineProctoredExams||"TBC")==="TBC"?"selected":""}>TBC</option>
+                    <option value="NO" ${(v.onlineProctoredExams||"TBC")==="NO"?"selected":""}>No</option>
+                    <option value="YES" ${(v.onlineProctoredExams||"TBC")==="YES"?"selected":""}>Yes</option>
+                  </select>
+                </div>
+                <div class="col-12 ${proctorNotesStyle}" id="vproctorNotesWrap_${v.id}">
+                  <label class="form-label fw-semibold">Proctoring notes</label>
+                  <textarea class="form-control" rows="2" id="vproctorNotes_${v.id}" placeholder="What is proctored, when, and why?">${escapeHtml(v.onlineProctoredExamsNotes||"")}</textarea>
+                </div>
+                <div class="col-12">
+                  <div class="small text-secondary">Stages in this version: <span class="fw-semibold">${(v.stages||[]).length}</span> (define in the next step).</div>
+                </div>
               </div>
             </div>
           </div>
@@ -1076,8 +1088,9 @@ function render() {
         </div>
         <button class="btn btn-dark" id="addVersionBtn">+ Add version</button>
       </div>
-      <div class="mt-3">
-        ${vCards || `<div class="alert alert-info mb-0">No versions yet. Add at least one version to continue.</div>`}
+      ${accordionControlsHtml('versionsAccordion')}
+      <div class="mt-2 accordion" id="versionsAccordion">
+        ${vItems || `<div class="alert alert-info mb-0">No versions yet. Add at least one version to continue.</div>`}
       </div>
     `;
     wireDevModeToggle();
@@ -1098,9 +1111,12 @@ function render() {
 
     const vSelect = versions.map(x => `<option value="${escapeHtml(x.id)}" ${x.id===v.id?"selected":""}>${escapeHtml(x.code||"")}${x.code?" — ":""}${escapeHtml(x.label||"")}</option>`).join("");
 
-    const stageCards = (v.stages || []).sort((a,b)=>Number(a.sequence||0)-Number(b.sequence||0)).map((s) => {
+    const stageCards = (v.stages || []).sort((a,b)=>Number(a.sequence||0)-Number(b.sequence||0)).map((s, idx) => {
       const exitOn = s.exitAward && s.exitAward.enabled;
       const exitWrapClass = exitOn ? "" : "d-none";
+      const collapseId = `stage_${s.id}_collapse`;
+      const headingId = `stage_${s.id}_heading`;
+      const isFirst = idx === 0;
 
       const moduleChecks = (p.modules || []).map(m => {
         const picked = (s.modules || []).find(x => x.moduleId === m.id);
@@ -1125,39 +1141,50 @@ function render() {
       const stageCreditSum = sumStageCredits(p.modules || [], s.modules || []);
 
       return `
-        <div class="card mb-3">
-          <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <div class="fw-semibold">${escapeHtml(s.name || `Stage ${s.sequence || ""}`)}</div>
-            <button class="btn btn-sm btn-outline-danger" id="removeStage_${s.id}">Remove stage</button>
-          </div>
-          <div class="card-body">
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label fw-semibold">Stage name</label>
-                <input class="form-control" id="stname_${s.id}" value="${escapeHtml(s.name||"")}">
-              </div>
-              <div class="col-md-3">
-                <label class="form-label fw-semibold">Sequence</label>
-                <input type="number" min="1" class="form-control" id="stseq_${s.id}" value="${Number(s.sequence||1)}">
-              </div>
-              <div class="col-md-3">
-                <label class="form-label fw-semibold">Credits target</label>
-                <input type="number" min="0" class="form-control" id="stcred_${s.id}" value="${Number(s.creditsTarget||0)}">
-                <div class="small text-secondary mt-1">Assigned modules sum to <span class="fw-semibold">${stageCreditSum}</span> credits.</div>
-              </div>
-              <div class="col-12">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="stexit_${s.id}" ${exitOn?"checked":""}>
-                  <label class="form-check-label fw-semibold" for="stexit_${s.id}">Enable exit award for this stage</label>
+        <div class="accordion-item bg-body">
+          <h2 class="accordion-header" id="${headingId}">
+            <button class="accordion-button ${isFirst?"":"collapsed"} w-100" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isFirst}" aria-controls="${collapseId}">
+              <div class="d-flex w-100 align-items-center gap-2">
+                <div class="flex-grow-1">
+                  <div class="fw-semibold"><span data-stage-name="${s.id}">${escapeHtml(s.name || `Stage ${s.sequence || ""}`)}</span></div>
+                  <div class="small text-secondary">Seq <span data-stage-seq="${s.id}">${Number(s.sequence||1)}</span> • Target <span data-stage-target="${s.id}">${Number(s.creditsTarget||0)}</span>cr • Assigned ${stageCreditSum}cr</div>
+                </div>
+                <div class="header-actions d-flex align-items-center gap-2 me-2">
+                  <span class="btn btn-sm btn-outline-danger" id="removeStage_${s.id}" role="button">Remove</span>
                 </div>
               </div>
-              <div class="col-12 ${exitWrapClass}" id="stexitWrap_${s.id}">
-                <label class="form-label fw-semibold">Exit award title</label>
-                <input class="form-control" id="stexitTitle_${s.id}" value="${escapeHtml((s.exitAward && s.exitAward.awardTitle)||"")}">
-              </div>
-              <div class="col-12">
-                <label class="form-label fw-semibold">Modules in this stage</label>
-                ${moduleChecks || `<div class="text-secondary">No modules defined yet (add modules in Credits & Modules).</div>`}
+            </button>
+          </h2>
+          <div id="${collapseId}" class="accordion-collapse collapse ${isFirst?"show":""}" aria-labelledby="${headingId}">
+            <div class="accordion-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Stage name</label>
+                  <input class="form-control" id="stname_${s.id}" value="${escapeHtml(s.name||"")}" >
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-semibold">Sequence</label>
+                  <input type="number" min="1" class="form-control" id="stseq_${s.id}" value="${Number(s.sequence||1)}">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-semibold">Credits target</label>
+                  <input type="number" min="0" class="form-control" id="stcred_${s.id}" value="${Number(s.creditsTarget||0)}">
+                  <div class="small text-secondary mt-1">Assigned modules sum to <span class="fw-semibold">${stageCreditSum}</span> credits.</div>
+                </div>
+                <div class="col-12">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="stexit_${s.id}" ${exitOn?"checked":""}>
+                    <label class="form-check-label fw-semibold" for="stexit_${s.id}">Enable exit award for this stage</label>
+                  </div>
+                </div>
+                <div class="col-12 ${exitWrapClass}" id="stexitWrap_${s.id}">
+                  <label class="form-label fw-semibold">Exit award title</label>
+                  <input class="form-control" id="stexitTitle_${s.id}" value="${escapeHtml((s.exitAward && s.exitAward.awardTitle)||"")}" >
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-semibold">Modules in this stage</label>
+                  ${moduleChecks || `<div class="text-secondary">No modules defined yet (add modules in Credits & Modules).</div>`}
+                </div>
               </div>
             </div>
           </div>
@@ -1179,7 +1206,8 @@ function render() {
         </div>
       </div>
 
-      <div class="mt-3">
+      ${accordionControlsHtml('stagesAccordion')}
+      <div class="mt-2 accordion" id="stagesAccordion">
         ${stageCards || `<div class="alert alert-info mb-0">No stages yet for this version. Add a stage to begin.</div>`}
       </div>
     `;
@@ -1191,30 +1219,47 @@ function render() {
 
 
 if (step === "structure") {
-    const moduleRows = (p.modules||[]).map((m, idx) => `
-      <div class="card border-0 bg-white shadow-sm mb-3">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="fw-semibold">Module ${idx+1}</div>
-            <button class="btn btn-outline-danger btn-sm" data-remove-module="${m.id}">Remove</button>
-          </div>
-          <div class="row g-3">
-            <div class="col-md-3">
-              <label class="form-label fw-semibold">Code (optional)</label>
-              <input class="form-control" data-module-field="code" data-module-id="${m.id}" value="${escapeHtml(m.code||"")}">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Title</label>
-              <input class="form-control" data-module-field="title" data-module-id="${m.id}" value="${escapeHtml(m.title||"")}">
-            </div>
-            <div class="col-md-3">
-              <label class="form-label fw-semibold">Credits</label>
-              <input type="number" class="form-control" data-module-field="credits" data-module-id="${m.id}" value="${Number(m.credits||0)}">
+    const moduleRows = (p.modules||[]).map((m, idx) => {
+      const collapseId = `module_${m.id}_collapse`;
+      const headingId = `module_${m.id}_heading`;
+      const isFirst = idx === 0;
+
+      return `
+        <div class="accordion-item bg-body">
+          <h2 class="accordion-header" id="${headingId}">
+            <button class="accordion-button ${isFirst?"":"collapsed"} w-100" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isFirst}" aria-controls="${collapseId}">
+              <div class="d-flex w-100 align-items-center gap-2">
+                <div class="flex-grow-1">
+                  <div class="fw-semibold">Module ${idx+1}</div>
+                  <div class="small text-secondary"><span data-module-code="${m.id}">${escapeHtml(m.code || "No code")}</span> • <span data-module-title="${m.id}">${escapeHtml(m.title || "Untitled module")}</span> • <span data-module-credits="${m.id}">${Number(m.credits||0)}</span> cr</div>
+                </div>
+                <div class="header-actions d-flex align-items-center gap-2 me-2">
+                  <span class="btn btn-outline-danger btn-sm" data-remove-module="${m.id}" role="button">Remove</span>
+                </div>
+              </div>
+            </button>
+          </h2>
+          <div id="${collapseId}" class="accordion-collapse collapse ${isFirst?"show":""}" aria-labelledby="${headingId}">
+            <div class="accordion-body">
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <label class="form-label fw-semibold">Code (optional)</label>
+                  <input class="form-control" data-module-field="code" data-module-id="${m.id}" value="${escapeHtml(m.code||"")}" >
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Title</label>
+                  <input class="form-control" data-module-field="title" data-module-id="${m.id}" value="${escapeHtml(m.title||"")}" >
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-semibold">Credits</label>
+                  <input type="number" class="form-control" data-module-field="credits" data-module-id="${m.id}" value="${Number(m.credits||0)}">
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    `).join("");
+      `;
+    }).join("");
 
     content.innerHTML = devModeToggleHtml + `
       <div class="card shadow-sm">
@@ -1234,7 +1279,10 @@ if (step === "structure") {
             </div>
           </div>
 
-          ${moduleRows || `<div class="small text-secondary">No modules added yet.</div>`}
+          ${accordionControlsHtml('modulesAccordion')}
+          <div class="accordion" id="modulesAccordion">
+            ${moduleRows || `<div class="small text-secondary">No modules added yet.</div>`}
+          </div>
         </div>
       </div>
     `;
@@ -1279,46 +1327,60 @@ if (step === "structure") {
         </div>
       `).join("");
 
+      const collapseId = `plo_${o.id}_collapse`;
+      const headingId = `plo_${o.id}_heading`;
+      const isFirst = idx === 0;
+
       return `
-      <div class="card border-0 bg-white shadow-sm mb-3">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="fw-semibold">PLO ${idx+1}</div>
-            <button class="btn btn-outline-danger btn-sm" data-remove-plo="${o.id}">Remove</button>
-          </div>
-
-          <textarea class="form-control" data-plo-id="${o.id}" rows="3" placeholder="e.g., Analyse… / Design and implement…">${escapeHtml(o.text||"")}</textarea>
-          <div class="plo-lint-warnings mt-2">${lintWarnings}</div>
-
-          <div class="mt-3">
-            <div class="fw-semibold small mb-2">Map this PLO to QQI award standards</div>
-            ${!p.awardStandardIds || !p.awardStandardIds.length ? `
-              <div class="small text-danger">Select a QQI award standard in Identity to enable mapping.</div>
-            ` : `
-              ${p.awardStandardIds.length > 1 ? `
-                <div class="mb-2">
-                  <label class="form-label small mb-1">Select which standard to map to:</label>
-                  <select class="form-select form-select-sm" data-plo-standard-selector="${o.id}" style="max-width: 400px;">
-                    ${p.awardStandardIds.map((stdId, idx) => `<option value="${escapeHtml(stdId)}">${escapeHtml(p.awardStandardNames[idx] || stdId)}</option>`).join('')}
-                  </select>
-                </div>
-              ` : ''}
-              <div class="d-flex flex-wrap gap-2 align-items-end">
-                <div style="min-width:220px">
-                  <label class="form-label small mb-1">Criteria</label>
-                  <select class="form-select form-select-sm" data-plo-map-criteria="${o.id}"></select>
-                </div>
-                <div style="min-width:260px">
-                  <label class="form-label small mb-1">Thread</label>
-                  <select class="form-select form-select-sm" data-plo-map-thread="${o.id}"></select>
-                </div>
-                <button type="button" class="btn btn-outline-primary btn-sm" data-add-plo-map="${o.id}">Add mapping</button>
+      <div class="accordion-item bg-body">
+        <h2 class="accordion-header" id="${headingId}">
+          <button class="accordion-button ${isFirst?"":"collapsed"} w-100" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isFirst}" aria-controls="${collapseId}">
+            <div class="d-flex w-100 align-items-center gap-2">
+              <div class="flex-grow-1">
+                <div class="fw-semibold">PLO ${idx+1}</div>
+                <div class="small text-secondary text-truncate" title="${escapeHtml(o.text || "")}"><span data-plo-header-text="${o.id}">${escapeHtml(o.text || "No text yet")}</span></div>
               </div>
-              <div class="small text-secondary mt-2" data-plo-map-desc="${o.id}"></div>
-              <div class="mt-2" data-plo-map-list="${o.id}">
-                ${mappings || `<div class="small text-secondary">No mappings yet for this PLO.</div>`}
+              <div class="header-actions d-flex align-items-center gap-2 me-2">
+                <span class="btn btn-outline-danger btn-sm" data-remove-plo="${o.id}" role="button">Remove</span>
               </div>
-            `}
+            </div>
+          </button>
+        </h2>
+        <div id="${collapseId}" class="accordion-collapse collapse ${isFirst?"show":""}" aria-labelledby="${headingId}">
+          <div class="accordion-body">
+            <textarea class="form-control" data-plo-id="${o.id}" rows="3" placeholder="e.g., Analyse… / Design and implement…">${escapeHtml(o.text||"")}</textarea>
+            <div class="plo-lint-warnings mt-2">${lintWarnings}</div>
+
+            <div class="mt-3">
+              <div class="fw-semibold small mb-2">Map this PLO to QQI award standards</div>
+              ${!p.awardStandardIds || !p.awardStandardIds.length ? `
+                <div class="small text-danger">Select a QQI award standard in Identity to enable mapping.</div>
+              ` : `
+                ${p.awardStandardIds.length > 1 ? `
+                  <div class="mb-2">
+                    <label class="form-label small mb-1">Select which standard to map to:</label>
+                    <select class="form-select form-select-sm" data-plo-standard-selector="${o.id}" style="max-width: 400px;">
+                      ${p.awardStandardIds.map((stdId, idx) => `<option value="${escapeHtml(stdId)}">${escapeHtml(p.awardStandardNames[idx] || stdId)}</option>`).join('')}
+                    </select>
+                  </div>
+                ` : ''}
+                <div class="d-flex flex-wrap gap-2 align-items-end">
+                  <div style="min-width:220px">
+                    <label class="form-label small mb-1">Criteria</label>
+                    <select class="form-select form-select-sm" data-plo-map-criteria="${o.id}"></select>
+                  </div>
+                  <div style="min-width:260px">
+                    <label class="form-label small mb-1">Thread</label>
+                    <select class="form-select form-select-sm" data-plo-map-thread="${o.id}"></select>
+                  </div>
+                  <button type="button" class="btn btn-outline-primary btn-sm" data-add-plo-map="${o.id}">Add mapping</button>
+                </div>
+                <div class="small text-secondary mt-2" data-plo-map-desc="${o.id}"></div>
+                <div class="mt-2" data-plo-map-list="${o.id}">
+                  ${mappings || `<div class="small text-secondary">No mappings yet for this PLO.</div>`}
+                </div>
+              `}
+            </div>
           </div>
         </div>
       </div>
@@ -1335,7 +1397,10 @@ if (step === "structure") {
           ${bloomsGuidanceHtml(p.nfqLevel, "Programme Learning Outcomes")}
           <div id="plosStandardMismatchAlert" class="mb-3"></div>
           <div class="small-muted mb-3">Aim for ~6–12 clear, assessable outcomes. Keep them measurable and assessable.</div>
-          ${rows || `<div class="small text-secondary">No PLOs added yet.</div>`}
+          ${accordionControlsHtml('plosAccordion')}
+          <div class="accordion" id="plosAccordion">
+            ${rows || `<div class="small text-secondary">No PLOs added yet.</div>`}
+          </div>
           <hr class="my-4"/>
           <h6 class="mb-2">PLO ↔ Award Standard Mapping Snapshot</h6>
           <div id="ploMappingSnapshot" class="small"></div>
@@ -1364,7 +1429,7 @@ const modulePicker = canPickModule ? `
   </div>
 ` : "";
 
-    const blocks = modulesForEdit.map(m => {
+    const blocks = modulesForEdit.map((m, idx) => {
       const items = (m.mimlos||[]).map((t, i) => {
         // Lint the MIMLO text for problematic verbs
         const mimloTxt = mimloText(t);
@@ -1387,13 +1452,25 @@ const modulePicker = canPickModule ? `
         `;
       }).join("");
       const isHidden = (state.programme.mode === "MODULE_EDITOR" && editableIds.length > 1 && m.id !== selectedId);
+      const collapseId = `mimlo_${m.id}_collapse`;
+      const headingId = `mimlo_${m.id}_heading`;
+      const isFirst = idx === 0;
       return `
-        <div class="card border-0 bg-white shadow-sm mb-3" ${isHidden ? 'style="display:none"' : ""} data-module-card="${m.id}">
-          <div class="card-body">
-            <div class="fw-semibold mb-1">${escapeHtml((m.code?m.code+" — ":"") + m.title)}</div>
-            <div class="small-muted mb-3">Add 3–6 MIMLOs per module to start.</div>
-            ${items || `<div class="small text-secondary mb-2">No MIMLOs yet.</div>`}
-            <button class="btn btn-outline-secondary btn-sm" data-add-mimlo="${m.id}">+ Add MIMLO</button>
+        <div class="accordion-item bg-body" ${isHidden ? 'style="display:none"' : ""} data-module-card="${m.id}">
+          <h2 class="accordion-header" id="${headingId}">
+            <button class="accordion-button ${isFirst?"":"collapsed"}" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isFirst}" aria-controls="${collapseId}">
+              <div>
+                <div class="fw-semibold">${escapeHtml((m.code?m.code+" — ":"") + m.title)}</div>
+                <div class="small text-secondary">${m.mimlos?.length || 0} MIMLOs • ${Number(m.credits||0)} cr</div>
+              </div>
+            </button>
+          </h2>
+          <div id="${collapseId}" class="accordion-collapse collapse ${isFirst?"show":""}" aria-labelledby="${headingId}">
+            <div class="accordion-body">
+              <div class="small-muted mb-3">Add 3–6 MIMLOs per module to start.</div>
+              ${items || `<div class="small text-secondary mb-2">No MIMLOs yet.</div>`}
+              <button class="btn btn-outline-secondary btn-sm" data-add-mimlo="${m.id}">+ Add MIMLO</button>
+            </div>
           </div>
         </div>
       `;
@@ -1405,7 +1482,10 @@ const modulePicker = canPickModule ? `
           <h5 class="card-title mb-3">MIMLOs (Minimum Intended Module Learning Outcomes)</h5>
           ${bloomsGuidanceHtml(p.nfqLevel, "MIMLOs")}
           ${modulePicker}
-          ${modulesForEdit.length ? blocks : `<div class="small text-secondary">Add modules first (Credits & Modules step).</div>`}
+          ${accordionControlsHtml('mimlosAccordion')}
+          <div class="accordion" id="mimlosAccordion">
+            ${modulesForEdit.length ? blocks : `<div class="small text-secondary">Add modules first (Credits & Modules step).</div>`}
+          </div>
         </div>
       </div>
     `;
@@ -1444,7 +1524,7 @@ if (step === "effort-hours") {
       label: `${v.label || v.code || 'Version'} — ${modalityLabels[v.deliveryModality] || v.deliveryModality}`
     }));
 
-  const blocks = modulesForEdit.map(m => {
+  const blocks = modulesForEdit.map((m, idx) => {
     // Ensure effortHours structure exists for each version/modality
     m.effortHours = m.effortHours || {};
     versionModalities.forEach(vm => {
@@ -1465,6 +1545,9 @@ if (step === "effort-hours") {
     });
 
     const isHidden = (state.programme.mode === "MODULE_EDITOR" && editableIds.length > 1 && m.id !== selectedId);
+    const collapseId = `effort_${m.id}_collapse`;
+    const headingId = `effort_${m.id}_heading`;
+    const isFirst = idx === 0;
     
     // Calculate totals for each version/modality
     const getTotalHours = (key) => {
@@ -1546,52 +1629,55 @@ if (step === "effort-hours") {
       : "";
 
     return `
-      <div class="card border-0 bg-white shadow-sm mb-4" ${isHidden ? 'style="display:none"' : ""} data-module-card="${m.id}">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="fw-semibold">${escapeHtml((m.code ? m.code + " — " : "") + m.title)}</div>
-            <div class="small text-secondary">
-              ${m.credits} ECTS × 25 = <strong>${expectedTotal}</strong> expected hours
+      <div class="accordion-item bg-body" ${isHidden ? 'style="display:none"' : ""} data-module-card="${m.id}">
+        <h2 class="accordion-header" id="${headingId}">
+          <button class="accordion-button ${isFirst?"":"collapsed"}" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isFirst}" aria-controls="${collapseId}">
+            <div class="d-flex flex-column">
+              <span class="fw-semibold">${escapeHtml((m.code ? m.code + " — " : "") + m.title)}</span>
+              <span class="small text-secondary">${m.credits} ECTS × 25 = <strong>${expectedTotal}</strong> expected hours</span>
             </div>
+          </button>
+        </h2>
+        <div id="${collapseId}" class="accordion-collapse collapse ${isFirst?"show":""}" aria-labelledby="${headingId}">
+          <div class="accordion-body">
+            ${noVersionsMsg || `
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered align-middle mb-0" data-effort-table="${m.id}">
+                <thead>
+                  <tr>
+                    <th rowspan="2" class="align-middle" style="min-width:150px">Version / Modality</th>
+                    <th colspan="2" class="text-center">Classroom &amp; Demonstrations</th>
+                    <th colspan="2" class="text-center">Mentoring &amp; Small-group</th>
+                    <th colspan="3" class="text-center">Other Contact (specify)</th>
+                    <th rowspan="2" class="text-center align-middle" style="min-width:80px">Directed<br>E-learning</th>
+                    <th rowspan="2" class="text-center align-middle" style="min-width:80px">Independent<br>Learning</th>
+                    <th colspan="2" class="text-center">Other Hours (specify)</th>
+                    <th rowspan="2" class="text-center align-middle" style="min-width:80px">Work-based<br>Learning</th>
+                    <th rowspan="2" class="text-center align-middle" style="min-width:70px">Total<br>Effort</th>
+                  </tr>
+                  <tr>
+                    <th class="text-center small">Hours</th>
+                    <th class="text-center small">Min Ratio</th>
+                    <th class="text-center small">Hours</th>
+                    <th class="text-center small">Min Ratio</th>
+                    <th class="text-center small">Hours</th>
+                    <th class="text-center small">Ratio</th>
+                    <th class="text-center small">Type</th>
+                    <th class="text-center small">Hours</th>
+                    <th class="text-center small">Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${modalityRows}
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="small text-secondary mt-2">
+              <strong>Tip:</strong> Total effort hours should equal ${expectedTotal} (based on ${m.credits} ECTS credits × 25 hours per credit).
+            </div>
+            `}
           </div>
-          
-          ${noVersionsMsg || `
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle mb-0" data-effort-table="${m.id}">
-              <thead>
-                <tr>
-                  <th rowspan="2" class="align-middle" style="min-width:150px">Version / Modality</th>
-                  <th colspan="2" class="text-center">Classroom &amp; Demonstrations</th>
-                  <th colspan="2" class="text-center">Mentoring &amp; Small-group</th>
-                  <th colspan="3" class="text-center">Other Contact (specify)</th>
-                  <th rowspan="2" class="text-center align-middle" style="min-width:80px">Directed<br>E-learning</th>
-                  <th rowspan="2" class="text-center align-middle" style="min-width:80px">Independent<br>Learning</th>
-                  <th colspan="2" class="text-center">Other Hours (specify)</th>
-                  <th rowspan="2" class="text-center align-middle" style="min-width:80px">Work-based<br>Learning</th>
-                  <th rowspan="2" class="text-center align-middle" style="min-width:70px">Total<br>Effort</th>
-                </tr>
-                <tr>
-                  <th class="text-center small">Hours</th>
-                  <th class="text-center small">Min Ratio</th>
-                  <th class="text-center small">Hours</th>
-                  <th class="text-center small">Min Ratio</th>
-                  <th class="text-center small">Hours</th>
-                  <th class="text-center small">Ratio</th>
-                  <th class="text-center small">Type</th>
-                  <th class="text-center small">Hours</th>
-                  <th class="text-center small">Type</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${modalityRows}
-              </tbody>
-            </table>
-          </div>
-          
-          <div class="small text-secondary mt-2">
-            <strong>Tip:</strong> Total effort hours should equal ${expectedTotal} (based on ${m.credits} ECTS credits × 25 hours per credit).
-          </div>
-          `}
         </div>
       </div>
     `;
@@ -1606,7 +1692,10 @@ if (step === "effort-hours") {
           This helps demonstrate the workload balance and staffing requirements (teacher/learner ratios).
         </p>
         ${modulePicker}
-        ${modulesForEdit.length ? blocks : `<div class="small text-secondary">Add modules first (Credits & Modules step).</div>`}
+        ${accordionControlsHtml('effortAccordion')}
+        <div class="accordion" id="effortAccordion">
+          ${modulesForEdit.length ? blocks : `<div class="small text-secondary">Add modules first (Credits & Modules step).</div>`}
+        </div>
       </div>
     </div>
   `;
@@ -1625,24 +1714,14 @@ if (step === "assessments") {
     "Exam (On campus)","Exam (Online)","Reflective Journal","Other"
   ];
 
-  const modulePicker = (editableIds.length > 1) ? `
-    <div class="row g-3 mb-3">
-      <div class="col-md-6">
-        <label class="form-label fw-semibold">Assigned module</label>
-        <select class="form-select" id="modulePicker">
-          ${modules.map(m => `<option value="${m.id}" ${m.id===selectedId?"selected":""}>${escapeHtml(m.code || "")} — ${escapeHtml(m.title || "")}</option>`).join("")}
-        </select>
-      </div>
-    </div>
-  ` : "";
 
-  const cards = modules.map(m => {
+  const cards = modules.map((m, idx) => {
     ensureMimloObjects(m);
     m.assessments = m.assessments || [];
     const total = m.assessments.reduce((acc,a)=>acc+(Number(a.weighting)||0),0);
-    const totalBadge = (total === 100)
-      ? `<span class="badge text-bg-success">Total ${total}%</span>`
-      : `<span class="badge text-bg-warning">Total ${total}% (should be 100)</span>`;
+    const totalBadgeClass = (total === 100) ? 'text-bg-success' : 'text-bg-warning';
+    const totalBadgeText = (total === 100) ? `Total ${total}%` : `Total ${total}% (should be 100)`;
+    const totalBadge = `<span class="badge ${totalBadgeClass}" data-total-badge="${m.id}">${totalBadgeText}</span>`;
 
     const mimloList = (m.mimlos||[]).map(mi => `
       <div class="form-check">
@@ -1734,15 +1813,28 @@ if (step === "assessments") {
       `;
     }).join("");
 
+    const collapseId = `asm_${m.id}_collapse`;
+    const headingId = `asm_${m.id}_heading`;
+    const isFirst = idx === 0;
+    const isHidden = p.mode==="MODULE_EDITOR" && m.id!==selectedId;
+
     return `
-      <div class="card border-0 bg-white shadow-sm mb-3" ${p.mode==="MODULE_EDITOR" && m.id!==selectedId ? 'style="display:none"' : ""} data-module-card="${m.id}">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="fw-semibold">${escapeHtml(m.code||"")} — ${escapeHtml(m.title||"")}</div>
-            ${totalBadge}
+      <div class="accordion-item bg-body" ${isHidden ? 'style="display:none"' : ""} data-module-card="${m.id}">
+        <h2 class="accordion-header" id="${headingId}">
+          <button class="accordion-button ${isFirst?"":"collapsed"} w-100" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isFirst}" aria-controls="${collapseId}">
+            <div class="d-flex w-100 align-items-center gap-2">
+              <div class="flex-grow-1 d-flex flex-column flex-sm-row align-items-sm-center gap-2">
+                <span class="fw-semibold">${escapeHtml(m.code||"")} — ${escapeHtml(m.title||"")}</span>
+                ${totalBadge}
+              </div>
+              <div class="header-actions d-flex align-items-center gap-2 me-2"></div>
+            </div>
+          </button>
+        </h2>
+        <div id="${collapseId}" class="accordion-collapse collapse ${isFirst?"show":""}" aria-labelledby="${headingId}">
+          <div class="accordion-body">
+            ${asmCards || `<div class="text-muted small">No assessments yet.</div>`}
           </div>
-          <button class="btn btn-outline-primary btn-sm mb-3" data-add-asm="${m.id}">+ Add assessment</button>
-          ${asmCards || `<div class="text-muted small">No assessments yet.</div>`}
         </div>
       </div>
     `;
@@ -1754,6 +1846,7 @@ if (step === "assessments") {
         <div class="h5 mb-0">Assessments</div>
         <div class="text-muted small">Create assessments per module, set weightings, and map to MIMLOs.</div>
       </div>
+      <button class="btn btn-dark btn-sm" id="addAssessmentGlobal">+ Add assessment</button>
     </div>
     
 <div class="card border-0 bg-white shadow-sm mb-3">
@@ -1780,8 +1873,10 @@ if (step === "assessments") {
   </div>
 </div>
 
-${modulePicker}
-    ${cards || `<div class="alert alert-warning">No modules available to edit.</div>`}
+    ${accordionControlsHtml('assessmentsAccordion')}
+    <div class="accordion" id="assessmentsAccordion">
+      ${cards || `<div class="alert alert-warning mb-0">No modules available to edit.</div>`}
+    </div>
   `;
 
   wireDevModeToggle();
@@ -1809,9 +1904,12 @@ if (step === "reading-lists") {
     </div>
   ` : "";
 
-  const blocks = modulesForEdit.map(m => {
+  const blocks = modulesForEdit.map((m, idx) => {
     m.readingList = m.readingList || [];
     const isHidden = (isModuleEditor && editableIds.length > 1 && m.id !== selectedId);
+    const collapseId = `reading_${m.id}_collapse`;
+    const headingId = `reading_${m.id}_heading`;
+    const isFirst = idx === 0;
 
     const items = m.readingList.map((item, i) => {
       const yearNum = Number(item.year) || 0;
@@ -1877,18 +1975,24 @@ if (step === "reading-lists") {
     const warningBadge = oldCount > 0 ? `<span class="badge text-bg-warning">${oldCount} outdated</span>` : '';
 
     return `
-      <div class="card border-0 bg-white shadow-sm mb-3" ${isHidden ? 'style="display:none"' : ''} data-module-card="${m.id}">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="fw-semibold">${escapeHtml((m.code ? m.code + ' — ' : '') + m.title)}</div>
-            <div class="d-flex gap-2 align-items-center">
-              ${warningBadge}
-              <span class="badge text-bg-secondary">${m.readingList.length} item${m.readingList.length !== 1 ? 's' : ''}</span>
+      <div class="accordion-item bg-body" ${isHidden ? 'style="display:none"' : ''} data-module-card="${m.id}">
+        <h2 class="accordion-header" id="${headingId}">
+          <button class="accordion-button ${isFirst?"":"collapsed"}" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isFirst}" aria-controls="${collapseId}">
+            <div class="d-flex justify-content-between w-100 align-items-center gap-2">
+              <div>
+                <div class="fw-semibold">${escapeHtml((m.code ? m.code + ' — ' : '') + m.title)}</div>
+                <div class="small text-secondary">${m.readingList.length} item${m.readingList.length !== 1 ? 's' : ''}</div>
+              </div>
+              <div class="d-flex gap-2 align-items-center me-2">${warningBadge}</div>
             </div>
+          </button>
+        </h2>
+        <div id="${collapseId}" class="accordion-collapse collapse ${isFirst?"show":""}" aria-labelledby="${headingId}">
+          <div class="accordion-body">
+            <div class="small text-secondary mb-3">Add core and recommended reading for this module. Resources older than 5 years will be flagged.</div>
+            ${items || '<div class="small text-secondary mb-2">No reading list items yet.</div>'}
+            <button class="btn btn-outline-secondary btn-sm" data-add-reading="${m.id}">+ Add reading</button>
           </div>
-          <div class="small text-secondary mb-3">Add core and recommended reading for this module. Resources older than 5 years will be flagged.</div>
-          ${items || '<div class="small text-secondary mb-2">No reading list items yet.</div>'}
-          <button class="btn btn-outline-secondary btn-sm" data-add-reading="${m.id}">+ Add reading</button>
         </div>
       </div>
     `;
@@ -1900,7 +2004,10 @@ if (step === "reading-lists") {
         <h5 class="card-title mb-3">Reading Lists</h5>
         <div class="small text-secondary mb-3">Define core and recommended reading for each module. Items published more than 5 years ago will be flagged for review.</div>
         ${modulePicker}
-        ${modulesForEdit.length ? blocks : '<div class="small text-secondary">No modules available.</div>'}
+            ${accordionControlsHtml('readingAccordion')}
+            <div class="accordion" id="readingAccordion">
+              ${modulesForEdit.length ? blocks : '<div class="small text-secondary">No modules available.</div>'}
+            </div>
       </div>
     </div>
   `;
@@ -2165,12 +2272,26 @@ if (step === "schedule") {
         `;
       }).filter(Boolean).join("");
 
+      const collapseId = `map_${o.id}_collapse`;
+      const headingId = `map_${o.id}_heading`;
+      const isFirst = idx === 0;
+      const mappedCount = selected.length;
+
       return `
-        <div class="card border-0 bg-white shadow-sm mb-3">
-          <div class="card-body">
-            <div class="fw-semibold mb-1">PLO ${idx+1}</div>
-            <div class="small mb-3">${escapeHtml(o.text || "—")}</div>
-            <div class="list-group">${checks || '<div class="small text-secondary">No modules available to map.</div>'}</div>
+        <div class="accordion-item bg-body">
+          <h2 class="accordion-header" id="${headingId}">
+            <button class="accordion-button ${isFirst?"":"collapsed"}" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isFirst}" aria-controls="${collapseId}">
+              <div>
+                <div class="fw-semibold">PLO ${idx+1}</div>
+                <div class="small text-secondary"><span data-map-count="${o.id}">${mappedCount}</span> module${mappedCount===1?"":"s"} mapped</div>
+                <div class="small text-secondary text-truncate" title="${escapeHtml(o.text || "—")}">${escapeHtml(o.text || "—")}</div>
+              </div>
+            </button>
+          </h2>
+          <div id="${collapseId}" class="accordion-collapse collapse ${isFirst?"show":""}" aria-labelledby="${headingId}">
+            <div class="accordion-body">
+              <div class="list-group">${checks || '<div class="small text-secondary">No modules available to map.</div>'}</div>
+            </div>
           </div>
         </div>
       `;
@@ -2185,7 +2306,10 @@ if (step === "schedule") {
         <div class="card-body">
           <h5 class="card-title mb-3">Map PLOs to modules (QQI-critical)</h5>
           ${modeNote}
-          ${blocks}
+          ${accordionControlsHtml('mappingAccordion')}
+          <div class="accordion" id="mappingAccordion">
+            ${blocks}
+          </div>
         </div>
       </div>
     `;
@@ -2406,7 +2530,8 @@ function wireVersions() {
 
   const addBtn = document.getElementById("addVersionBtn");
   if (addBtn) {
-    addBtn.onclick = () => {
+    addBtn.onclick = (e) => {
+      e.stopPropagation();
       const v = defaultVersion();
       // Helpful defaults: if no versions yet, preselect a sensible modality based on common cases
       p.versions.push(v);
@@ -2419,11 +2544,9 @@ function wireVersions() {
   (p.versions || []).forEach((v) => {
     const byId = (suffix) => document.getElementById(`${suffix}_${v.id}`);
 
-    const setActive = document.getElementById(`setActive_${v.id}`);
-    if (setActive) setActive.onclick = () => { state.selectedVersionId = v.id; saveDebounced(); render(); };
-
     const removeBtn = document.getElementById(`removeVer_${v.id}`);
-    if (removeBtn) removeBtn.onclick = () => {
+    if (removeBtn) removeBtn.onclick = (e) => {
+      e.stopPropagation();
       p.versions = (p.versions || []).filter(x => x.id !== v.id);
       if (state.selectedVersionId === v.id) state.selectedVersionId = (p.versions[0] && p.versions[0].id) || null;
       saveDebounced();
@@ -2431,10 +2554,24 @@ function wireVersions() {
     };
 
     const label = byId("vlabel");
-    if (label) label.oninput = (e) => { v.label = e.target.value; saveDebounced(); renderHeader(); renderFlags(); };
+    if (label) label.oninput = (e) => {
+      v.label = e.target.value;
+      saveDebounced();
+      renderHeader();
+      renderFlags();
+      const h = document.querySelector(`[data-version-label="${v.id}"]`);
+      if (h) h.textContent = v.label || "(untitled)";
+    };
 
     const code = byId("vcode");
-    if (code) code.oninput = (e) => { v.code = e.target.value; saveDebounced(); renderHeader(); renderFlags(); };
+    if (code) code.oninput = (e) => {
+      v.code = e.target.value;
+      saveDebounced();
+      renderHeader();
+      renderFlags();
+      const h = document.querySelector(`[data-version-code="${v.id}"]`);
+      if (h) h.textContent = v.code || "No code";
+    };
 
     const duration = byId("vduration");
     if (duration) duration.oninput = (e) => { v.duration = e.target.value; saveDebounced(); renderHeader(); renderFlags(); };
@@ -2442,7 +2579,11 @@ function wireVersions() {
     const intakes = byId("vintakes");
     if (intakes) intakes.oninput = (e) => {
       v.intakes = e.target.value.split(",").map(x => x.trim()).filter(Boolean);
-      saveDebounced(); renderHeader(); renderFlags();
+      saveDebounced();
+      renderHeader();
+      renderFlags();
+      const h = document.querySelector(`[data-version-intakes="${v.id}"]`);
+      if (h) h.textContent = (v.intakes||[]).join(", ") || "No intakes";
     };
 
     const cohort = byId("vcohort");
@@ -2543,16 +2684,17 @@ function wireStages() {
 
   (v.stages || []).forEach((s) => {
     const name = document.getElementById(`stname_${s.id}`);
-    if (name) name.oninput = (e) => { s.name = e.target.value; saveDebounced(); renderHeader(); renderFlags(); };
+    if (name) name.oninput = (e) => { s.name = e.target.value; saveDebounced(); renderHeader(); renderFlags(); const h = document.querySelector(`[data-stage-name="${s.id}"]`); if (h) h.textContent = s.name || `Stage ${s.sequence || ""}`; };
 
     const seq = document.getElementById(`stseq_${s.id}`);
-    if (seq) seq.oninput = (e) => { s.sequence = Number(e.target.value || 1); saveDebounced(); renderFlags(); };
+    if (seq) seq.oninput = (e) => { s.sequence = Number(e.target.value || 1); saveDebounced(); renderFlags(); const h = document.querySelector(`[data-stage-seq="${s.id}"]`); if (h) h.textContent = String(Number(s.sequence||1)); };
 
     const cred = document.getElementById(`stcred_${s.id}`);
-    if (cred) cred.oninput = (e) => { s.creditsTarget = Number(e.target.value || 0); saveDebounced(); renderFlags(); };
+    if (cred) cred.oninput = (e) => { s.creditsTarget = Number(e.target.value || 0); saveDebounced(); renderFlags(); const h = document.querySelector(`[data-stage-target="${s.id}"]`); if (h) h.textContent = String(Number(s.creditsTarget||0)); };
 
     const remove = document.getElementById(`removeStage_${s.id}`);
-    if (remove) remove.onclick = () => {
+    if (remove) remove.onclick = (e) => {
+      e.stopPropagation();
       v.stages = (v.stages || []).filter(x => x.id !== s.id);
       saveDebounced();
       render();
@@ -2856,7 +2998,8 @@ function wireStructure(){
   };
 
   document.querySelectorAll("[data-remove-module]").forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
       const id = btn.getAttribute("data-remove-module");
       p.modules = p.modules.filter(m => m.id !== id);
       // remove from mappings too
@@ -2878,6 +3021,18 @@ function wireStructure(){
       m[field] = field === "credits" ? Number(e.target.value||0) : e.target.value;
       saveDebounced();
       renderFlags();
+      // Live-update module header text
+      const idSel = `[data-module-${field}="${id}"]`;
+      const el = document.querySelector(idSel);
+      if (el) {
+        if (field === "credits") {
+          el.textContent = String(Number(e.target.value||0));
+        } else if (field === "code") {
+          el.textContent = m.code || "No code";
+        } else if (field === "title") {
+          el.textContent = m.title || "Untitled module";
+        }
+      }
     });
   });
 }
@@ -2896,7 +3051,8 @@ function wireOutcomes(){
   };
 
   document.querySelectorAll("[data-remove-plo]").forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
       const id = btn.getAttribute("data-remove-plo");
       p.plos = p.plos.filter(o => o.id !== id);
       delete p.ploToModules[id];
@@ -2913,6 +3069,9 @@ function wireOutcomes(){
       if (!o) return;
       o.text = e.target.value;
       saveDebounced();
+      // Live-update header text
+      const h = document.querySelector(`[data-plo-header-text="${id}"]`);
+      if (h) h.textContent = o.text || "No text yet";
       
       // Update lint warnings dynamically
       if (typeof LO_Lint !== 'undefined') {
@@ -3264,35 +3423,38 @@ if (runNewTab) {
   };
 }
 
-  const picker = document.getElementById("modulePicker");
-  if (picker) {
-    picker.onchange = () => {
-      state.selectedModuleId = picker.value;
-      render();
-    };
-  }
-
-  document.querySelectorAll("[data-add-asm]").forEach(btn => {
-    btn.onclick = () => {
-      const mid = btn.getAttribute("data-add-asm");
-      const m = p.modules.find(x => x.id === mid);
+  // Track expanded module and add globally
+  const addGlobal = document.getElementById("addAssessmentGlobal");
+  if (addGlobal) {
+    addGlobal.onclick = () => {
+      // Prefer the currently expanded module; fall back to selected or first
+      const shown = document.querySelector('#assessmentsAccordion .accordion-collapse.show');
+      let mid = null;
+      if (shown && shown.id && shown.id.startsWith('asm_')) {
+        // id format: asm_<mid>_collapse
+        mid = shown.id.replace('asm_','').replace('_collapse','');
+      }
+      if (!mid) mid = getSelectedModuleId();
+      const m = p.modules.find(x => x.id === mid) || p.modules[0];
       if (!m) return;
       ensureMimloObjects(m);
       m.assessments = m.assessments || [];
       m.assessments.push({
-        id: "asm_" + crypto.randomUUID(),
-        title: "",
-        type: "Report/Essay",
+        id: 'asm_' + crypto.randomUUID(),
+        title: '',
+        type: 'Report/Essay',
         weighting: 0,
-        mode: "Online",
+        mode: 'Online',
         integrity: { proctored: false, viva: false, inClass: false, originalityCheck: true, aiDeclaration: true },
         mimloIds: [],
-        notes: ""
+        notes: ''
       });
       saveDebounced();
       render();
     };
-  });
+  }
+
+  // Per-module add button removed; using global add button at step header.
 
   document.querySelectorAll("[data-remove-asm]").forEach(btn => {
     btn.onclick = () => {
@@ -3345,6 +3507,16 @@ if (runNewTab) {
       if (!found || !found.a) return;
       found.a.weighting = Number(inp.value || 0);
       saveDebounced();
+      // Live-update module header total badge
+      const m = p.modules.find(x => x.id === mid);
+      if (m) {
+        const total = (m.assessments || []).reduce((acc, a) => acc + (Number(a.weighting) || 0), 0);
+        const badge = document.querySelector(`[data-total-badge="${mid}"]`);
+        if (badge) {
+          badge.textContent = (total === 100) ? `Total ${total}%` : `Total ${total}% (should be 100)`;
+          badge.className = 'badge ' + ((total === 100) ? 'text-bg-success' : 'text-bg-warning');
+        }
+      }
     };
   });
 
@@ -4347,6 +4519,9 @@ function wireMapping(){
       p.ploToModules[ploId] = arr;
       saveDebounced();
       renderFlags();
+      // Live-update mapped count in header
+      const el = document.querySelector(`[data-map-count="${ploId}"]`);
+      if (el) el.textContent = String(arr.length);
     });
   });
 }
@@ -4501,6 +4676,46 @@ async function exportProgrammeDescriptorWord(p) {
   window.saveAs(out, `${safeTitle || "programme"}_programme_descriptor.docx`);
 }
 // ===== End Word export =====
+
+function accordionControlsHtml(accordionId) {
+  return `
+    <div class="d-flex justify-content-end gap-2 mb-2">
+      <button class="btn btn-link btn-sm p-0 m-0 text-decoration-none" data-accordion-expand-all="${accordionId}">Expand all</button>
+      <span class="text-secondary opacity-50">|</span>
+      <button class="btn btn-link btn-sm p-0 m-0 text-decoration-none" data-accordion-collapse-all="${accordionId}">Collapse all</button>
+    </div>
+  `;
+}
+
+// Global accordion expand/collapse listener
+document.addEventListener('click', (e) => {
+  const expandAllBtn = e.target.closest('[data-accordion-expand-all]');
+  const collapseAllBtn = e.target.closest('[data-accordion-collapse-all]');
+  
+  if (expandAllBtn || collapseAllBtn) {
+    const accordionId = (expandAllBtn || collapseAllBtn).getAttribute(expandAllBtn ? 'data-accordion-expand-all' : 'data-accordion-collapse-all');
+    const accordion = document.getElementById(accordionId);
+    if (accordion) {
+      const isExpand = !!expandAllBtn;
+      const collapses = accordion.querySelectorAll('.accordion-collapse');
+      const buttons = accordion.querySelectorAll('.accordion-button');
+      
+      collapses.forEach(el => {
+        if (isExpand) el.classList.add('show');
+        else el.classList.remove('show');
+      });
+      buttons.forEach(btn => {
+        if (isExpand) {
+          btn.classList.remove('collapsed');
+          btn.setAttribute('aria-expanded', 'true');
+        } else {
+          btn.classList.add('collapsed');
+          btn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+  }
+});
 
 // Boot
 load();
