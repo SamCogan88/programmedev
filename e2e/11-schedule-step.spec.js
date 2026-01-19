@@ -12,14 +12,14 @@ test.describe('Step 10: Programme Schedule', () => {
     // Set up version with stages and modules
     await page.click('button:has-text("3. Programme Versions")');
     await page.waitForTimeout(200);
-    await page.click('button:has-text("Add Version")');
+    await page.click('button:has-text("+ Add version")');
     await page.waitForTimeout(300);
     
     await page.click('button:has-text("5. Credits & Modules")');
     await page.waitForTimeout(200);
-    await page.click('button:has-text("Add Module")');
+    await page.click('button:has-text("+ Add module")');
     await page.waitForTimeout(200);
-    await page.click('button:has-text("Add Module")');
+    await page.click('button:has-text("+ Add module")');
     await page.waitForTimeout(300);
     
     await page.click('button:has-text("4. Stage Structure")');
@@ -71,7 +71,7 @@ test.describe('Step 10: Programme Schedule', () => {
     // Add another version
     await page.click('button:has-text("3. Programme Versions")');
     await page.waitForTimeout(200);
-    await page.click('button:has-text("Add Version")');
+    await page.click('button:has-text("+ Add version")');
     await page.waitForTimeout(400);
     
     // Go back to schedule
@@ -95,7 +95,7 @@ test.describe('Step 10: Schedule Visualization', () => {
     // Set up data
     await page.click('button:has-text("3. Programme Versions")');
     await page.waitForTimeout(200);
-    await page.click('button:has-text("Add Version")');
+    await page.click('button:has-text("+ Add version")');
     await page.waitForTimeout(300);
     
     await page.click('button:has-text("4. Stage Structure")');
