@@ -82,12 +82,13 @@ test.describe('Step 1: Identity', () => {
   });
 
   test('should select QQI award standard', async ({ page }) => {
-    const standardSelect = page.locator('#standardSelect');
+    const standardSelect = page.locator('.standard-selector').first();
     await standardSelect.selectOption({ index: 1 }); // First non-disabled option
     await page.waitForTimeout(500);
     
     const data = await getProgrammeData(page);
-    expect(data.awardStandardId).toBeTruthy();
+    // Data model now uses awardStandardIds array
+    expect(data.awardStandardIds?.length || data.awardStandardId).toBeTruthy();
   });
 
   test('should update completion percentage when fields are filled', async ({ page }) => {
