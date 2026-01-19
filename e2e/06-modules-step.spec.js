@@ -18,11 +18,11 @@ test.describe('Step 5: Credits & Modules', () => {
   });
 
   test('should show Add Module button', async ({ page }) => {
-    await expect(page.locator('button:has-text("Add Module")')).toBeVisible();
+    await expect(page.locator('button:has-text("+ Add module")')).toBeVisible();
   });
 
   test('should add a new module', async ({ page }) => {
-    await page.click('button:has-text("Add Module")');
+    await page.click('button:has-text("+ Add module")');
     await page.waitForTimeout(600); // Wait for debounced save (400ms) to complete
     
     // Module form should appear - use specific data attribute selector
@@ -33,7 +33,7 @@ test.describe('Step 5: Credits & Modules', () => {
   });
 
   test('should set module code', async ({ page }) => {
-    await page.click('button:has-text("Add Module")');
+    await page.click('button:has-text("+ Add module")');
     await page.waitForTimeout(300);
     
     // Find code input using data attribute
@@ -46,7 +46,7 @@ test.describe('Step 5: Credits & Modules', () => {
   });
 
   test('should set module title', async ({ page }) => {
-    await page.click('button:has-text("Add Module")');
+    await page.click('button:has-text("+ Add module")');
     await page.waitForTimeout(300);
     
     // Find title input using data attribute
@@ -59,7 +59,7 @@ test.describe('Step 5: Credits & Modules', () => {
   });
 
   test('should set module credits', async ({ page }) => {
-    await page.click('button:has-text("Add Module")');
+    await page.click('button:has-text("+ Add module")');
     await page.waitForTimeout(300);
     
     // Find credits input using data attribute
@@ -80,7 +80,7 @@ test.describe('Step 5: Credits & Modules', () => {
     ];
     
     for (let i = 0; i < modulesToAdd.length; i++) {
-      await page.click('button:has-text("Add Module")');
+      await page.click('button:has-text("+ Add module")');
       await page.waitForTimeout(200);
     }
     
@@ -92,19 +92,15 @@ test.describe('Step 5: Credits & Modules', () => {
 
   test('should delete a module', async ({ page }) => {
     // Add module first
-    await page.click('button:has-text("Add Module")');
+    await page.click('button:has-text("+ Add module")');
     await page.waitForTimeout(500);
     
-    // Find and click delete button using specific selector
-    const deleteBtn = page.locator('button:has-text("Remove")').first();
+    // Click Remove span (role="button", not an actual button)
+    await page.locator('[data-remove-module]').first().click();
+    await page.waitForTimeout(500);
     
-    if (await deleteBtn.isVisible()) {
-      await deleteBtn.click();
-      await page.waitForTimeout(500);
-      
-      const data = await getProgrammeData(page);
-      expect(data.modules.length).toBe(0);
-    }
+    const data = await getProgrammeData(page);
+    expect(data.modules.length).toBe(0);
   });
 
   test('should show credits sum', async ({ page }) => {
@@ -119,7 +115,7 @@ test.describe('Step 5: Credits & Modules', () => {
     await page.waitForTimeout(300);
     
     // Add modules
-    await page.click('button:has-text("Add Module")');
+    await page.click('button:has-text("+ Add module")');
     await page.waitForTimeout(200);
     
     // Use data attribute for credits input
@@ -144,7 +140,7 @@ test.describe('Step 5: Credits & Modules', () => {
     // Add module with wrong credits
     await page.click('button:has-text("5. Credits & Modules")');
     await page.waitForTimeout(200);
-    await page.click('button:has-text("Add Module")');
+    await page.click('button:has-text("+ Add module")');
     await page.waitForTimeout(200);
     
     // Use data attribute for credits input
@@ -162,7 +158,7 @@ test.describe('Step 5: Module Details', () => {
     await page.click('button:has-text("5. Credits & Modules")');
     await page.waitForTimeout(200);
     
-    await page.click('button:has-text("Add Module")');
+    await page.click('button:has-text("+ Add module")');
     await page.waitForTimeout(300);
     
     // Look for expand/accordion toggle
