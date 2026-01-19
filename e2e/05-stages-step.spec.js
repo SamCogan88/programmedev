@@ -6,7 +6,7 @@ test.describe('Step 4: Stage Structure', () => {
     // Add a version first (required for stages)
     await page.click('button:has-text("3. Programme Versions")');
     await page.waitForTimeout(300);
-    await page.click('button:has-text("Add Version")');
+    await page.click('button:has-text("+ Add version")');
     await page.waitForTimeout(500);
     
     // Navigate to Stage Structure
@@ -19,7 +19,7 @@ test.describe('Step 4: Stage Structure', () => {
   });
 
   test('should show Add Stage button', async ({ page }) => {
-    await expect(page.locator('button:has-text("Add stage"), #addStageBtn')).toBeVisible();
+    await expect(page.locator('button:has-text("+ Add stage"), #addStageBtn')).toBeVisible();
   });
 
   test('should add a new stage', async ({ page }) => {
@@ -137,15 +137,15 @@ test.describe('Step 4: Stage-Module Assignment', () => {
     // Set up version with stage and modules
     await page.click('button:has-text("3. Programme Versions")');
     await page.waitForTimeout(200);
-    await page.click('button:has-text("Add Version")');
+    await page.click('button:has-text("+ Add version")');
     await page.waitForTimeout(300);
     
     // Add some modules first
     await page.click('button:has-text("5. Credits & Modules")');
     await page.waitForTimeout(200);
-    await page.click('button:has-text("Add Module")');
+    await page.click('button:has-text("+ Add module")');
     await page.waitForTimeout(200);
-    await page.click('button:has-text("Add Module")');
+    await page.click('button:has-text("+ Add module")');
     await page.waitForTimeout(300);
     
     // Go to stage structure
