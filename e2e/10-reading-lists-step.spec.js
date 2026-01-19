@@ -12,7 +12,7 @@ test.describe('Step 9: Reading Lists', () => {
     // Set up module
     await page.click('button:has-text("5. Credits & Modules")');
     await page.waitForTimeout(200);
-    await page.click('button:has-text("Add Module")');
+    await page.click('button:has-text("+ Add module")');
     await page.waitForTimeout(200);
     
     // Fill module details using data attributes
@@ -41,7 +41,7 @@ test.describe('Step 9: Reading Lists', () => {
   });
 
   test('should show Add Reading button', async ({ page }) => {
-    await expect(page.locator('button[data-add-reading], button:has-text("Add reading")')).toBeVisible();
+    await expect(page.locator('button[data-add-reading], button:has-text("+ Add reading")')).toBeVisible();
   });
 
   test('should add a reading list entry', async ({ page }) => {
