@@ -17,11 +17,11 @@ test.describe('Step 2: Programme Learning Outcomes (PLOs)', () => {
   });
 
   test('should show Add PLO button', async ({ page }) => {
-    await expect(page.locator('button:has-text("Add PLO")')).toBeVisible();
+    await expect(page.locator('button:has-text("+ Add PLO")')).toBeVisible();
   });
 
   test('should add a new PLO', async ({ page }) => {
-    await page.click('button:has-text("Add PLO")');
+    await page.click('button:has-text("+ Add PLO")');
     await page.waitForTimeout(300);
     
     // Should show PLO input area
@@ -30,7 +30,7 @@ test.describe('Step 2: Programme Learning Outcomes (PLOs)', () => {
   });
 
   test('should save PLO text', async ({ page }) => {
-    await page.click('button:has-text("Add PLO")');
+    await page.click('button:has-text("+ Add PLO")');
     await page.waitForTimeout(300);
     
     const textarea = page.locator('textarea').first();
@@ -55,7 +55,7 @@ test.describe('Step 2: Programme Learning Outcomes (PLOs)', () => {
     await page.waitForTimeout(300);
     
     // Add PLO and check for Bloom's guidance
-    await page.click('button:has-text("Add PLO")');
+    await page.click('button:has-text("+ Add PLO")');
     await page.waitForTimeout(300);
     
     await expect(page.locator('text=Bloom helper')).toBeVisible();
@@ -64,12 +64,19 @@ test.describe('Step 2: Programme Learning Outcomes (PLOs)', () => {
   test('should add multiple PLOs', async ({ page }) => {
     // Add 6 PLOs (recommended minimum)
     for (let i = 0; i < 6; i++) {
-      await page.click('button:has-text("Add PLO")');
-      await page.waitForTimeout(200);
-      
-      const textareas = page.locator('textarea');
-      await textareas.nth(i).fill(`PLO ${i + 1}: Test learning outcome text`);
+      await page.click('button:has-text("+ Add PLO")');
       await page.waitForTimeout(300);
+      
+      // Click "Expand all" to ensure all accordions are open
+      const expandAllBtn = page.locator('button:has-text("Expand all")');
+      if (await expandAllBtn.isVisible()) {
+        await expandAllBtn.click();
+        await page.waitForTimeout(200);
+      }
+      
+      // Fill the last PLO textarea (newly added item)
+      await page.locator('[data-plo-id]').last().fill(`PLO ${i + 1}: Test learning outcome text`);
+      await page.waitForTimeout(200);
     }
     
     await page.waitForTimeout(600);
@@ -80,30 +87,35 @@ test.describe('Step 2: Programme Learning Outcomes (PLOs)', () => {
 
   test('should delete a PLO', async ({ page }) => {
     // Add a PLO first
-    await page.click('button:has-text("Add PLO")');
+    await page.click('button:has-text("+ Add PLO")');
     await page.waitForTimeout(300);
     
-    await page.locator('textarea').first().fill('Test PLO to delete');
+    await page.locator('[data-plo-id]').first().fill('Test PLO to delete');
     await page.waitForTimeout(500);
     
-    // Look for delete button (usually an X or trash icon)
-    const deleteBtn = page.locator('button:has-text("×"), button:has-text("Delete"), button[title*="delete"], button[aria-label*="delete"]').first();
+    // Click Remove span (role="button" inside accordion header)
+    await page.locator('[data-remove-plo]').first().click();
+    await page.waitForTimeout(500);
     
-    if (await deleteBtn.isVisible()) {
-      await deleteBtn.click();
-      await page.waitForTimeout(500);
-      
-      const data = await getProgrammeData(page);
-      expect(data.plos.length).toBe(0);
-    }
+    const data = await getProgrammeData(page);
+    expect(data.plos.length).toBe(0);
   });
 
   test('should show warning for fewer than 6 PLOs', async ({ page }) => {
     // Add only 3 PLOs
     for (let i = 0; i < 3; i++) {
-      await page.click('button:has-text("Add PLO")');
+      await page.click('button:has-text("+ Add PLO")');
+      await page.waitForTimeout(300);
+      
+      // Expand all to ensure all PLO textareas are visible
+      const expandAllBtn = page.locator('button:has-text("Expand all")');
+      if (await expandAllBtn.isVisible()) {
+        await expandAllBtn.click();
+        await page.waitForTimeout(200);
+      }
+      
+      await page.locator('[data-plo-id]').last().fill(`PLO ${i + 1}`);
       await page.waitForTimeout(200);
-      await page.locator('textarea').nth(i).fill(`PLO ${i + 1}`);
     }
     await page.waitForTimeout(600);
     
@@ -132,7 +144,7 @@ test.describe('Step 2: PLOs - Standard Mappings', () => {
   });
 
   test('should show standard mapping options when standard is selected', async ({ page }) => {
-    await page.click('button:has-text("Add PLO")');
+    await page.click('button:has-text("+ Add PLO")');
     await page.waitForTimeout(300);
     
     await page.locator('textarea[data-plo-id]').first().fill('Test PLO');
