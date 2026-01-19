@@ -12,7 +12,7 @@ test.describe('Step 7: Effort Hours', () => {
     // Set up version WITH modality (required for effort hours to show)
     await page.click('button:has-text("3. Programme Versions")');
     await page.waitForTimeout(200);
-    await page.click('button:has-text("Add Version")');
+    await page.click('button:has-text("+ Add version")');
     await page.waitForTimeout(300);
     
     // Select a delivery modality - required for effort hours table
@@ -25,7 +25,7 @@ test.describe('Step 7: Effort Hours', () => {
     // Navigate to Credits & Modules
     await page.click('button:has-text("5. Credits & Modules")');
     await page.waitForTimeout(200);
-    await page.click('button:has-text("Add Module")');
+    await page.click('button:has-text("+ Add module")');
     await page.waitForTimeout(200);
     
     // Fill module details using data attributes
@@ -147,7 +147,7 @@ test.describe('Step 7: Effort Hours', () => {
     // Add another version with modality
     await page.click('button:has-text("3. Programme Versions")');
     await page.waitForTimeout(200);
-    await page.click('button:has-text("Add Version")');
+    await page.click('button:has-text("+ Add version")');
     await page.waitForTimeout(400);
     
     // Set modality for new version
@@ -194,7 +194,7 @@ test.describe('Step 7: Effort Hours Per Modality', () => {
     // Set up version with specific modality
     await page.click('button:has-text("3. Programme Versions")');
     await page.waitForTimeout(300);
-    await page.click('button:has-text("Add Version")');
+    await page.click('button:has-text("+ Add version")');
     await page.waitForTimeout(400);
     
     // Set modality
@@ -207,7 +207,7 @@ test.describe('Step 7: Effort Hours Per Modality', () => {
     // Add module
     await page.click('button:has-text("5. Credits & Modules")');
     await page.waitForTimeout(300);
-    await page.click('button:has-text("Add Module")');
+    await page.click('button:has-text("+ Add module")');
     await page.waitForTimeout(500);
     
     // Go to effort hours
