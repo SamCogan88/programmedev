@@ -23,6 +23,14 @@ export function initNavButtons(onRender) {
   if (nextBtn) {
     nextBtn.onclick = () => {
       const aSteps = activeSteps();
+      
+      // Navigation gate: require at least one award standard before leaving identity step
+      const currentStep = aSteps[state.stepIndex];
+      if (currentStep?.key === 'identity' && !(state.programme.awardStandardIds?.length)) {
+        alert('Select at least one QQI award standard before proceeding.');
+        return;
+      }
+      
       if (state.stepIndex < aSteps.length - 1) {
         state.stepIndex++;
         if (onRender) onRender();

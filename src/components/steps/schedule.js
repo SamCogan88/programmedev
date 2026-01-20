@@ -5,6 +5,7 @@
 import { state } from '../../state/store.js';
 import { escapeHtml } from '../../utils/dom.js';
 import { getDevModeToggleHtml, wireDevModeToggle } from '../dev-mode.js';
+import { accordionControlsHtml, wireAccordionControls } from './shared.js';
 
 /**
  * Render the Schedule step (QQI-style)
@@ -42,10 +43,11 @@ export function renderScheduleStep() {
   // Build module lookup
   const moduleMap = new Map((p.modules || []).map(m => [m.id, m]));
 
-  // Build stage tables
-  const stageTables = (v.stages || [])
+  // Build stage accordion items
+  const stageItems = (v.stages || [])
     .sort((a, b) => Number(a.sequence || 0) - Number(b.sequence || 0))
-    .map((stg) => {
+    .map((stg, stgIdx) => {
+      const isFirst = stgIdx === 0;
       const stageModules = (stg.modules || []).map(sm => {
         const m = moduleMap.get(sm.moduleId);
         if (!m) return null;
@@ -135,46 +137,50 @@ export function renderScheduleStep() {
         </tr>
       ` : "";
 
+      const headingId = `schedule_${stg.sequence}_heading`;
+      const collapseId = `schedule_${stg.sequence}_collapse`;
       return `
-        <div class="card mb-3">
-          <div class="card-header">
-            <div class="d-flex justify-content-between align-items-center">
-              <div class="fw-semibold">${escapeHtml(stg.name || `Stage ${stg.sequence}`)}</div>
-              <div class="small text-secondary">
-                Target: ${stg.creditsTarget || 0} ECTS | NFQ Level: ${p.nfqLevel || "—"}
+        <div class="accordion-item bg-body">
+          <h2 class="accordion-header" id="${headingId}">
+            <button class="accordion-button ${isFirst ? '' : 'collapsed'}" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isFirst}" aria-controls="${collapseId}">
+              <div class="d-flex justify-content-between align-items-center w-100">
+                <div class="fw-semibold">${escapeHtml(stg.name || `Stage ${stg.sequence}`)}</div>
+                <div class="small text-secondary">Target: ${stg.creditsTarget || 0} ECTS • NFQ ${p.nfqLevel || "—"}</div>
               </div>
-            </div>
-          </div>
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="table table-sm table-bordered align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th rowspan="2" class="align-middle" style="min-width:180px">Module Title</th>
-                    <th rowspan="2" class="text-center align-middle" style="width:60px">Sem</th>
-                    <th rowspan="2" class="text-center align-middle" style="width:50px">Status</th>
-                    <th rowspan="2" class="text-center align-middle" style="width:50px">NFQ</th>
-                    <th rowspan="2" class="text-center align-middle" style="width:50px">ECTS</th>
-                    <th colspan="5" class="text-center">Total Student Effort (hours)</th>
-                    <th colspan="4" class="text-center">Assessment Strategy (%)</th>
-                  </tr>
-                  <tr>
-                    <th class="text-center small" style="width:50px">Total</th>
-                    <th class="text-center small" style="width:55px">Contact</th>
-                    <th class="text-center small" style="width:55px">Dir. E-Learn</th>
-                    <th class="text-center small" style="width:60px">Indep. Learn</th>
-                    <th class="text-center small" style="width:55px">Work-based</th>
-                    <th class="text-center small" style="width:40px">CA</th>
-                    <th class="text-center small" style="width:45px">Project</th>
-                    <th class="text-center small" style="width:50px">Practical</th>
-                    <th class="text-center small" style="width:45px">Exam</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${rows || `<tr><td colspan="14" class="text-muted text-center">No modules assigned to this stage.</td></tr>`}
-                  ${totalsRow}
-                </tbody>
-              </table>
+            </button>
+          </h2>
+          <div id="${collapseId}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}" aria-labelledby="${headingId}">
+            <div class="accordion-body p-0">
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th rowspan="2" class="align-middle" style="min-width:180px">Module Title</th>
+                      <th rowspan="2" class="text-center align-middle" style="width:60px">Sem</th>
+                      <th rowspan="2" class="text-center align-middle" style="width:50px">Status</th>
+                      <th rowspan="2" class="text-center align-middle" style="width:50px">NFQ</th>
+                      <th rowspan="2" class="text-center align-middle" style="width:50px">ECTS</th>
+                      <th colspan="5" class="text-center">Total Student Effort (hours)</th>
+                      <th colspan="4" class="text-center">Assessment Strategy (%)</th>
+                    </tr>
+                    <tr>
+                      <th class="text-center small" style="width:50px">Total</th>
+                      <th class="text-center small" style="width:55px">Contact</th>
+                      <th class="text-center small" style="width:55px">Dir. E-Learn</th>
+                      <th class="text-center small" style="width:60px">Indep. Learn</th>
+                      <th class="text-center small" style="width:55px">Work-based</th>
+                      <th class="text-center small" style="width:40px">CA</th>
+                      <th class="text-center small" style="width:45px">Project</th>
+                      <th class="text-center small" style="width:50px">Practical</th>
+                      <th class="text-center small" style="width:45px">Exam</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rows || `<tr><td colspan="14" class="text-muted text-center">No modules assigned to this stage.</td></tr>`}
+                    ${totalsRow}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -227,7 +233,8 @@ export function renderScheduleStep() {
         
         ${headerInfo}
         
-        ${(v.stages || []).length ? stageTables : `<div class="alert alert-info">No stages defined for this version. Go to Stage Structure to add stages and assign modules.</div>`}
+        ${accordionControlsHtml('scheduleAccordion')}
+        ${(v.stages || []).length ? `<div class="accordion" id="scheduleAccordion">${stageItems}</div>` : `<div class="alert alert-info">No stages defined for this version. Go to Stage Structure to add stages and assign modules.</div>`}
         
         <div class="small text-secondary mt-3">
           <strong>Legend:</strong> Status: M = Mandatory, E = Elective | CA = Continuous Assessment | Contact = Classroom + Mentoring + Other Contact Hours
@@ -237,6 +244,7 @@ export function renderScheduleStep() {
   `;
 
   wireDevModeToggle(() => window.render?.());
+  wireAccordionControls('scheduleAccordion');
   wireScheduleStep();
 }
 

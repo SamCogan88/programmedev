@@ -7,6 +7,7 @@ import { state } from '../../state/store.js';
 import { escapeHtml } from '../../utils/dom.js';
 import { ploText, mimloText } from '../../utils/helpers.js';
 import { getDevModeToggleHtml, wireDevModeToggle } from '../dev-mode.js';
+import { accordionControlsHtml, wireAccordionControls } from './shared.js';
 import { exportProgrammeToWord } from '../../export/word.js';
 import { completionPercent } from '../../utils/validation.js';
 
@@ -75,7 +76,7 @@ export function renderSnapshotStep() {
   `;
 
   // Build version cards
-  const versionCards = versions.map((v, idx) => {
+  const versionItems = versions.map((v, idx) => {
     const mods = Array.isArray(v.deliveryModalities) ? v.deliveryModalities : (v.deliveryModality ? [v.deliveryModality] : []);
     const patterns = v.deliveryPatterns || {};
     const modLines = mods.map(mod => {
@@ -92,41 +93,48 @@ export function renderSnapshotStep() {
       return `<li class="small"><span class="fw-semibold">${escapeHtml(s.name || "Stage")}</span> — target ${Number(s.creditsTarget || 0)}cr (assigned ${creditsSum}cr)${exitTxt}<br><span class="text-secondary">${escapeHtml(modNames || "No modules assigned")}</span></li>`;
     }).join("");
 
+    const headingId = `snap_${v.id}_heading`;
+    const collapseId = `snap_${v.id}_collapse`;
+    const summary = `${escapeHtml(v.label || v.code || "Version")} • ${escapeHtml(v.duration || "—")} • Intakes: ${escapeHtml((v.intakes || []).join(", ") || "—")}`;
     return `
-      <div class="col-12">
-        <div class="p-3 bg-light border rounded-4">
-          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div class="accordion-item bg-body">
+        <h2 class="accordion-header" id="${headingId}">
+          <button class="accordion-button ${idx === 0 ? '' : 'collapsed'}" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${idx === 0}" aria-controls="${collapseId}">
             <div>
-              <div class="fw-semibold">Version ${idx + 1}: ${escapeHtml(v.label || "")}${v.code ? ` <span class="text-secondary">(${escapeHtml(v.code)})</span>` : ""}</div>
+              <div class="fw-semibold">Version ${idx + 1}</div>
+              <div class="small text-secondary">${summary}</div>
+            </div>
+          </button>
+        </h2>
+        <div id="${collapseId}" class="accordion-collapse collapse ${idx === 0 ? 'show' : ''}" aria-labelledby="${headingId}">
+          <div class="accordion-body">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+              <div>
+                <div class="small"><span class="fw-semibold">Cohort:</span> ${Number(v.targetCohortSize || 0) || "—"} • <span class="fw-semibold">Groups:</span> ${Number(v.numberOfGroups || 0) || "—"}</div>
+              </div>
               <div class="small">
-                <span class="fw-semibold">Duration:</span> ${escapeHtml(v.duration || "—")} •
-                <span class="fw-semibold">Intakes:</span> ${escapeHtml((v.intakes || []).join(", ") || "—")} •
-                <span class="fw-semibold">Cohort:</span> ${Number(v.targetCohortSize || 0) || "—"} •
-                <span class="fw-semibold">Groups:</span> ${Number(v.numberOfGroups || 0) || "—"}
+                <span class="fw-semibold">Online proctored exams:</span> ${escapeHtml(v.onlineProctoredExams || "TBC")}
               </div>
             </div>
-            <div class="small">
-              <span class="fw-semibold">Online proctored exams:</span> ${escapeHtml(v.onlineProctoredExams || "TBC")}
+
+            <div class="mt-2">
+              <div class="fw-semibold small mb-1">Delivery patterns</div>
+              ${modLines || `<div class="small text-secondary">—</div>`}
             </div>
+
+            <div class="mt-3">
+              <div class="fw-semibold small mb-1">Stage structure</div>
+              ${stageLines ? `<ul class="mb-0 ps-3">${stageLines}</ul>` : `<div class="small text-secondary">—</div>`}
+            </div>
+
+            ${(v.onlineProctoredExams || "TBC") === "YES" && (v.onlineProctoredExamsNotes || "").trim()
+              ? `<div class="mt-2 small"><span class="fw-semibold">Proctoring notes:</span> ${escapeHtml(v.onlineProctoredExamsNotes)}</div>`
+              : ""}
+
+            ${(v.deliveryNotes || "").trim()
+              ? `<div class="mt-2 small"><span class="fw-semibold">Delivery notes:</span> ${escapeHtml(v.deliveryNotes)}</div>`
+              : ""}
           </div>
-
-          <div class="mt-2">
-            <div class="fw-semibold small mb-1">Delivery patterns</div>
-            ${modLines || `<div class="small text-secondary">—</div>`}
-          </div>
-
-          <div class="mt-3">
-            <div class="fw-semibold small mb-1">Stage structure</div>
-            ${stageLines ? `<ul class="mb-0 ps-3">${stageLines}</ul>` : `<div class="small text-secondary">—</div>`}
-          </div>
-
-          ${(v.onlineProctoredExams || "TBC") === "YES" && (v.onlineProctoredExamsNotes || "").trim()
-            ? `<div class="mt-2 small"><span class="fw-semibold">Proctoring notes:</span> ${escapeHtml(v.onlineProctoredExamsNotes)}</div>`
-            : ""}
-
-          ${(v.deliveryNotes || "").trim()
-            ? `<div class="mt-2 small"><span class="fw-semibold">Delivery notes:</span> ${escapeHtml(v.deliveryNotes)}</div>`
-            : ""}
         </div>
       </div>
     `;
@@ -187,6 +195,7 @@ export function renderSnapshotStep() {
   `;
 
   wireDevModeToggle(() => window.render?.());
+  wireAccordionControls('snapshotAccordion');
   wireSnapshotStep();
 }
 

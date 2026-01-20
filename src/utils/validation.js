@@ -36,18 +36,19 @@ export function validateProgramme(p) {
         labels.add(norm);
       }
 
-      // Delivery patterns per selected modality must sum to 100
-      (v.deliveryModalities || []).forEach((mod) => {
+      // Delivery pattern for selected modality must sum to 100
+      if (v.deliveryModality) {
+        const mod = v.deliveryModality;
         const pat = (v.deliveryPatterns || {})[mod];
         if (!pat) {
           flags.push({ type: "error", msg: `${prefix}: missing delivery pattern for ${mod}.`, step: "versions" });
-          return;
+        } else {
+          const total = Number(pat.syncOnlinePct || 0) + Number(pat.asyncDirectedPct || 0) + Number(pat.onCampusPct || 0);
+          if (total !== 100) {
+            flags.push({ type: "error", msg: `${prefix}: ${mod} delivery pattern must total 100% (currently ${total}%).`, step: "versions" });
+          }
         }
-        const total = Number(pat.syncOnlinePct || 0) + Number(pat.asyncDirectedPct || 0) + Number(pat.onCampusPct || 0);
-        if (total !== 100) {
-          flags.push({ type: "error", msg: `${prefix}: ${mod} delivery pattern must total 100% (currently ${total}%).`, step: "versions" });
-        }
-      });
+      }
 
       if ((v.onlineProctoredExams || "TBC") === "YES" && !(v.onlineProctoredExamsNotes || "").trim()) {
         flags.push({ type: "warn", msg: `${prefix}: online proctored exams marked YES but notes are empty.`, step: "versions" });

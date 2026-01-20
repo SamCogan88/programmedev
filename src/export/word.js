@@ -38,6 +38,8 @@ export async function exportProgrammeDescriptorWord(p) {
       }).join("\n\n")
     : "";
 
+  const awardStandardName = (p.awardStandardNames || [])[0] || (p.awardStandardIds || [])[0] || "";
+
   const data = {
     provider_name: "",
     programme_title: p.title || "",
@@ -46,7 +48,7 @@ export async function exportProgrammeDescriptorWord(p) {
     ects: String(p.totalCredits || ""),
     programme_synopsis: "",
     graduate_attributes: "",
-    award_standard_name: p.awardStandardName || p.awardStandardId || "",
+    award_standard_name: awardStandardName,
     miplos: miplosText,
     programme_rationale: "",
     atp: "",

@@ -7,6 +7,7 @@ import { state, saveDebounced } from '../../state/store.js';
 import { escapeHtml } from '../../utils/dom.js';
 import { ploText } from '../../utils/helpers.js';
 import { getDevModeToggleHtml, wireDevModeToggle } from '../dev-mode.js';
+import { accordionControlsHtml, wireAccordionControls } from './shared.js';
 
 /**
  * Get editable module IDs for module editor mode
@@ -76,12 +77,24 @@ export function renderMappingStep() {
       `;
     }).filter(Boolean).join("");
 
+    const headingId = `map_${o.id}_heading`;
+    const collapseId = `map_${o.id}_collapse`;
+    const preview = (o.text || '').trim();
+    const previewShort = preview.length > 120 ? `${preview.slice(0, 120)}…` : (preview || '—');
     return `
-      <div class="card border-0 bg-white shadow-sm mb-3">
-        <div class="card-body">
-          <div class="fw-semibold mb-1">PLO ${idx + 1}</div>
-          <div class="small mb-3">${escapeHtml(o.text || "—")}</div>
-          <div class="list-group">${checks || '<div class="small text-secondary">No modules available to map.</div>'}</div>
+      <div class="accordion-item bg-body">
+        <h2 class="accordion-header" id="${headingId}">
+          <button class="accordion-button ${idx === 0 ? '' : 'collapsed'}" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${idx === 0}" aria-controls="${collapseId}">
+            <div>
+              <div class="fw-semibold">PLO ${idx + 1}</div>
+              <div class="small text-secondary">${escapeHtml(previewShort)}</div>
+            </div>
+          </button>
+        </h2>
+        <div id="${collapseId}" class="accordion-collapse collapse ${idx === 0 ? 'show' : ''}" aria-labelledby="${headingId}">
+          <div class="accordion-body">
+            <div class="list-group">${checks || '<div class="small text-secondary">No modules available to map.</div>'}</div>
+          </div>
         </div>
       </div>
     `;
@@ -119,12 +132,16 @@ export function renderMappingStep() {
         <p class="text-muted small mb-3">For each PLO, select the modules where this outcome is addressed. This mapping is required for QQI validation and the traceability matrix.</p>
         ${modeNote}
         ${summaryHtml}
-        ${blocks}
+        ${accordionControlsHtml('mappingAccordion')}
+        <div class="accordion" id="mappingAccordion">
+          ${blocks}
+        </div>
       </div>
     </div>
   `;
 
   wireDevModeToggle(() => window.render?.());
+  wireAccordionControls('mappingAccordion');
   wireMappingStep();
 }
 

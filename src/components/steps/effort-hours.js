@@ -6,6 +6,7 @@
 import { state, saveDebounced, editableModuleIds, getSelectedModuleId } from '../../state/store.js';
 import { escapeHtml } from '../../utils/dom.js';
 import { getDevModeToggleHtml, wireDevModeToggle } from '../dev-mode.js';
+import { accordionControlsHtml, wireAccordionControls } from './shared.js';
 
 /**
  * Render the Effort Hours step
@@ -45,7 +46,7 @@ export function renderEffortHoursStep() {
       label: `${v.label || v.code || 'Version'} — ${modalityLabels[v.deliveryModality] || v.deliveryModality}`
     }));
 
-  const blocks = modulesForEdit.map(m => {
+  const blocks = modulesForEdit.map((m, idx) => {
     // Ensure effortHours structure exists for each version/modality
     m.effortHours = m.effortHours || {};
     versionModalities.forEach(vm => {
@@ -146,53 +147,63 @@ export function renderEffortHoursStep() {
       ? `<div class="alert alert-info mb-0">No programme versions with delivery modalities defined. Go to the Programme Versions step to add versions and select their delivery modality.</div>` 
       : "";
 
+    const headingId = `effort_${m.id}_heading`;
+    const collapseId = `effort_${m.id}_collapse`;
+
     return `
-      <div class="card border-0 bg-white shadow-sm mb-4" ${isHidden ? 'style="display:none"' : ""} data-module-card="${m.id}">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="fw-semibold">${escapeHtml((m.code ? m.code + " — " : "") + m.title)}</div>
-            <div class="small text-secondary">
-              ${m.credits} ECTS × 25 = <strong>${expectedTotal}</strong> expected hours
+      <div class="accordion-item bg-body" ${isHidden ? 'style="display:none"' : ""} data-module-card="${m.id}">
+        <h2 class="accordion-header" id="${headingId}">
+          <button class="accordion-button ${idx === 0 ? "" : "collapsed"} w-100" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${idx === 0}" aria-controls="${collapseId}">
+            <div class="d-flex w-100 align-items-center gap-2">
+              <div class="flex-grow-1">
+                <div class="fw-semibold">${escapeHtml((m.code ? m.code + " — " : "") + m.title)}</div>
+                <div class="small text-secondary">
+                  ${m.credits} ECTS × 25 = <strong>${expectedTotal}</strong> expected hours
+                </div>
+              </div>
             </div>
+          </button>
+        </h2>
+        <div id="${collapseId}" class="accordion-collapse collapse ${idx === 0 ? "show" : ""}" aria-labelledby="${headingId}">
+          <div class="accordion-body">
+            ${noVersionsMsg || `
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered align-middle mb-0" data-effort-table="${m.id}">
+                <thead>
+                  <tr>
+                    <th rowspan="2" class="align-middle" style="min-width:150px">Version / Modality</th>
+                    <th colspan="2" class="text-center">Classroom &amp; Demonstrations</th>
+                    <th colspan="2" class="text-center">Mentoring &amp; Small-group</th>
+                    <th colspan="3" class="text-center">Other Contact (specify)</th>
+                    <th rowspan="2" class="text-center align-middle" style="min-width:80px">Directed<br>E-learning</th>
+                    <th rowspan="2" class="text-center align-middle" style="min-width:80px">Independent<br>Learning</th>
+                    <th colspan="2" class="text-center">Other Hours (specify)</th>
+                    <th rowspan="2" class="text-center align-middle" style="min-width:80px">Work-based<br>Learning</th>
+                    <th rowspan="2" class="text-center align-middle" style="min-width:70px">Total<br>Effort</th>
+                  </tr>
+                  <tr>
+                    <th class="text-center small">Hours</th>
+                    <th class="text-center small">Min Ratio</th>
+                    <th class="text-center small">Hours</th>
+                    <th class="text-center small">Min Ratio</th>
+                    <th class="text-center small">Hours</th>
+                    <th class="text-center small">Ratio</th>
+                    <th class="text-center small">Type</th>
+                    <th class="text-center small">Hours</th>
+                    <th class="text-center small">Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${modalityRows}
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="small text-secondary mt-2">
+              <strong>Tip:</strong> Total effort hours should equal ${expectedTotal} (based on ${m.credits} ECTS credits × 25 hours per credit).
+            </div>
+            `}
           </div>
-          
-          ${noVersionsMsg || `
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle mb-0" data-effort-table="${m.id}">
-              <thead>
-                <tr>
-                  <th rowspan="2" class="align-middle" style="min-width:150px">Version / Modality</th>
-                  <th colspan="2" class="text-center">Classroom &amp; Demonstrations</th>
-                  <th colspan="2" class="text-center">Mentoring &amp; Small-group</th>
-                  <th colspan="3" class="text-center">Other Contact (specify)</th>
-                  <th rowspan="2" class="text-center align-middle" style="min-width:80px">Directed<br>E-learning</th>
-                  <th rowspan="2" class="text-center align-middle" style="min-width:80px">Independent<br>Learning</th>
-                  <th colspan="2" class="text-center">Other Hours (specify)</th>
-                  <th rowspan="2" class="text-center align-middle" style="min-width:80px">Work-based<br>Learning</th>
-                  <th rowspan="2" class="text-center align-middle" style="min-width:70px">Total<br>Effort</th>
-                </tr>
-                <tr>
-                  <th class="text-center small">Hours</th>
-                  <th class="text-center small">Min Ratio</th>
-                  <th class="text-center small">Hours</th>
-                  <th class="text-center small">Min Ratio</th>
-                  <th class="text-center small">Hours</th>
-                  <th class="text-center small">Ratio</th>
-                  <th class="text-center small">Type</th>
-                  <th class="text-center small">Hours</th>
-                  <th class="text-center small">Type</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${modalityRows}
-              </tbody>
-            </table>
-          </div>
-          
-          <div class="small text-secondary mt-2">
-            <strong>Tip:</strong> Total effort hours should equal ${expectedTotal} (based on ${m.credits} ECTS credits × 25 hours per credit).
-          </div>
-          `}
         </div>
       </div>
     `;
@@ -207,12 +218,16 @@ export function renderEffortHoursStep() {
           This helps demonstrate the workload balance and staffing requirements (teacher/learner ratios).
         </p>
         ${modulePicker}
-        ${modulesForEdit.length ? blocks : `<div class="small text-secondary">Add modules first (Credits & Modules step).</div>`}
+        ${accordionControlsHtml('effortHoursAccordion')}
+        <div class="accordion" id="effortHoursAccordion">
+          ${modulesForEdit.length ? blocks : `<div class="alert alert-info mb-0">Add modules first (Credits & Modules step).</div>`}
+        </div>
       </div>
     </div>
   `;
 
   wireDevModeToggle(() => window.render?.());
+  wireAccordionControls('effortHoursAccordion');
   wireEffortHoursStep();
 }
 
