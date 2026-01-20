@@ -8,8 +8,8 @@ import { ploText, mimloText } from '../../utils/helpers.js';
 import { getDevModeToggleHtml, wireDevModeToggle } from '../dev-mode.js';
 import Plotly from 'plotly.js-dist-min'
 
-// Cache for standards data
-let standardsDataCache = null;
+// Cache for standards data - supports multiple standards
+let standardsDataCache = new Map();
 
 /**
  * Render the Traceability step
@@ -19,28 +19,42 @@ export async function renderTraceabilityStep() {
   const content = document.getElementById("content");
   if (!content) return;
 
-  // Load award standards
-  if (!standardsDataCache) {
-    try {
-      standardsDataCache = await getAwardStandard();
-    } catch (e) {
-      console.warn("Failed to load standards:", e);
-      standardsDataCache = { levels: {} };
-    }
-  }
+  const standardsIds = p.awardStandardIds || [];
+  
+  // Load all selected award standards in parallel
+  const standardsDataArray = await Promise.all(
+    standardsIds.map(async (stdId) => {
+      if (!standardsDataCache.has(stdId)) {
+        try {
+          const std = await getAwardStandard(stdId);
+          standardsDataCache.set(stdId, std || { levels: {}, standard_id: stdId });
+        } catch (e) {
+          console.warn(`Failed to load standard ${stdId}:`, e);
+          standardsDataCache.set(stdId, { levels: {}, standard_id: stdId });
+        }
+      }
+      return { id: stdId, data: standardsDataCache.get(stdId) };
+    })
+  );
+
+  // Create standardsByAward Map for quick lookup
+  const standardsByAward = new Map();
+  standardsDataArray.forEach(({ id, data }) => {
+    standardsByAward.set(id, data);
+  });
 
   const devModeToggleHtml = getDevModeToggleHtml();
   const plos = p.plos || [];
   const modules = p.modules || [];
 
   // Build trace rows for the table and Sankey
-  const { traceRows, stats, standardsCoverageHtml } = buildTraceRows(p, standardsDataCache);
+  const { traceRows, stats, standardsCoverageHtml } = buildTraceRows(p, standardsDataArray);
 
   // Build table rows HTML
-  const tableRowsHtml = buildTableRowsHtml(traceRows);
+  const tableRowsHtml = buildTableRowsHtml(traceRows, standardsIds.length > 1);
 
   // Build Sankey data
-  const sankeyData = buildSankeyData(traceRows);
+  const sankeyData = buildSankeyData(traceRows, standardsIds.length > 1);
 
   // Module options for filter
   const moduleOptions = modules.map(m => 
@@ -173,18 +187,30 @@ export async function renderTraceabilityStep() {
 }
 
 /**
- * Build trace rows from programme data
+ * Build trace rows from programme data with multi-standard support
  */
-function buildTraceRows(p, standardsData) {
+function buildTraceRows(p, standardsDataArray) {
   const traceRows = [];
   const moduleMap = new Map((p.modules || []).map(m => [m.id, m]));
 
-  // Get all award standards for the programme's NFQ level
+  // Get all award standards for the programme's NFQ level from all selected standards
   const nfqLevel = String(p.nfqLevel || '');
-  const levelStandards = (standardsData?.levels?.[nfqLevel]) || [];
+  const hasMultipleStandards = standardsDataArray.length > 1;
+  
+  // Build a combined list of level standards with their award standard ID
+  const allLevelStandards = [];
+  standardsDataArray.forEach(({ id, data }) => {
+    const levelStandards = (data?.levels?.[nfqLevel]) || [];
+    levelStandards.forEach(std => {
+      allLevelStandards.push({ ...std, awardStandardId: id });
+    });
+  });
 
-  // Track which standards are covered by PLOs
-  const coveredStandards = new Set();
+  // Track which standards are covered by PLOs, grouped by award standard
+  const coveredStandardsByAward = new Map();
+  standardsDataArray.forEach(({ id }) => {
+    coveredStandardsByAward.set(id, new Set());
+  });
 
   (p.plos || []).forEach((plo, ploIdx) => {
     const standardMappings = plo.standardMappings || [];
@@ -193,19 +219,21 @@ function buildTraceRows(p, standardsData) {
     // If no standard mappings, still show the PLO
     const standards = standardMappings.length > 0
       ? standardMappings
-      : [{ criteria: '(Not mapped)', thread: '' }];
+      : [{ criteria: '(Not mapped)', thread: '', standardId: null }];
 
     standards.forEach(std => {
+      const awardStandardId = std.standardId || (p.awardStandardIds || [])[0] || null;
       const standardLabel = std.thread ? `${std.criteria} — ${std.thread}` : std.criteria;
 
       // Mark this standard as covered by a PLO
-      if (std.thread) {
-        coveredStandards.add(std.thread);
+      if (std.thread && awardStandardId && coveredStandardsByAward.has(awardStandardId)) {
+        coveredStandardsByAward.get(awardStandardId).add(std.thread);
       }
 
       if (mappedModuleIds.length === 0) {
         // PLO not mapped to any module
         traceRows.push({
+          awardStandardId,
           standard: standardLabel,
           ploNum: ploIdx + 1,
           ploText: plo.text || '',
@@ -230,6 +258,7 @@ function buildTraceRows(p, standardsData) {
           if (mimlos.length === 0) {
             // Module has no MIMLOs
             traceRows.push({
+              awardStandardId,
               standard: standardLabel,
               ploNum: ploIdx + 1,
               ploText: plo.text || '',
@@ -254,6 +283,7 @@ function buildTraceRows(p, standardsData) {
               if (coveringAssessments.length === 0) {
                 // MIMLO not assessed
                 traceRows.push({
+                  awardStandardId,
                   standard: standardLabel,
                   ploNum: ploIdx + 1,
                   ploText: plo.text || '',
@@ -270,6 +300,7 @@ function buildTraceRows(p, standardsData) {
               } else {
                 coveringAssessments.forEach(asm => {
                   traceRows.push({
+                    awardStandardId,
                     standard: standardLabel,
                     ploNum: ploIdx + 1,
                     ploText: plo.text || '',
@@ -292,23 +323,36 @@ function buildTraceRows(p, standardsData) {
     });
   });
 
-  // Find uncovered award standards and add them as critical gaps
-  const uncoveredStandards = levelStandards.filter(std => !coveredStandards.has(std.thread));
-  uncoveredStandards.forEach(std => {
-    const standardLabel = std.thread ? `${std.criteria} — ${std.thread}` : std.criteria;
-    traceRows.unshift({
-      standard: standardLabel,
-      ploNum: '—',
-      ploText: '(No PLO covers this standard)',
-      moduleCode: '—',
-      moduleTitle: '',
-      mimloNum: '—',
-      mimloText: '',
-      assessmentTitle: '',
-      assessmentType: '',
-      assessmentWeight: '',
-      status: 'uncovered',
-      statusLabel: 'Standard Gap'
+  // Find uncovered award standards and add them as critical gaps, grouped by award
+  const uncoveredByAward = new Map();
+  standardsDataArray.forEach(({ id, data }) => {
+    const levelStandards = (data?.levels?.[nfqLevel]) || [];
+    const covered = coveredStandardsByAward.get(id) || new Set();
+    const uncovered = levelStandards.filter(std => !covered.has(std.thread));
+    if (uncovered.length > 0) {
+      uncoveredByAward.set(id, uncovered);
+    }
+  });
+
+  // Add uncovered standards to trace rows
+  uncoveredByAward.forEach((uncoveredStandards, awardId) => {
+    uncoveredStandards.forEach(std => {
+      const standardLabel = std.thread ? `${std.criteria} — ${std.thread}` : std.criteria;
+      traceRows.unshift({
+        awardStandardId: awardId,
+        standard: standardLabel,
+        ploNum: '—',
+        ploText: '(No PLO covers this standard)',
+        moduleCode: '—',
+        moduleTitle: '',
+        mimloNum: '—',
+        mimloText: '',
+        assessmentTitle: '',
+        assessmentType: '',
+        assessmentWeight: '',
+        status: 'uncovered',
+        statusLabel: 'Standard Gap'
+      });
     });
   });
 
@@ -318,15 +362,31 @@ function buildTraceRows(p, standardsData) {
   const gapCount = traceRows.filter(r => r.status === 'gap').length;
   const uncoveredCount = traceRows.filter(r => r.status === 'uncovered').length;
 
-  // Build standards coverage HTML
-  const standardsCoverageHtml = levelStandards.length > 0
-    ? `<div class="mb-3 p-3 ${uncoveredCount > 0 ? 'bg-danger-subtle' : 'bg-success-subtle'} rounded">
-        <div class="fw-semibold mb-1">Award Standards Coverage (NFQ Level ${nfqLevel})</div>
-        <div class="small">${levelStandards.length - uncoveredStandards.length} of ${levelStandards.length} standards covered by PLOs
-          ${uncoveredCount > 0 ? ` — <strong>${uncoveredStandards.length} standard${uncoveredStandards.length > 1 ? 's' : ''} not yet addressed</strong>` : ' ✓'}
+  // Build standards coverage HTML with per-award summaries
+  let standardsCoverageHtml = '';
+  if (standardsDataArray.length > 0 && nfqLevel) {
+    const coverageCards = standardsDataArray.map(({ id, data }) => {
+      const levelStandards = (data?.levels?.[nfqLevel]) || [];
+      const covered = coveredStandardsByAward.get(id) || new Set();
+      const uncoveredList = uncoveredByAward.get(id) || [];
+      const stdIdx = (p.awardStandardIds || []).indexOf(id);
+      const stdName = (p.awardStandardNames || [])[stdIdx] || id;
+      const isFullyCovered = uncoveredList.length === 0;
+      
+      return `
+        <div class="p-3 ${isFullyCovered ? 'bg-success-subtle' : 'bg-danger-subtle'} rounded mb-2">
+          <div class="fw-semibold mb-1">${escapeHtml(stdName)} (NFQ Level ${nfqLevel})</div>
+          <div class="small">${levelStandards.length - uncoveredList.length} of ${levelStandards.length} standards covered by PLOs
+            ${!isFullyCovered ? ` — <strong>${uncoveredList.length} standard${uncoveredList.length > 1 ? 's' : ''} not yet addressed</strong>` : ' ✓'}
+          </div>
         </div>
-       </div>`
-    : (nfqLevel ? `<div class="alert alert-warning mb-3">No award standards found for NFQ Level ${nfqLevel}. Check that standards.json includes this level.</div>` : '');
+      `;
+    }).join('');
+    
+    standardsCoverageHtml = `<div class="mb-3">${coverageCards}</div>`;
+  } else if (nfqLevel) {
+    standardsCoverageHtml = `<div class="alert alert-warning mb-3">No award standards selected. Go to Identity to select QQI award standards.</div>`;
+  }
 
   return {
     traceRows,
@@ -336,9 +396,9 @@ function buildTraceRows(p, standardsData) {
 }
 
 /**
- * Build table rows HTML
+ * Build table rows HTML with optional award standard section headers
  */
-function buildTableRowsHtml(traceRows) {
+function buildTableRowsHtml(traceRows, hasMultipleStandards) {
   const statusBadge = (status, label) => {
     if (status === 'ok') return `<span class="badge text-bg-success">${escapeHtml(label)}</span>`;
     if (status === 'warning') return `<span class="badge text-bg-warning">${escapeHtml(label)}</span>`;
@@ -346,6 +406,48 @@ function buildTableRowsHtml(traceRows) {
     return `<span class="badge text-bg-danger">${escapeHtml(label)}</span>`;
   };
 
+  // Group rows by award standard if multiple standards
+  if (hasMultipleStandards) {
+    const p = state.programme;
+    const groupedRows = new Map();
+    traceRows.forEach(r => {
+      const awardId = r.awardStandardId || 'unknown';
+      if (!groupedRows.has(awardId)) {
+        groupedRows.set(awardId, []);
+      }
+      groupedRows.get(awardId).push(r);
+    });
+
+    let html = '';
+    groupedRows.forEach((rows, awardId) => {
+      const stdIdx = (p.awardStandardIds || []).indexOf(awardId);
+      const stdName = (p.awardStandardNames || [])[stdIdx] || awardId;
+      
+      // Add section header
+      html += `<tr class="table-secondary"><td colspan="11" class="fw-semibold">${escapeHtml(stdName)}</td></tr>`;
+      
+      rows.forEach(r => {
+        html += `
+          <tr data-status="${r.status}" data-award-standard="${escapeHtml(awardId)}">
+            <td class="small ${r.status === 'uncovered' ? 'fw-bold' : ''}">${escapeHtml(r.standard)}</td>
+            <td class="small text-nowrap">${r.ploNum !== '—' ? 'PLO ' + r.ploNum : '—'}</td>
+            <td class="small" style="max-width:200px;" title="${escapeHtml(r.ploText)}">${escapeHtml(r.ploText.length > 60 ? r.ploText.slice(0, 60) + '…' : r.ploText)}</td>
+            <td class="small text-nowrap">${escapeHtml(r.moduleCode)}</td>
+            <td class="small">${escapeHtml(r.moduleTitle)}</td>
+            <td class="small text-nowrap">${r.mimloNum !== '—' ? 'MIMLO ' + r.mimloNum : '—'}</td>
+            <td class="small" style="max-width:180px;" title="${escapeHtml(r.mimloText)}">${escapeHtml(r.mimloText.length > 50 ? r.mimloText.slice(0, 50) + '…' : r.mimloText)}</td>
+            <td class="small">${escapeHtml(r.assessmentTitle)}</td>
+            <td class="small">${escapeHtml(r.assessmentType)}</td>
+            <td class="small text-end">${escapeHtml(r.assessmentWeight)}</td>
+            <td class="small text-center">${statusBadge(r.status, r.statusLabel)}</td>
+          </tr>
+        `;
+      });
+    });
+    return html;
+  }
+
+  // Single standard - no grouping needed
   return traceRows.map(r => `
     <tr data-status="${r.status}">
       <td class="small ${r.status === 'uncovered' ? 'fw-bold' : ''}">${escapeHtml(r.standard)}</td>
@@ -378,6 +480,12 @@ function wireTraceability() {
     const moduleVal = filterModule?.value || 'all';
 
     table.querySelectorAll('tbody tr').forEach(row => {
+      // Skip section header rows
+      if (row.classList.contains('table-secondary')) {
+        row.style.display = '';
+        return;
+      }
+      
       const rowStatus = row.getAttribute('data-status');
       const rowModule = row.children[3]?.textContent?.trim() || '';
 
@@ -401,6 +509,7 @@ function wireTraceability() {
 
       table.querySelectorAll('tbody tr').forEach(tr => {
         if (tr.style.display === 'none') return;
+        if (tr.classList.contains('table-secondary')) return; // Skip section headers
         const cells = [];
         tr.querySelectorAll('td').forEach(td => {
           let val = td.textContent.trim();
@@ -430,7 +539,7 @@ function wireTraceability() {
  * Creates nodes for: Standards, PLOs, Modules, MIMLOs, Assessments
  * Creates links between them based on alignments
  */
-function buildSankeyData(traceRows) {
+function buildSankeyData(traceRows, hasMultipleStandards) {
   // Node categories and their prefixes
   const nodeLabels = [];
   const nodeColors = [];
@@ -485,16 +594,21 @@ function buildSankeyData(traceRows) {
 
   // Process trace rows to build nodes and links
   traceRows.forEach(row => {
+    // Add award standard prefix for visual grouping when multiple standards
+    const standardPrefix = hasMultipleStandards && row.awardStandardId 
+      ? `[${row.awardStandardId}] ` 
+      : '';
+
     // Handle uncovered standards - link them to a "gap" node to show they're missing coverage
     if (row.status === 'uncovered') {
-      const standardNode = addNode(`📋 ${row.standard}`, 'standard');
+      const standardNode = addNode(`📋 ${standardPrefix}${row.standard}`, 'standard');
       const gapNode = addNode(`⚠️ NO PLO COVERAGE`, 'gap');
       addLink(standardNode, gapNode, 'uncovered');
       return;
     }
 
     // Add nodes for each level
-    const standardNode = addNode(`📋 ${row.standard}`, 'standard');
+    const standardNode = addNode(`📋 ${standardPrefix}${row.standard}`, 'standard');
 
     if (row.ploNum !== '—') {
       const ploLabel = `🎯 PLO ${row.ploNum}`;

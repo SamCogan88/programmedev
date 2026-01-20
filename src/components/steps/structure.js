@@ -6,6 +6,7 @@ import { state, saveDebounced } from '../../state/store.js';
 import { escapeHtml } from '../../utils/dom.js';
 import { uid } from '../../utils/uid.js';
 import { getDevModeToggleHtml, wireDevModeToggle } from '../dev-mode.js';
+import { accordionControlsHtml, wireAccordionControls } from './shared.js';
 
 /**
  * Render the Structure step
@@ -17,30 +18,49 @@ export function renderStructureStep() {
 
   const devModeToggleHtml = getDevModeToggleHtml();
 
-  const moduleRows = (p.modules || []).map((m, idx) => `
-    <div class="card border-0 bg-white shadow-sm mb-3">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div class="fw-semibold">Module ${idx + 1}</div>
-          <button class="btn btn-outline-danger btn-sm" data-remove-module="${m.id}">Remove</button>
-        </div>
-        <div class="row g-3">
-          <div class="col-md-3">
-            <label class="form-label fw-semibold">Code (optional)</label>
-            <input class="form-control" data-module-field="code" data-module-id="${m.id}" value="${escapeHtml(m.code || "")}">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Title</label>
-            <input class="form-control" data-module-field="title" data-module-id="${m.id}" value="${escapeHtml(m.title || "")}">
-          </div>
-          <div class="col-md-3">
-            <label class="form-label fw-semibold">Credits</label>
-            <input type="number" class="form-control" data-module-field="credits" data-module-id="${m.id}" value="${Number(m.credits || 0)}">
+  const moduleRows = (p.modules || []).map((m, idx) => {
+    const headingId = `module_${m.id}_heading`;
+    const collapseId = `module_${m.id}_collapse`;
+    const titlePreview = (m.title || "").trim() || "Module";
+    const codePreview = (m.code || "").trim();
+    const creditsPreview = Number(m.credits || 0);
+
+    return `
+      <div class="accordion-item bg-body">
+        <h2 class="accordion-header" id="${headingId}">
+          <button class="accordion-button ${idx === 0 ? "" : "collapsed"} w-100" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${idx === 0}" aria-controls="${collapseId}">
+            <div class="d-flex w-100 align-items-center gap-2">
+              <div class="flex-grow-1">
+                <div class="fw-semibold">Module ${idx + 1}${codePreview ? `: ${escapeHtml(codePreview)}` : ""}</div>
+                <div class="small text-secondary">${escapeHtml(titlePreview)} • ${creditsPreview} cr</div>
+              </div>
+              <div class="header-actions d-flex align-items-center gap-2 me-2">
+                <span class="btn btn-sm btn-outline-danger" data-remove-module="${m.id}" role="button">Remove</span>
+              </div>
+            </div>
+          </button>
+        </h2>
+        <div id="${collapseId}" class="accordion-collapse collapse ${idx === 0 ? "show" : ""}" aria-labelledby="${headingId}">
+          <div class="accordion-body">
+            <div class="row g-3">
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Code (optional)</label>
+                <input class="form-control" data-module-field="code" data-module-id="${m.id}" value="${escapeHtml(m.code || "")}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Title</label>
+                <input class="form-control" data-module-field="title" data-module-id="${m.id}" value="${escapeHtml(m.title || "")}">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Credits</label>
+                <input type="number" class="form-control" data-module-field="credits" data-module-id="${m.id}" value="${Number(m.credits || 0)}">
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 
   content.innerHTML = devModeToggleHtml + `
     <div class="card shadow-sm">
@@ -60,12 +80,16 @@ export function renderStructureStep() {
           </div>
         </div>
 
-        ${moduleRows || `<div class="small text-secondary">No modules added yet.</div>`}
+        ${accordionControlsHtml('modulesAccordion')}
+        <div class="accordion" id="modulesAccordion">
+          ${moduleRows || `<div class="alert alert-info mb-0">No modules added yet.</div>`}
+        </div>
       </div>
     </div>
   `;
 
   wireDevModeToggle(() => window.render?.());
+  wireAccordionControls('modulesAccordion');
   wireStructureStep();
 }
 

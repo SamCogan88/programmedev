@@ -7,7 +7,7 @@ import { escapeHtml } from '../../utils/dom.js';
 import { mimloText, ensureMimloObjects } from '../../utils/helpers.js';
 import { getDevModeToggleHtml, wireDevModeToggle } from '../dev-mode.js';
 import { lintLearningOutcome } from '../../lib/lo-lint.js';
-import { bloomsGuidanceHtml } from './shared.js';
+import { bloomsGuidanceHtml, accordionControlsHtml, wireAccordionControls } from './shared.js';
 
 /**
  * Render the MIMLOs step
@@ -35,7 +35,7 @@ export function renderMimlosStep() {
     </div>
   ` : "";
 
-  const blocks = modulesForEdit.map(m => {
+  const blocks = modulesForEdit.map((m, idx) => {
     ensureMimloObjects(m);
     const items = (m.mimlos || []).map((t, i) => {
       const mimloTxt = mimloText(t);
@@ -59,14 +59,28 @@ export function renderMimlosStep() {
     }).join("");
 
     const isHidden = (p.mode === "MODULE_EDITOR" && editableIds.length > 1 && m.id !== selectedId);
+    const headingId = `mimlo_${m.id}_heading`;
+    const collapseId = `mimlo_${m.id}_collapse`;
+    const countBadge = `<span class="badge text-bg-secondary">${(m.mimlos || []).length} item${(m.mimlos || []).length !== 1 ? 's' : ''}</span>`;
 
     return `
-      <div class="card border-0 bg-white shadow-sm mb-3" ${isHidden ? 'style="display:none"' : ""} data-module-card="${m.id}">
-        <div class="card-body">
-          <div class="fw-semibold mb-1">${escapeHtml((m.code ? m.code + " — " : "") + m.title)}</div>
-          <div class="small-muted mb-3">Add 3–6 MIMLOs per module to start.</div>
-          ${items || `<div class="small text-secondary mb-2">No MIMLOs yet.</div>`}
-          <button class="btn btn-outline-secondary btn-sm" data-add-mimlo="${m.id}">+ Add MIMLO</button>
+      <div class="accordion-item bg-body" ${isHidden ? 'style="display:none"' : ''} data-module-card="${m.id}">
+        <h2 class="accordion-header" id="${headingId}">
+          <button class="accordion-button ${idx === 0 ? '' : 'collapsed'}" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${idx === 0}" aria-controls="${collapseId}">
+            <div class="d-flex w-100 justify-content-between align-items-center">
+              <div class="fw-semibold">${escapeHtml((m.code ? m.code + " — " : "") + m.title)}</div>
+              <div class="d-flex align-items-center gap-2">
+                ${countBadge}
+              </div>
+            </div>
+          </button>
+        </h2>
+        <div id="${collapseId}" class="accordion-collapse collapse ${idx === 0 ? 'show' : ''}" aria-labelledby="${headingId}">
+          <div class="accordion-body">
+            <div class="small-muted mb-3">Add 3–6 MIMLOs per module to start.</div>
+            ${items || `<div class="small text-secondary mb-2">No MIMLOs yet.</div>`}
+            <button class="btn btn-outline-secondary btn-sm" data-add-mimlo="${m.id}">+ Add MIMLO</button>
+          </div>
         </div>
       </div>
     `;
@@ -78,12 +92,16 @@ export function renderMimlosStep() {
         <h5 class="card-title mb-3">MIMLOs (Minimum Intended Module Learning Outcomes)</h5>
         ${bloomsGuidanceHtml(p.nfqLevel, "MIMLOs")}
         ${modulePicker}
-        ${modulesForEdit.length ? blocks : `<div class="small text-secondary">Add modules first (Credits & Modules step).</div>`}
+        ${accordionControlsHtml('mimloAccordion')}
+        <div class="accordion" id="mimloAccordion">
+          ${modulesForEdit.length ? blocks : `<div class="small text-secondary">Add modules first (Credits & Modules step).</div>`}
+        </div>
       </div>
     </div>
   `;
 
   wireDevModeToggle(() => window.render?.());
+  wireAccordionControls('mimloAccordion');
   wireMimlosStep();
 }
 

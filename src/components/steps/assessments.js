@@ -5,6 +5,7 @@
 import { state, saveDebounced, editableModuleIds, getSelectedModuleId } from '../../state/store.js';
 import { escapeHtml } from '../../utils/dom.js';
 import { getDevModeToggleHtml, wireDevModeToggle } from '../dev-mode.js';
+import { accordionControlsHtml, wireAccordionControls } from './shared.js';
 import { ensureMimloObjects, mimloText, formatPct } from '../../utils/helpers.js';
 
 // Assessment types matching legacy
@@ -257,7 +258,7 @@ export function renderAssessmentsStep() {
   const typeOpts = ASSESSMENT_TYPES;
 
   // Build module cards with assessments
-  const cards = modulesForEdit.map(m => {
+  const cards = modulesForEdit.map((m, idx) => {
     ensureMimloObjects(m);
     m.assessments = m.assessments || [];
     const total = m.assessments.reduce((acc, a) => acc + (Number(a.weighting) || 0), 0);
@@ -265,77 +266,89 @@ export function renderAssessmentsStep() {
       ? `<span class="badge text-bg-success">Total ${total}%</span>`
       : `<span class="badge text-bg-warning">Total ${total}% (should be 100)</span>`;
 
-    // Build assessment cards for this module
-    const asmCards = (m.assessments || []).map(a => {
+    // Build assessment accordion items for this module
+    const asmItems = (m.assessments || []).map((a, asmIdx) => {
       const mode = a.mode || "Online";
       const integ = a.integrity || {};
+      const asmHeadingId = `asm_${m.id}_${a.id}_heading`;
+      const asmCollapseId = `asm_${m.id}_${a.id}_collapse`;
 
       return `
-        <div class="card border-0 bg-white shadow-sm mb-3">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <div class="fw-semibold">${escapeHtml(a.title || "Assessment")}</div>
-              <button class="btn btn-outline-danger btn-sm" data-remove-asm="${m.id}" data-asm-id="${a.id}">Remove</button>
-            </div>
+        <div class="accordion-item bg-body">
+          <h2 class="accordion-header" id="${asmHeadingId}">
+            <button class="accordion-button ${asmIdx === 0 ? '' : 'collapsed'} w-100" type="button" data-bs-toggle="collapse" data-bs-target="#${asmCollapseId}" aria-expanded="${asmIdx === 0}" aria-controls="${asmCollapseId}">
+              <div class="d-flex w-100 align-items-center gap-2">
+                <div class="flex-grow-1 text-start">
+                  <div class="fw-semibold">${escapeHtml(a.title || "Assessment")}</div>
+                  <div class="small text-nowrap text-secondary">${escapeHtml(a.type || "")} • ${a.weighting ?? 0}%</div>
+                </div>
+                <div class="header-actions d-flex align-items-center gap-2 me-2">
+                  <span class="btn btn-sm btn-outline-danger" data-remove-asm="${m.id}" data-asm-id="${a.id}" role="button">Remove</span>
+                </div>
+              </div>
+            </button>
+          </h2>
+          <div id="${asmCollapseId}" class="accordion-collapse collapse ${asmIdx === 0 ? 'show' : ''}" aria-labelledby="${asmHeadingId}">
+            <div class="accordion-body">
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <label class="form-label small fw-semibold">Title</label>
+                  <input class="form-control" data-asm-title="${m.id}" data-asm-id="${a.id}" value="${escapeHtml(a.title || "")}">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-semibold">Type</label>
+                  <select class="form-select" data-asm-type="${m.id}" data-asm-id="${a.id}">
+                    ${typeOpts.map(t => `<option value="${escapeHtml(t)}" ${(a.type || "") === t ? "selected" : ""}>${escapeHtml(t)}</option>`).join("")}
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label small fw-semibold">Weighting %</label>
+                  <input type="number" min="0" max="100" step="1" class="form-control"
+                    data-asm-weight="${m.id}" data-asm-id="${a.id}" value="${a.weighting ?? ""}">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-semibold">Mode</label>
+                  <select class="form-select" data-asm-mode="${m.id}" data-asm-id="${a.id}">
+                    ${ASSESSMENT_MODES.map(x => `<option value="${x}" ${mode === x ? "selected" : ""}>${x}</option>`).join("")}
+                  </select>
+                </div>
+              </div>
 
-            <div class="row g-2">
-              <div class="col-md-4">
-                <label class="form-label small fw-semibold">Title</label>
-                <input class="form-control" data-asm-title="${m.id}" data-asm-id="${a.id}" value="${escapeHtml(a.title || "")}">
-              </div>
-              <div class="col-md-3">
-                <label class="form-label small fw-semibold">Type</label>
-                <select class="form-select" data-asm-type="${m.id}" data-asm-id="${a.id}">
-                  ${typeOpts.map(t => `<option value="${escapeHtml(t)}" ${(a.type || "") === t ? "selected" : ""}>${escapeHtml(t)}</option>`).join("")}
-                </select>
-              </div>
-              <div class="col-md-2">
-                <label class="form-label small fw-semibold">Weighting %</label>
-                <input type="number" min="0" max="100" step="1" class="form-control"
-                  data-asm-weight="${m.id}" data-asm-id="${a.id}" value="${a.weighting ?? ""}">
-              </div>
-              <div class="col-md-3">
-                <label class="form-label small fw-semibold">Mode</label>
-                <select class="form-select" data-asm-mode="${m.id}" data-asm-id="${a.id}">
-                  ${ASSESSMENT_MODES.map(x => `<option value="${x}" ${mode === x ? "selected" : ""}>${x}</option>`).join("")}
-                </select>
-              </div>
-            </div>
+              <div class="row g-2 mt-2">
+                <div class="col-md-6">
+                  <div class="fw-semibold small mb-1">Map to MIMLOs</div>
+                  <div class="border rounded p-2" data-asm-mimlo-box="${m.id}" data-asm-id="${a.id}">
+                    ${(m.mimlos || []).map(mi => {
+                      const checked = (a.mimloIds || []).includes(mi.id);
+                      return `
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox"
+                            data-asm-mimlo="${m.id}" data-asm-id="${a.id}" data-mimlo-id="${mi.id}" ${checked ? "checked" : ""}>
+                          <label class="form-check-label small">${escapeHtml(mimloText(mi))}</label>
+                        </div>
+                      `;
+                    }).join("") || '<span class="text-muted small">Add MIMLOs first</span>'}
+                  </div>
+                </div>
 
-            <div class="row g-2 mt-2">
-              <div class="col-md-6">
-                <div class="fw-semibold small mb-1">Map to MIMLOs</div>
-                <div class="border rounded p-2" data-asm-mimlo-box="${m.id}" data-asm-id="${a.id}">
-                  ${(m.mimlos || []).map(mi => {
-                    const checked = (a.mimloIds || []).includes(mi.id);
-                    return `
+                <div class="col-md-6">
+                  <div class="fw-semibold small mb-1">Integrity controls</div>
+                  <div class="border rounded p-2">
+                    ${INTEGRITY_CONTROLS.map(({ key, label }) => `
                       <div class="form-check">
                         <input class="form-check-input" type="checkbox"
-                          data-asm-map="${m.id}" data-asm-id="${a.id}" data-mimlo-id="${mi.id}" ${checked ? "checked" : ""}>
-                        <label class="form-check-label small">${escapeHtml(mimloText(mi))}</label>
+                          data-integrity-option="${m.id}" data-asm-id="${a.id}" data-int-key="${key}" ${integ[key] ? "checked" : ""}>
+                        <label class="form-check-label small">${label}</label>
                       </div>
-                    `;
-                  }).join("") || '<span class="text-muted small">Add MIMLOs first</span>'}
+                    `).join("")}
+                  </div>
                 </div>
               </div>
 
-              <div class="col-md-6">
-                <div class="fw-semibold small mb-1">Integrity controls</div>
-                <div class="border rounded p-2">
-                  ${INTEGRITY_CONTROLS.map(({ key, label }) => `
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox"
-                        data-asm-int="${m.id}" data-asm-id="${a.id}" data-int-key="${key}" ${integ[key] ? "checked" : ""}>
-                      <label class="form-check-label small">${label}</label>
-                    </div>
-                  `).join("")}
-                </div>
+              <div class="mt-2">
+                <label class="form-label small fw-semibold">Notes</label>
+                <textarea class="form-control" rows="2" data-asm-notes="${m.id}" data-asm-id="${a.id}">${escapeHtml(a.notes || "")}</textarea>
               </div>
-            </div>
-
-            <div class="mt-2">
-              <label class="form-label small fw-semibold">Notes</label>
-              <textarea class="form-control" rows="2" data-asm-notes="${m.id}" data-asm-id="${a.id}">${escapeHtml(a.notes || "")}</textarea>
             </div>
           </div>
         </div>
@@ -343,16 +356,28 @@ export function renderAssessmentsStep() {
     }).join("");
 
     const isHidden = (p.mode === "MODULE_EDITOR" && editableIds.length > 1 && m.id !== selectedId);
-
+    const headingId = `asm_${m.id}_heading`;
+    const collapseId = `asm_${m.id}_collapse`;
     return `
-      <div class="card border-0 bg-white shadow-sm mb-3" ${isHidden ? 'style="display:none"' : ""} data-module-card="${m.id}">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="fw-semibold">${escapeHtml(m.code || "")} — ${escapeHtml(m.title || "")}</div>
-            ${totalBadge}
+      <div class="accordion-item bg-body" ${isHidden ? 'style="display:none"' : ''} data-module-card="${m.id}">
+        <h2 class="accordion-header" id="${headingId}">
+          <button class="accordion-button ${idx === 0 ? '' : 'collapsed'} w-100" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${idx === 0}" aria-controls="${collapseId}">
+            <div class="d-flex w-100 align-items-center gap-2">
+              <div class="flex-grow-1 text-start">
+                <div class="fw-semibold">${escapeHtml(m.code || "")} — ${escapeHtml(m.title || "")}</div>
+                <div class="small text-secondary">${m.assessments.length} assessment${m.assessments.length !== 1 ? 's' : ''}</div>
+              </div>
+              <div class="header-actions d-flex align-items-center gap-2 me-2">
+                ${totalBadge}
+                <span class="btn btn-sm btn-outline-primary" data-add-asm="${m.id}" role="button">+ Add</span>
+              </div>
+            </div>
+          </button>
+        </h2>
+        <div id="${collapseId}" class="accordion-collapse collapse ${idx === 0 ? 'show' : ''}" aria-labelledby="${headingId}">
+          <div class="accordion-body">
+            ${asmItems || `<div class="text-muted small">No assessments yet. Click "+ Add" to create one.</div>`}
           </div>
-          <button class="btn btn-outline-primary btn-sm mb-3" data-add-asm="${m.id}">+ Add assessment</button>
-          ${asmCards || `<div class="text-muted small">No assessments yet.</div>`}
         </div>
       </div>
     `;
@@ -395,10 +420,14 @@ export function renderAssessmentsStep() {
 
     ${reportSection}
     ${modulePicker}
-    ${modulesForEdit.length ? cards : `<div class="alert alert-warning">No modules available to edit.</div>`}
+    ${accordionControlsHtml('assessmentsAccordion')}
+    <div class="accordion" id="assessmentsAccordion">
+      ${modulesForEdit.length ? cards : `<div class="alert alert-warning">No modules available to edit.</div>`}
+    </div>
   `;
 
   wireDevModeToggle(() => window.render?.());
+  wireAccordionControls('assessmentsAccordion');
   wireAssessmentsStep();
 }
 
@@ -462,7 +491,8 @@ function wireAssessmentsStep() {
 
   // Add assessment
   document.querySelectorAll("[data-add-asm]").forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
       const mid = btn.getAttribute("data-add-asm");
       const m = p.modules.find(x => x.id === mid);
       if (!m) return;
@@ -485,7 +515,8 @@ function wireAssessmentsStep() {
 
   // Remove assessment
   document.querySelectorAll("[data-remove-asm]").forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
       const mid = btn.getAttribute("data-remove-asm");
       const aid = btn.getAttribute("data-asm-id");
       const m = p.modules.find(x => x.id === mid);
@@ -567,9 +598,9 @@ function wireAssessmentsStep() {
   });
 
   // Integrity controls
-  document.querySelectorAll("[data-asm-int]").forEach(chk => {
+  document.querySelectorAll("[data-integrity-option]").forEach(chk => {
     chk.onchange = () => {
-      const mid = chk.getAttribute("data-asm-int");
+      const mid = chk.getAttribute("data-integrity-option");
       const aid = chk.getAttribute("data-asm-id");
       const key = chk.getAttribute("data-int-key");
       const found = findAsm(mid, aid);
@@ -581,9 +612,9 @@ function wireAssessmentsStep() {
   });
 
   // MIMLO mapping
-  document.querySelectorAll("[data-asm-map]").forEach(chk => {
+  document.querySelectorAll("[data-asm-mimlo]").forEach(chk => {
     chk.onchange = () => {
-      const mid = chk.getAttribute("data-asm-map");
+      const mid = chk.getAttribute("data-asm-mimlo");
       const aid = chk.getAttribute("data-asm-id");
       const mimloId = chk.getAttribute("data-mimlo-id");
       const found = findAsm(mid, aid);

@@ -41,19 +41,16 @@ export function sumStageCredits(allModules, stageModules) {
  * Generate delivery patterns HTML summary
  */
 export function deliveryPatternsHtml(p) {
-  const mods = Array.isArray(p.deliveryModalities) ? p.deliveryModalities : [];
+  const mod = p.deliveryModality;
   const patterns = (p.deliveryPatterns && typeof p.deliveryPatterns === "object") ? p.deliveryPatterns : {};
-  if (mods.length === 0) return '<span class="text-muted">—</span>';
-  
+  if (!mod) return '<span class="text-muted">—</span>';
+
   const label = (k) => (k === "F2F" ? "Face-to-face" : k === "BLENDED" ? "Blended" : k === "ONLINE" ? "Fully online" : k);
-  const rows = mods.map((m) => {
-    const pat = patterns[m] || defaultPatternFor(m);
-    const a = Number(pat.syncOnlinePct ?? 0);
-    const b = Number(pat.asyncDirectedPct ?? 0);
-    const c = Number(pat.onCampusPct ?? 0);
-    return `<div><span class="fw-semibold">${escapeHtml(label(m))}:</span> ${a}% sync online, ${b}% async directed, ${c}% on campus</div>`;
-  }).join("");
-  return rows;
+  const pat = patterns[mod] || defaultPatternFor(mod);
+  const a = Number(pat.syncOnlinePct ?? 0);
+  const b = Number(pat.asyncDirectedPct ?? 0);
+  const c = Number(pat.onCampusPct ?? 0);
+  return `<div><span class="fw-semibold">${escapeHtml(label(mod))}:</span> ${a}% sync online, ${b}% async directed, ${c}% on campus</div>`;
 }
 
 /**

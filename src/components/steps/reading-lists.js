@@ -13,6 +13,7 @@
 import { state, saveDebounced, editableModuleIds, getSelectedModuleId } from '../../state/store.js';
 import { escapeHtml } from '../../utils/dom.js';
 import { getDevModeToggleHtml, wireDevModeToggle } from '../dev-mode.js';
+import { accordionControlsHtml, wireAccordionControls } from './shared.js';
 
 /**
  * Render the Reading Lists step
@@ -42,7 +43,7 @@ export function renderReadingListsStep() {
     </div>
   ` : "";
 
-  const blocks = modulesForEdit.map(m => {
+  const blocks = modulesForEdit.map((m, idx) => {
     m.readingList = m.readingList || [];
     const isHidden = (isModuleEditor && editableIds.length > 1 && m.id !== selectedId);
 
@@ -109,19 +110,27 @@ export function renderReadingListsStep() {
     }).length;
     const warningBadge = oldCount > 0 ? `<span class="badge text-bg-warning">${oldCount} outdated</span>` : '';
 
+    const headingId = `reading_${m.id}_heading`;
+    const collapseId = `reading_${m.id}_collapse`;
     return `
-      <div class="card border-0 bg-white shadow-sm mb-3" ${isHidden ? 'style="display:none"' : ''} data-module-card="${m.id}">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="fw-semibold">${escapeHtml((m.code ? m.code + ' — ' : '') + m.title)}</div>
-            <div class="d-flex gap-2 align-items-center">
-              ${warningBadge}
-              <span class="badge text-bg-secondary">${m.readingList.length} item${m.readingList.length !== 1 ? 's' : ''}</span>
+      <div class="accordion-item bg-body" ${isHidden ? 'style="display:none"' : ''} data-module-card="${m.id}">
+        <h2 class="accordion-header" id="${headingId}">
+          <button class="accordion-button ${idx === 0 ? '' : 'collapsed'}" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${idx === 0}" aria-controls="${collapseId}">
+            <div class="d-flex justify-content-between align-items-center w-100">
+              <div class="fw-semibold">${escapeHtml((m.code ? m.code + ' — ' : '') + m.title)}</div>
+              <div class="d-flex gap-2 align-items-center">
+                ${warningBadge}
+                <span class="badge text-bg-secondary">${m.readingList.length} item${m.readingList.length !== 1 ? 's' : ''}</span>
+              </div>
             </div>
+          </button>
+        </h2>
+        <div id="${collapseId}" class="accordion-collapse collapse ${idx === 0 ? 'show' : ''}" aria-labelledby="${headingId}">
+          <div class="accordion-body">
+            <div class="small text-secondary mb-3">Add core and recommended reading for this module. Resources older than 5 years will be flagged.</div>
+            ${items || '<div class="small text-secondary mb-2">No reading list items yet.</div>'}
+            <button class="btn btn-outline-secondary btn-sm" data-add-reading="${m.id}">+ Add reading</button>
           </div>
-          <div class="small text-secondary mb-3">Add core and recommended reading for this module. Resources older than 5 years will be flagged.</div>
-          ${items || '<div class="small text-secondary mb-2">No reading list items yet.</div>'}
-          <button class="btn btn-outline-secondary btn-sm" data-add-reading="${m.id}">+ Add reading</button>
         </div>
       </div>
     `;
@@ -133,12 +142,16 @@ export function renderReadingListsStep() {
         <h5 class="card-title mb-3">Reading Lists</h5>
         <div class="small text-secondary mb-3">Define core and recommended reading for each module. Items published more than 5 years ago will be flagged for review.</div>
         ${modulePicker}
-        ${modulesForEdit.length ? blocks : '<div class="small text-secondary">No modules available.</div>'}
+        ${accordionControlsHtml('readingAccordion')}
+        <div class="accordion" id="readingAccordion">
+          ${modulesForEdit.length ? blocks : '<div class="small text-secondary">No modules available.</div>'}
+        </div>
       </div>
     </div>
   `;
 
   wireDevModeToggle(() => window.render?.());
+  wireAccordionControls('readingAccordion');
   wireReadingListsStep();
 }
 

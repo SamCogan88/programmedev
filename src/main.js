@@ -78,6 +78,33 @@ function wireGlobalButtons() {
       try {
         const text = await file.text();
         const data = JSON.parse(text);
+        
+        // Migration: convert old single award standard to array format
+        if (typeof data.awardStandardId === 'string') {
+          const oldId = data.awardStandardId || '';
+          const oldName = data.awardStandardName || '';
+          data.awardStandardIds = oldId ? [oldId] : [];
+          data.awardStandardNames = oldName ? [oldName] : [];
+          delete data.awardStandardId;
+          delete data.awardStandardName;
+        }
+        if (!Array.isArray(data.awardStandardIds)) {
+          data.awardStandardIds = [];
+        }
+        if (!Array.isArray(data.awardStandardNames)) {
+          data.awardStandardNames = [];
+        }
+        
+        // Migration: convert old deliveryModalities array to single deliveryModality
+        if (Array.isArray(data.versions)) {
+          data.versions.forEach(v => {
+            if (Array.isArray(v.deliveryModalities) && !v.deliveryModality) {
+              v.deliveryModality = v.deliveryModalities[0] || 'F2F';
+              delete v.deliveryModalities;
+            }
+          });
+        }
+        
         Object.assign(state.programme, data);
         saveNow();
         render();

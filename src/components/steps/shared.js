@@ -45,3 +45,43 @@ export function bloomsGuidanceHtml(level, contextLabel) {
     </div>
   `;
 }
+
+/**
+ * Reusable accordion controls (expand / collapse all)
+ */
+export function accordionControlsHtml(accordionId) {
+  return `
+    <div class="d-flex justify-content-end gap-2 mb-2">
+      <button class="btn btn-link btn-sm p-0 m-0 text-decoration-none" data-accordion-expand-all="${escapeHtml(accordionId)}">Expand all</button>
+      <span class="text-secondary opacity-50">|</span>
+      <button class="btn btn-link btn-sm p-0 m-0 text-decoration-none" data-accordion-collapse-all="${escapeHtml(accordionId)}">Collapse all</button>
+    </div>
+  `;
+}
+
+export function wireAccordionControls(accordionId) {
+  const accordion = document.getElementById(accordionId);
+
+  const toggleAll = (shouldExpand) => {
+    if (!accordion) return;
+    accordion.querySelectorAll('.accordion-collapse').forEach(el => {
+      const ctor = window.bootstrap?.Collapse;
+      if (ctor && typeof ctor.getOrCreateInstance === 'function') {
+        const inst = ctor.getOrCreateInstance(el, { toggle: false });
+        shouldExpand ? inst.show() : inst.hide();
+      } else if (ctor) {
+        const inst = new ctor(el, { toggle: false });
+        shouldExpand ? inst.show() : inst.hide();
+      } else {
+        el.classList.toggle('show', shouldExpand);
+      }
+    });
+  };
+
+  document.querySelectorAll(`[data-accordion-expand-all="${accordionId}"]`).forEach(btn => {
+    btn.onclick = () => toggleAll(true);
+  });
+  document.querySelectorAll(`[data-accordion-collapse-all="${accordionId}"]`).forEach(btn => {
+    btn.onclick = () => toggleAll(false);
+  });
+}
