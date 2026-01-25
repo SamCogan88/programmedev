@@ -5,10 +5,115 @@
 import { state, saveDebounced, SCHOOL_OPTIONS, AWARD_TYPE_OPTIONS, getAwardStandards, getAwardStandard } from '../../state/store.js';
 import { escapeHtml } from '../../utils/dom.js';
 import { getDevModeToggleHtml, wireDevModeToggle } from '../dev-mode.js';
+import { uid } from '../../utils/uid.js';
+import { accordionControlsHtml, wireAccordionControls, captureOpenCollapseIds } from './shared.js';
 
 // Cache award standards for quick selector rendering
 let standardsCache = [];
 let standardsLoaded = false;
+
+/**
+ * Render the list of elective definitions (each contains groups) as an accordion
+ */
+function renderElectiveDefinitionsList(p, openCollapseIds) {
+  const definitions = p.electiveDefinitions || [];
+  if (definitions.length === 0) {
+    return `<div class="alert alert-light mb-0">No elective definitions yet. Add definitions to create specialization tracks.</div>`;
+  }
+  
+  return `
+    ${accordionControlsHtml('electiveDefinitionsAccordion')}
+    <div class="accordion" id="electiveDefinitionsAccordion">
+      ${definitions.map((def, defIdx) => {
+        const groupInputs = (def.groups || []).map((grp, grpIdx) => `
+          <div class="row g-2 mb-2 align-items-center" data-group-row="${grp.id}">
+            <div class="col-auto">
+              <span class="badge text-bg-secondary">${grpIdx + 1}</span>
+            </div>
+            <div class="col-md-3">
+              <input class="form-control form-control-sm" 
+                data-elective-group-code="${grp.id}" 
+                data-definition-id="${def.id}"
+                value="${escapeHtml(grp.code || "")}" 
+                placeholder="Code">
+            </div>
+            <div class="col">
+              <input class="form-control form-control-sm" 
+                data-elective-group-name="${grp.id}" 
+                data-definition-id="${def.id}"
+                value="${escapeHtml(grp.name || "")}" 
+                placeholder="Group name (e.g., Data Analytics Track)">
+            </div>
+            <div class="col-auto">
+              <button class="btn btn-sm btn-outline-danger" 
+                data-remove-elective-group="${grp.id}" 
+                data-definition-id="${def.id}"
+                title="Remove group">&times;</button>
+            </div>
+          </div>
+        `).join("");
+
+        const defName = def.name || `Elective Definition ${defIdx + 1}`;
+        const defCode = def.code || "";
+        const headingId = `electiveDef_${def.id}_heading`;
+        const collapseId = `electiveDef_${def.id}_collapse`;
+        const isActive = openCollapseIds.has(collapseId) ? true : (openCollapseIds.size === 0 && defIdx === 0);
+
+        return `
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="${headingId}">
+              <button class="accordion-button ${isActive ? "" : "collapsed"} w-100" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isActive}" aria-controls="${collapseId}">
+                <div class="d-flex w-100 align-items-center gap-2">
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold" data-def-header-label="${def.id}">${escapeHtml(defCode ? `[${defCode}] ${defName}` : defName)}</div>
+                    <div class="small text-secondary">${Number(def.credits || 0)} cr • ${(def.groups || []).length} group(s)</div>
+                  </div>
+                  <div class="header-actions d-flex align-items-center gap-2 me-2">
+                    <span class="btn btn-sm btn-outline-danger" data-remove-elective-definition="${def.id}" role="button">Remove</span>
+                  </div>
+                </div>
+              </button>
+            </h2>
+            <div id="${collapseId}" class="accordion-collapse collapse ${isActive ? "show" : ""}" aria-labelledby="${headingId}">
+              <div class="accordion-body">
+                <div class="row g-2 mb-3">
+                  <div class="col-md-2">
+                    <label class="form-label small mb-1">Code</label>
+                    <input class="form-control form-control-sm" 
+                      data-definition-code="${def.id}" 
+                      value="${escapeHtml(defCode)}" 
+                      placeholder="e.g., ELEC1">
+                  </div>
+                  <div class="col-md-5">
+                    <label class="form-label small mb-1">Name</label>
+                    <input class="form-control form-control-sm" 
+                      data-definition-name="${def.id}" 
+                      value="${escapeHtml(def.name || "")}" 
+                      placeholder="e.g., Year 3 Specialization">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small mb-1">Credits (all groups)</label>
+                    <div class="input-group input-group-sm">
+                      <input type="number" class="form-control" 
+                        data-definition-credits="${def.id}" 
+                        value="${Number(def.credits || 0)}" 
+                        min="0" step="5" placeholder="Credits">
+                      <span class="input-group-text">cr</span>
+                    </div>
+                  </div>
+                </div>
+                <label class="form-label small mb-1">Groups (students choose one)</label>
+                <div class="small text-muted mb-2">Code &bull; Name</div>
+                ${groupInputs || '<div class="text-muted small mb-2">No groups in this definition yet.</div>'}
+                <button class="btn btn-outline-secondary btn-sm" data-add-group-to-definition="${def.id}">+ Add group</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
 
 /**
  * Render the Identity step
@@ -19,6 +124,7 @@ export function renderIdentityStep() {
   if (!content) return;
   
   const devModeToggleHtml = getDevModeToggleHtml();
+  const openCollapseIds = captureOpenCollapseIds('electiveDefinitionsAccordion');
   
   const schoolOpts = SCHOOL_OPTIONS.map(s => 
     `<option value="${escapeHtml(s)}" ${p.school === s ? "selected" : ""}>${escapeHtml(s)}</option>`
@@ -86,9 +192,32 @@ export function renderIdentityStep() {
         </div>
       </div>
     </div>
+
+    <div class="card shadow-sm mt-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="card-title mb-0">Elective Definitions</h5>
+          <button class="btn btn-dark btn-sm" id="addElectiveDefinitionBtn">+ Add definition</button>
+        </div>
+        
+        <div class="alert alert-light mb-3">
+          <strong>How elective definitions work:</strong>
+          <ul class="mb-0 mt-1 small">
+            <li>Students complete <strong>every</strong> elective definition in the programme</li>
+            <li>For each definition, students choose <strong>one group</strong> to complete</li>
+            <li>All groups within a definition share the same credit requirement</li>
+          </ul>
+        </div>
+
+        <div id="electiveDefinitionsList">
+          ${renderElectiveDefinitionsList(p, openCollapseIds)}
+        </div>
+      </div>
+    </div>
   `;
   
   wireDevModeToggle(() => window.render?.());
+  wireAccordionControls('electiveDefinitionsAccordion');
   wireIdentityStep();
 }
 
@@ -246,4 +375,150 @@ export function wireIdentityStep(onUpdate) {
       doUpdate();
     });
   }
+
+  // Elective definitions
+  const addElectiveDefinitionBtn = document.getElementById("addElectiveDefinitionBtn");
+  if (addElectiveDefinitionBtn) {
+    addElectiveDefinitionBtn.onclick = () => {
+      if (!Array.isArray(p.electiveDefinitions)) p.electiveDefinitions = [];
+      const defNum = p.electiveDefinitions.length + 1;
+      const defCode = `ELEC${defNum}`;
+      p.electiveDefinitions.push({ 
+        id: uid("edef"), 
+        name: "",
+        code: defCode,
+        credits: 0, 
+        groups: [{ id: uid("egrp"), name: "", code: `${defCode}-A`, moduleIds: [] }] 
+      });
+      saveDebounced();
+      window.render?.();
+    };
+  }
+
+  // Remove definition
+  document.querySelectorAll("[data-remove-elective-definition]").forEach(btn => {
+    btn.onclick = () => {
+      const defId = btn.getAttribute("data-remove-elective-definition");
+      p.electiveDefinitions = (p.electiveDefinitions || []).filter(d => d.id !== defId);
+      saveDebounced();
+      window.render?.();
+    };
+  });
+
+  // Add group to definition
+  document.querySelectorAll("[data-add-group-to-definition]").forEach(btn => {
+    btn.onclick = () => {
+      const defId = btn.getAttribute("data-add-group-to-definition");
+      const def = (p.electiveDefinitions || []).find(d => d.id === defId);
+      if (!def) return;
+      if (!Array.isArray(def.groups)) def.groups = [];
+      // Auto-generate group code from definition code
+      const defCode = def.code || "";
+      const nextLetter = String.fromCharCode(65 + def.groups.length); // A, B, C...
+      const groupCode = defCode ? `${defCode}-${nextLetter}` : "";
+      def.groups.push({ id: uid("egrp"), name: "", code: groupCode, moduleIds: [] });
+      saveDebounced();
+      window.render?.();
+    };
+  });
+
+  // Remove group from definition
+  document.querySelectorAll("[data-remove-elective-group]").forEach(btn => {
+    btn.onclick = () => {
+      const grpId = btn.getAttribute("data-remove-elective-group");
+      const defId = btn.getAttribute("data-definition-id");
+      const def = (p.electiveDefinitions || []).find(d => d.id === defId);
+      if (!def) return;
+      def.groups = (def.groups || []).filter(g => g.id !== grpId);
+      saveDebounced();
+      window.render?.();
+    };
+  });
+
+  // Definition name input
+  document.querySelectorAll("[data-definition-name]").forEach(inp => {
+    inp.addEventListener("input", (e) => {
+      const defId = inp.getAttribute("data-definition-name");
+      const def = (p.electiveDefinitions || []).find(d => d.id === defId);
+      if (!def) return;
+      def.name = e.target.value;
+      // Update header label dynamically
+      const defIdx = (p.electiveDefinitions || []).indexOf(def);
+      const defName = def.name || `Elective Definition ${defIdx + 1}`;
+      const defCode = def.code || "";
+      const headerLabel = document.querySelector(`[data-def-header-label="${defId}"]`);
+      if (headerLabel) {
+        headerLabel.textContent = defCode ? `[${defCode}] ${defName}` : defName;
+      }
+      saveDebounced();
+    });
+  });
+
+  // Definition code input - with cascade to groups
+  document.querySelectorAll("[data-definition-code]").forEach(inp => {
+    inp.addEventListener("input", (e) => {
+      const defId = inp.getAttribute("data-definition-code");
+      const def = (p.electiveDefinitions || []).find(d => d.id === defId);
+      if (!def) return;
+      const oldCode = def.code || "";
+      const newCode = e.target.value;
+      def.code = newCode;
+      // Update header label dynamically
+      const defIdx = (p.electiveDefinitions || []).indexOf(def);
+      const defName = def.name || `Elective Definition ${defIdx + 1}`;
+      const headerLabel = document.querySelector(`[data-def-header-label="${defId}"]`);
+      if (headerLabel) {
+        headerLabel.textContent = newCode ? `[${newCode}] ${defName}` : defName;
+      }
+      // Update group codes that start with the old definition code
+      if (oldCode) {
+        (def.groups || []).forEach(grp => {
+          if (grp.code && grp.code.startsWith(oldCode)) {
+            grp.code = newCode + grp.code.slice(oldCode.length);
+          }
+        });
+      }
+      saveDebounced();
+      window.render?.(); // Re-render to show updated group codes
+    });
+  });
+
+  // Definition credits input
+  document.querySelectorAll("[data-definition-credits]").forEach(inp => {
+    inp.addEventListener("input", (e) => {
+      const defId = inp.getAttribute("data-definition-credits");
+      const def = (p.electiveDefinitions || []).find(d => d.id === defId);
+      if (!def) return;
+      def.credits = Number(e.target.value || 0);
+      saveDebounced();
+    });
+  });
+
+  // Group code input
+  document.querySelectorAll("[data-elective-group-code]").forEach(inp => {
+    inp.addEventListener("input", (e) => {
+      const grpId = inp.getAttribute("data-elective-group-code");
+      const defId = inp.getAttribute("data-definition-id");
+      const def = (p.electiveDefinitions || []).find(d => d.id === defId);
+      if (!def) return;
+      const grp = (def.groups || []).find(g => g.id === grpId);
+      if (!grp) return;
+      grp.code = e.target.value;
+      saveDebounced();
+    });
+  });
+
+  // Group name input
+  document.querySelectorAll("[data-elective-group-name]").forEach(inp => {
+    inp.addEventListener("input", (e) => {
+      const grpId = inp.getAttribute("data-elective-group-name");
+      const defId = inp.getAttribute("data-definition-id");
+      const def = (p.electiveDefinitions || []).find(d => d.id === defId);
+      if (!def) return;
+      const grp = (def.groups || []).find(g => g.id === grpId);
+      if (!grp) return;
+      grp.name = e.target.value;
+      saveDebounced();
+    });
+  });
 }
