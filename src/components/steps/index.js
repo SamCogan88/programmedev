@@ -7,6 +7,7 @@ import { renderIdentityStep } from './identity.js';
 import { renderVersionsStep } from './versions.js';
 import { renderStagesStep } from './stages.js';
 import { renderStructureStep } from './structure.js';
+import { renderElectivesStep } from './electives.js';
 import { renderOutcomesStep } from './outcomes.js';
 import { renderMimlosStep } from './mimlos.js';
 import { renderEffortHoursStep } from './effort-hours.js';
@@ -26,6 +27,7 @@ export function getStepRenderer(stepKey) {
     "versions": renderVersionsStep,
     "stages": renderStagesStep,
     "structure": renderStructureStep,
+    "electives": renderElectivesStep,
     "outcomes": renderOutcomesStep,
     "mimlos": renderMimlosStep,
     "effort-hours": renderEffortHoursStep,
