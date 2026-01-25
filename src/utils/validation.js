@@ -17,8 +17,94 @@ export function validateProgramme(p) {
   if (!p.awardType.trim()) flags.push({ type: "warn", msg: "Award type is missing.", step: "identity" });
 
   if ((p.totalCredits || 0) <= 0) flags.push({ type: "error", msg: "Total programme credits are missing/zero.", step: "structure" });
-  if ((p.totalCredits || 0) > 0 && sumCredits !== p.totalCredits) {
-    flags.push({ type: "error", msg: `Credits mismatch: totalCredits=${p.totalCredits} but modules sum to ${sumCredits}.`, step: "structure" });
+
+  // Calculate mandatory vs elective credits
+  const mandatoryModules = (p.modules || []).filter(m => !m.isElective);
+  const mandatoryCredits = mandatoryModules.reduce((acc, m) => acc + (Number(m.credits) || 0), 0);
+  
+  const electiveDefinitions = p.electiveDefinitions || [];
+  
+  // If no electives configured, use traditional credit check
+  if (electiveDefinitions.length === 0) {
+    if ((p.totalCredits || 0) > 0 && sumCredits !== p.totalCredits) {
+      flags.push({ type: "error", msg: `Credits mismatch: totalCredits=${p.totalCredits} but modules sum to ${sumCredits}.`, step: "structure" });
+    }
+  } else {
+    // Electives are configured - validate elective structure
+    // Students complete every definition (choosing one group per definition)
+
+    // Check each definition and its groups
+    const moduleGroupAssignments = new Map(); // moduleId -> [{ groupId, groupName }]
+    
+    electiveDefinitions.forEach((def, defIdx) => {
+      const defDisplayName = def.name || `Definition ${defIdx + 1}`;
+      const defCode = def.code || '';
+      const defLabel = defCode ? `[${defCode}] ${defDisplayName}` : defDisplayName;
+      const defCredits = def.credits || 0;
+      const groups = def.groups || [];
+      
+      // Check: Definition has no groups (students need at least one option)
+      if (groups.length === 0) {
+        flags.push({ type: "warn", msg: `${defLabel}: no groups defined (students need at least one option).`, step: "identity" });
+      }
+      
+      // Check: Definition has no credits set
+      if (defCredits === 0 && groups.length > 0) {
+        flags.push({ type: "warn", msg: `${defLabel}: has groups but no credit value set.`, step: "identity" });
+      }
+      
+      // Check each group within this definition
+      groups.forEach((g, grpIdx) => {
+        const groupDisplayName = g.name || `Group ${grpIdx + 1}`;
+        const groupCode = g.code || '';
+        const groupLabel = groupCode ? `[${groupCode}] ${groupDisplayName}` : groupDisplayName;
+        const fullGroupName = `${defLabel} → ${groupLabel}`;
+        
+        // Check: Group has no modules assigned
+        if (!g.moduleIds || g.moduleIds.length === 0) {
+          flags.push({ type: "warn", msg: `${fullGroupName}: no modules assigned.`, step: "electives" });
+        } else {
+          // Track module-to-group assignments
+          g.moduleIds.forEach(mId => {
+            if (!moduleGroupAssignments.has(mId)) {
+              moduleGroupAssignments.set(mId, []);
+            }
+            moduleGroupAssignments.get(mId).push({ groupId: g.id, groupName: fullGroupName });
+          });
+
+          // Check: Group includes a non-elective module
+          const groupModules = (p.modules || []).filter(m => g.moduleIds.includes(m.id));
+          const nonElectiveInGroup = groupModules.filter(m => !m.isElective);
+          if (nonElectiveInGroup.length > 0) {
+            flags.push({ type: "warn", msg: `${fullGroupName}: contains ${nonElectiveInGroup.length} mandatory module(s).`, step: "electives" });
+          }
+
+          // Check: Module ECTS totals don't align with the definition's credit value
+          const groupCreditsSum = groupModules.reduce((acc, m) => acc + (Number(m.credits) || 0), 0);
+          if (groupCreditsSum !== defCredits) {
+            flags.push({ type: "warn", msg: `${fullGroupName}: module credits (${groupCreditsSum}) don't match definition requirement (${defCredits}).`, step: "electives" });
+          }
+        }
+      });
+    });
+
+    // Check: A module appears in multiple groups
+    moduleGroupAssignments.forEach((assignments, moduleId) => {
+      if (assignments.length > 1) {
+        const mod = (p.modules || []).find(m => m.id === moduleId);
+        const modName = mod ? (mod.code || mod.title || moduleId) : moduleId;
+        const groupNames = assignments.map(a => a.groupName).join(', ');
+        flags.push({ type: "warn", msg: `Module "${modName}" is assigned to ${assignments.length} groups: ${groupNames}.`, step: "electives" });
+      }
+    });
+
+    // Credit check: mandatory + sum of all definition credits should = totalCredits
+    // (Students complete every definition by choosing one group per definition)
+    const definitionCreditsSum = electiveDefinitions.reduce((acc, def) => acc + (Number(def.credits) || 0), 0);
+    const expectedTotal = mandatoryCredits + definitionCreditsSum;
+    if (expectedTotal !== (p.totalCredits || 0) && definitionCreditsSum > 0) {
+      flags.push({ type: "warn", msg: `Credit check: mandatory (${mandatoryCredits}) + elective definitions (${definitionCreditsSum}) = ${expectedTotal}, but programme total is ${p.totalCredits || 0}.`, step: "structure" });
+    }
   }
 
   // Versions
