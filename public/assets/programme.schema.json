@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://nci.ie/schemas/programme.schema.json",
+  "$id": "https://ncirl.ie/schemas/programme.schema.json",
   "title": "NCI Programme Design Schema",
   "description": "Schema for NCI Programme Design Studio programme data (schemaVersion 2)",
   "type": "object",
@@ -30,7 +30,7 @@
       "description": "True if the award type is a custom value not in the standard list"
     },
     "nfqLevel": {
-      "type": "integer",
+      "type": ["integer", "null"],
       "minimum": 6,
       "maximum": 10,
       "description": "National Framework of Qualifications level (6-10)"
@@ -78,9 +78,11 @@
             "modulesMeta": { "type": "boolean" },
             "versions": { "type": "boolean" },
             "plos": { "type": "boolean" }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "modules": {
       "type": "array",
@@ -100,21 +102,28 @@
         "items": { "type": "string" }
       }
     },
+    "electiveDefinitions": {
+      "type": "array",
+      "description": "Elective definitions with groups of selectable modules",
+      "items": { "$ref": "#/$defs/electiveDefinition" }
+    },
     "versions": {
       "type": "array",
       "description": "Programme versions (e.g., Full-time, Part-time, Online)",
       "items": { "$ref": "#/$defs/version" }
     },
     "updatedAt": {
-      "type": "string",
+      "type": ["string", "null"],
       "format": "date-time",
       "description": "ISO 8601 timestamp of last update"
     }
   },
+  "additionalProperties": false,
   "$defs": {
     "module": {
       "type": "object",
       "required": ["id", "title", "credits"],
+      "description": "A module within the programme",
       "properties": {
         "id": {
           "type": "string",
@@ -133,6 +142,11 @@
           "minimum": 0,
           "description": "ECTS credits for this module"
         },
+        "isElective": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this module is an elective (part of an elective group)"
+        },
         "effortHours": {
           "type": "object",
           "description": "Effort hours breakdown by delivery modality",
@@ -147,8 +161,14 @@
           "type": "array",
           "description": "Assessments for this module",
           "items": { "$ref": "#/$defs/assessment" }
+        },
+        "readingList": {
+          "type": "array",
+          "description": "Reading list items for this module",
+          "items": { "$ref": "#/$defs/readingListItem" }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "effortHoursModality": {
       "type": "object",
@@ -211,11 +231,13 @@
           "minimum": 0,
           "description": "Hours of work-based learning"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "mimlo": {
       "type": "object",
       "required": ["id", "text"],
+      "description": "Minimum Intended Module Learning Outcome",
       "properties": {
         "id": {
           "type": "string",
@@ -225,11 +247,13 @@
           "type": "string",
           "description": "MIMLO statement text"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "assessment": {
       "type": "object",
       "required": ["id", "title", "type", "weighting"],
+      "description": "An assessment for a module",
       "properties": {
         "id": {
           "type": "string",
@@ -267,7 +291,8 @@
           "type": "string",
           "description": "Additional notes about the assessment"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "integrityControls": {
       "type": "object",
@@ -293,11 +318,54 @@
           "type": "boolean",
           "description": "Whether an AI use declaration is required"
         }
-      }
+      },
+      "additionalProperties": false
+    },
+    "readingListItem": {
+      "type": "object",
+      "required": ["title"],
+      "description": "A reading list entry for a module",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the reading list item"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of reading (e.g., Core, Recommended, Supplementary)",
+          "examples": ["Core", "Recommended", "Supplementary"]
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the book or resource"
+        },
+        "author": {
+          "type": "string",
+          "description": "Author(s) of the resource"
+        },
+        "publisher": {
+          "type": "string",
+          "description": "Publisher of the resource"
+        },
+        "year": {
+          "type": "string",
+          "description": "Year of publication"
+        },
+        "isbn": {
+          "type": "string",
+          "description": "ISBN of the resource"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes about the reading item"
+        }
+      },
+      "additionalProperties": false
     },
     "plo": {
       "type": "object",
       "required": ["id", "text"],
+      "description": "Programme Learning Outcome",
       "properties": {
         "id": {
           "type": "string",
@@ -312,11 +380,13 @@
           "description": "Mappings to QQI award standards",
           "items": { "$ref": "#/$defs/standardMapping" }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "standardMapping": {
       "type": "object",
       "required": ["criteria", "thread"],
+      "description": "Mapping to a QQI award standard thread",
       "properties": {
         "criteria": {
           "type": "string",
@@ -331,11 +401,68 @@
           "type": "string",
           "description": "Reference to which award standard this mapping belongs to (relevant when multiple standards are selected)"
         }
-      }
+      },
+      "additionalProperties": false
+    },
+    "electiveDefinition": {
+      "type": "object",
+      "required": ["id", "credits", "groups"],
+      "description": "An elective definition that students must complete by choosing one group",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the elective definition"
+        },
+        "code": {
+          "type": "string",
+          "description": "Short code for the elective definition (e.g., S3, S4)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name for the elective definition"
+        },
+        "credits": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "ECTS credits for this elective definition"
+        },
+        "groups": {
+          "type": "array",
+          "description": "Groups of modules that students can choose from",
+          "items": { "$ref": "#/$defs/electiveGroup" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "electiveGroup": {
+      "type": "object",
+      "required": ["id", "moduleIds"],
+      "description": "A group of modules within an elective definition",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the elective group"
+        },
+        "code": {
+          "type": "string",
+          "description": "Short code for the elective group (e.g., S3-WE, S4-DA)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name for the elective group"
+        },
+        "moduleIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "IDs of modules in this elective group"
+        }
+      },
+      "additionalProperties": false
     },
     "version": {
       "type": "object",
       "required": ["id", "label"],
+      "description": "A programme version (e.g., Full-time, Part-time, Online)",
       "properties": {
         "id": {
           "type": "string",
@@ -396,7 +523,8 @@
           "description": "Stages within this version",
           "items": { "$ref": "#/$defs/stage" }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "deliveryPattern": {
       "type": "object",
@@ -420,11 +548,13 @@
           "maximum": 100,
           "description": "Percentage of on-campus delivery"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "stage": {
       "type": "object",
       "required": ["id", "name", "sequence"],
+      "description": "A stage within a programme version",
       "properties": {
         "id": {
           "type": "string",
@@ -452,10 +582,12 @@
           "description": "Modules assigned to this stage",
           "items": { "$ref": "#/$defs/stageModule" }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "exitAward": {
       "type": "object",
+      "description": "Exit award available at a stage",
       "properties": {
         "enabled": {
           "type": "boolean",
@@ -465,11 +597,13 @@
           "type": "string",
           "description": "Title of the exit award"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "stageModule": {
       "type": "object",
       "required": ["moduleId"],
+      "description": "A module assignment within a stage",
       "properties": {
         "moduleId": {
           "type": "string",
@@ -479,7 +613,8 @@
           "type": "string",
           "description": "Semester or timing tag (e.g., Autumn, Spring, S1)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   }
 }
