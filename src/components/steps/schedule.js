@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Schedule step component (QQI-style timetable view)
  */

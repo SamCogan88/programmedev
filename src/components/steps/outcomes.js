@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Outcomes (PLOs) step component
  */

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Header rendering component
  */

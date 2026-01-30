@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Mapping step component (PLO to Module mapping - QQI-critical)
  * Maps Programme Learning Outcomes to Modules using ploToModules structure

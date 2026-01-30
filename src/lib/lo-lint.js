@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Learning Outcome (LO) language detection + wording lint.
  * ES2022 module version.

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * DOM utility functions
  */

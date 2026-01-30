@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Snapshot step component (QQI export view with Word export)
  * Full QQI-compatible snapshot with programme summary, versions, PLO matrix

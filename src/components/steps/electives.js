@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Electives step component
  * Allows assigning elective modules to elective groups within definitions

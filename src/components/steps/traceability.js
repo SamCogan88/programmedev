@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Traceability step component (Full alignment chain with Sankey visualization)
  */

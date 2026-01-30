@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Structure (Credits & Modules) step component
  */

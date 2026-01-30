@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Application state management
  * Handles state, persistence, and data factories

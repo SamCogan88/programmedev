@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Shared components and helpers for steps
  */

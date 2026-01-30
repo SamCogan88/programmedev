@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Reading Lists step component
  * 

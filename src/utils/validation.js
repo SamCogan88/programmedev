@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Programme validation and completion tracking
  */

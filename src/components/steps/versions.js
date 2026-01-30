@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Versions step component
  */

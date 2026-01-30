@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Assessments step component
  */

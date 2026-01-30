@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Dev mode toggle component
  */

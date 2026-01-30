@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * QQI Programme Design Studio - Entry Point
  */

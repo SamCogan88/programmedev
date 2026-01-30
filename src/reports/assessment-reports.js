@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Assessment reports module
  */
