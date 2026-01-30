@@ -5,7 +5,7 @@
 import { state, saveDebounced, editableModuleIds, getSelectedModuleId } from '../../state/store.js';
 import { escapeHtml } from '../../utils/dom.js';
 import { getDevModeToggleHtml, wireDevModeToggle } from '../dev-mode.js';
-import { accordionControlsHtml, wireAccordionControls, captureOpenCollapseIds } from './shared.js';
+import { accordionControlsHtml, wireAccordionControls, captureOpenCollapseIds, updateAccordionHeader } from './shared.js';
 import { ensureMimloObjects, mimloText, formatPct } from '../../utils/helpers.js';
 
 // Assessment types matching legacy
@@ -435,6 +435,16 @@ export function renderAssessmentsStep() {
 }
 
 /**
+ * Update assessment accordion header in-place (preserves input focus)
+ */
+function updateAssessmentHeader(a) {
+  updateAccordionHeader(`asm_${a.id}_heading`, {
+    title: escapeHtml(a.title || "Assessment"),
+    subtitle: `${escapeHtml(a.type || "")} • ${a.weighting ?? 0}%`
+  });
+}
+
+/**
  * Wire Assessments step event handlers
  */
 function wireAssessmentsStep() {
@@ -549,6 +559,7 @@ function wireAssessmentsStep() {
       if (!found || !found.a) return;
       found.a.title = inp.value;
       saveDebounced();
+      updateAssessmentHeader(found.a);
     };
   });
 
@@ -561,6 +572,7 @@ function wireAssessmentsStep() {
       if (!found || !found.a) return;
       found.a.type = sel.value;
       saveDebounced();
+      updateAssessmentHeader(found.a);
     };
   });
 
@@ -573,6 +585,7 @@ function wireAssessmentsStep() {
       if (!found || !found.a) return;
       found.a.weighting = Number(inp.value || 0);
       saveDebounced();
+      updateAssessmentHeader(found.a);
     };
   });
 

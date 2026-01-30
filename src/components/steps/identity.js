@@ -226,10 +226,16 @@ export function renderIdentityStep() {
  */
 export function wireIdentityStep(onUpdate) {
   const p = state.programme;
-  const doUpdate = () => {
-    window.render?.(); // Update immediately to show changed value
+  // For select/checkbox changes - re-render to update UI state
+  const doUpdateWithRender = () => {
+    window.render?.();
     saveDebounced(() => {
-      window.render?.(); // Update again after save to show save status
+      onUpdate?.();
+    });
+  };
+  // For text inputs - save only, don't re-render (preserves focus)
+  const doSaveOnly = () => {
+    saveDebounced(() => {
       onUpdate?.();
     });
   };
@@ -238,7 +244,7 @@ export function wireIdentityStep(onUpdate) {
   if (titleInput) {
     titleInput.addEventListener("input", (e) => {
       p.title = e.target.value;
-      doUpdate();
+      doSaveOnly();
     });
   }
   
@@ -257,7 +263,7 @@ export function wireIdentityStep(onUpdate) {
         p.awardType = e.target.value;
         if (awardOtherWrap) awardOtherWrap.style.display = "none";
       }
-      doUpdate();
+      doUpdateWithRender();
     });
   }
   
@@ -265,7 +271,7 @@ export function wireIdentityStep(onUpdate) {
     awardOtherInput.addEventListener("input", (e) => {
       if (p.awardTypeIsOther) {
         p.awardType = e.target.value;
-        doUpdate();
+        doSaveOnly();
       }
     });
   }
@@ -274,7 +280,7 @@ export function wireIdentityStep(onUpdate) {
   if (levelInput) {
     levelInput.addEventListener("input", (e) => {
       p.nfqLevel = e.target.value ? Number(e.target.value) : null;
-      doUpdate();
+      doSaveOnly();
     });
   }
   
@@ -282,7 +288,7 @@ export function wireIdentityStep(onUpdate) {
   if (totalCreditsInput) {
     totalCreditsInput.addEventListener("input", (e) => {
       p.totalCredits = Number(e.target.value || 0);
-      doUpdate();
+      doSaveOnly();
     });
   }
   
@@ -290,7 +296,7 @@ export function wireIdentityStep(onUpdate) {
   if (schoolSelect) {
     schoolSelect.addEventListener("change", (e) => {
       p.school = e.target.value;
-      doUpdate();
+      doUpdateWithRender();
     });
   }
   
@@ -349,7 +355,7 @@ export function wireIdentityStep(onUpdate) {
           p.awardStandardIds = p.awardStandardIds.filter(Boolean);
           p.awardStandardNames = p.awardStandardNames.filter(Boolean);
 
-          doUpdate();
+          doUpdateWithRender();
           renderStandardSelectors();
         });
       });
@@ -359,7 +365,7 @@ export function wireIdentityStep(onUpdate) {
           const index = Number(e.target.getAttribute('data-index')) || 0;
           p.awardStandardIds.splice(index, 1);
           p.awardStandardNames.splice(index, 1);
-          doUpdate();
+          doUpdateWithRender();
           renderStandardSelectors();
         });
       });
@@ -372,7 +378,7 @@ export function wireIdentityStep(onUpdate) {
   if (intakeInput) {
     intakeInput.addEventListener("input", (e) => {
       p.intakeMonths = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
-      doUpdate();
+      doSaveOnly();
     });
   }
 
