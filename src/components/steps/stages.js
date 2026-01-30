@@ -6,7 +6,7 @@ import { state, saveDebounced, getVersionById, defaultStage } from '../../state/
 import { escapeHtml } from '../../utils/dom.js';
 import { sumStageCredits } from '../../utils/helpers.js';
 import { getDevModeToggleHtml, wireDevModeToggle } from '../dev-mode.js';
-import { accordionControlsHtml, wireAccordionControls, captureOpenCollapseIds } from './shared.js';
+import { accordionControlsHtml, wireAccordionControls, captureOpenCollapseIds, updateAccordionHeader } from './shared.js';
 
 /**
  * Render the Stages step
@@ -139,6 +139,19 @@ export function renderStagesStep() {
 }
 
 /**
+ * Update stage accordion header in-place (preserves input focus)
+ */
+function updateStageAccordionHeader(s, modules) {
+  const summaryName = s.name || `Stage ${s.sequence || ""}`;
+  const stageCreditSum = sumStageCredits(modules, s.modules || []);
+  
+  updateAccordionHeader(`stage_${s.id}_heading`, {
+    title: escapeHtml(summaryName),
+    subtitle: `Sequence ${Number(s.sequence || 1)} • Target ${Number(s.creditsTarget || 0)}cr • Assigned ${stageCreditSum}cr`
+  });
+}
+
+/**
  * Wire Stages step event handlers
  */
 function wireStagesStep() {
@@ -176,13 +189,25 @@ function wireStagesStep() {
 
   (v.stages || []).forEach((s) => {
     const name = document.getElementById(`stname_${s.id}`);
-    if (name) name.oninput = (e) => { s.name = e.target.value; saveDebounced(); };
+    if (name) name.oninput = (e) => { 
+      s.name = e.target.value; 
+      saveDebounced();
+      updateStageAccordionHeader(s, p.modules || []);
+    };
 
     const seq = document.getElementById(`stseq_${s.id}`);
-    if (seq) seq.oninput = (e) => { s.sequence = Number(e.target.value || 1); saveDebounced(); };
+    if (seq) seq.oninput = (e) => { 
+      s.sequence = Number(e.target.value || 1); 
+      saveDebounced();
+      updateStageAccordionHeader(s, p.modules || []);
+    };
 
     const cred = document.getElementById(`stcred_${s.id}`);
-    if (cred) cred.oninput = (e) => { s.creditsTarget = Number(e.target.value || 0); saveDebounced(); };
+    if (cred) cred.oninput = (e) => { 
+      s.creditsTarget = Number(e.target.value || 0); 
+      saveDebounced();
+      updateStageAccordionHeader(s, p.modules || []);
+    };
 
     const remove = document.getElementById(`removeStage_${s.id}`);
     if (remove) remove.onclick = (e) => {

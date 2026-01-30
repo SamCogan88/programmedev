@@ -6,7 +6,7 @@ import { state, saveDebounced } from '../../state/store.js';
 import { escapeHtml } from '../../utils/dom.js';
 import { uid } from '../../utils/uid.js';
 import { getDevModeToggleHtml, wireDevModeToggle } from '../dev-mode.js';
-import { accordionControlsHtml, wireAccordionControls, captureOpenCollapseIds } from './shared.js';
+import { accordionControlsHtml, wireAccordionControls, captureOpenCollapseIds, updateAccordionHeader } from './shared.js';
 
 /**
  * Render the Structure step
@@ -128,6 +128,24 @@ export function renderStructureStep() {
 }
 
 /**
+ * Update module accordion header in-place without full re-render (preserves input focus)
+ */
+function updateModuleAccordionHeader(m, idx) {
+  const isElective = m.isElective === true;
+  const typeBadge = isElective 
+    ? `<span class="badge text-bg-info me-2" title="Elective">E</span>`
+    : `<span class="badge text-bg-primary me-2" title="Mandatory">M</span>`;
+  const codePreview = (m.code || "").trim();
+  const titlePreview = (m.title || "").trim() || "Module";
+  const creditsPreview = Number(m.credits || 0);
+
+  updateAccordionHeader(`module_${m.id}_heading`, {
+    title: `${typeBadge}Module ${idx + 1}${codePreview ? `: ${escapeHtml(codePreview)}` : ""}`,
+    subtitle: `${titlePreview} • ${creditsPreview} cr`
+  });
+}
+
+/**
  * Wire Structure step event handlers
  */
 function wireStructureStep() {
@@ -173,10 +191,13 @@ function wireStructureStep() {
         m[field] = e.target.value;
       }
       saveDebounced();
-      window.render?.();
+      // Update accordion header in-place instead of full re-render to preserve input focus
+      updateModuleAccordionHeader(m, p.modules.indexOf(m));
     };
     if (inp.tagName === "SELECT") {
       inp.addEventListener("change", handler);
+      // Full re-render only for select changes (type change affects badge)
+      inp.addEventListener("change", () => window.render?.());
     } else {
       inp.addEventListener("input", handler);
     }

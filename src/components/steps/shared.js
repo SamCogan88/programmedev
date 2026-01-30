@@ -99,3 +99,22 @@ export function captureOpenCollapseIds(accordionId) {
   });
   return set;
 }
+
+/**
+ * Update accordion header text in-place without re-rendering (preserves input focus).
+ * @param {string} headingId - The ID of the accordion header element (h2)
+ * @param {object} options - { title: string, subtitle: string } to update
+ */
+export function updateAccordionHeader(headingId, { title, subtitle }) {
+  const header = document.getElementById(headingId);
+  if (!header) return;
+  
+  if (title !== undefined) {
+    const titleEl = header.querySelector('.fw-semibold');
+    if (titleEl) titleEl.innerHTML = title;
+  }
+  if (subtitle !== undefined) {
+    const subtitleEl = header.querySelector('.small.text-secondary');
+    if (subtitleEl) subtitleEl.textContent = subtitle;
+  }
+}

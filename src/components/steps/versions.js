@@ -6,7 +6,7 @@ import { state, saveDebounced, defaultVersion } from '../../state/store.js';
 import { escapeHtml, tagHtml } from '../../utils/dom.js';
 import { defaultPatternFor, sumPattern } from '../../utils/helpers.js';
 import { getDevModeToggleHtml, wireDevModeToggle } from '../dev-mode.js';
-import { accordionControlsHtml, wireAccordionControls, captureOpenCollapseIds } from './shared.js';
+import { accordionControlsHtml, wireAccordionControls, captureOpenCollapseIds, updateAccordionHeader } from './shared.js';
 
 const MOD_DEFS = [
   { key: "F2F", label: "Face-to-face" },
