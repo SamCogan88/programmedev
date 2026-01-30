@@ -56,7 +56,8 @@ test.describe('Step 2: Programme Learning Outcomes (PLOs)', () => {
     await page.getByTestId('step-identity').click();
     await page.waitForTimeout(300);
     
-    await page.getByLabel('NFQ Level').fill('8');
+    // Use data-testid to avoid conflict with flag aria-labels
+    await page.getByTestId('level-input').fill('8');
     await page.waitForTimeout(500);
     
     // Navigate back to PLOs
