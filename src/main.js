@@ -5,6 +5,10 @@
 // Import styles
 import './style.css';
 
+// Import Phosphor Icons
+import '@phosphor-icons/web/regular';
+import '@phosphor-icons/web/bold';
+
 // Import all of Bootstrap's JS
 import * as bootstrap from 'bootstrap';
 
