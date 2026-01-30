@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Stages step component
  */

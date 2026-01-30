@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Programme data migration utilities
  * Handles automatic migration of old programme exports to current schema version

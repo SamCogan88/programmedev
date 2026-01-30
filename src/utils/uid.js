@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Generate unique IDs with optional prefix
  */

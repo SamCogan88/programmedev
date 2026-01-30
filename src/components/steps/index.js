@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Step components index
  * Exports all step renderers

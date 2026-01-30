@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * MIMLOs step component
  */

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Word document export using docxtemplater
  */

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * QQI Flags component
  */

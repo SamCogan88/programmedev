@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Effort Hours step component
  * Matches legacy app.js effort hours structure with 8 detailed fields
