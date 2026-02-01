@@ -5,6 +5,7 @@
  * @module template
  */
 
+import { downloadScheduleDocx } from "./export/schedule-docx.js";
 import { renderAllSchedules } from "./template/schedule-html.js";
 
 /** @type {Programme | null} */
@@ -68,6 +69,30 @@ async function handleFileUpload(file, statusEl, container) {
 }
 
 /**
+ * Handles DOCX download.
+ * @param {HTMLButtonElement} button - Download button
+ * @param {HTMLElement} statusEl - Status element
+ */
+async function handleDownloadDocx(button, statusEl) {
+  if (!currentProgrammeData) {
+    statusEl.textContent = "Please upload a programme JSON first";
+    statusEl.className = "error";
+    return;
+  }
+
+  try {
+    button.textContent = "Generating...";
+    await downloadScheduleDocx(currentProgrammeData);
+    button.textContent = "Download DOCX";
+  } catch (error) {
+    const err = /** @type {Error} */ (error);
+    statusEl.textContent = `✗ DOCX Error: ${err.message}`;
+    statusEl.className = "error";
+    button.textContent = "Download DOCX";
+  }
+}
+
+/**
  * Initializes the template page.
  */
 function init() {
@@ -77,10 +102,17 @@ function init() {
     document.getElementById("schedules-container")
   );
   const copyBtn = /** @type {HTMLButtonElement} */ (document.getElementById("copy-btn"));
+  const downloadDocxBtn = /** @type {HTMLButtonElement} */ (
+    document.getElementById("download-docx-btn")
+  );
 
   // Wire up event handlers
   copyBtn?.addEventListener("click", () => {
     copyToClipboard(schedulesContainer, copyBtn, uploadStatus);
+  });
+
+  downloadDocxBtn?.addEventListener("click", () => {
+    handleDownloadDocx(downloadDocxBtn, uploadStatus);
   });
 
   fileUpload?.addEventListener("change", (e) => {

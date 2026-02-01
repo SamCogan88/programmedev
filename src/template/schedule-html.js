@@ -28,12 +28,19 @@ function getAssessmentTypes(programme, stageModules) {
     if (mod?.assessments) {
       mod.assessments.forEach((a) => {
         const t = (a.type ?? "").toLowerCase();
-        if (t.includes("exam") && t.includes("campus")) {types.invigilated = true;}
-        else if (t.includes("exam") && t.includes("online")) {types.proctored = true;}
-        else if (t.includes("project")) {types.project = true;}
-        else if (t.includes("practical") || t.includes("lab")) {types.practical = true;}
-        else if (t.includes("work")) {types.workBased = true;}
-        else {types.continuous = true;}
+        if (t.includes("exam") && t.includes("campus")) {
+          types.invigilated = true;
+        } else if (t.includes("exam") && t.includes("online")) {
+          types.proctored = true;
+        } else if (t.includes("project")) {
+          types.project = true;
+        } else if (t.includes("practical") || t.includes("lab")) {
+          types.practical = true;
+        } else if (t.includes("work")) {
+          types.workBased = true;
+        } else {
+          types.continuous = true;
+        }
       });
     }
   });
@@ -181,7 +188,9 @@ export function renderScheduleTable(programme, version, stage) {
   // Module rows
   stageModules.forEach((sm) => {
     const mod = (programme.modules ?? []).find((m) => m.id === sm.moduleId);
-    if (!mod) {return;}
+    if (!mod) {
+      return;
+    }
 
     const effort =
       mod.effortHours?.[deliveryKey] ??
@@ -200,12 +209,19 @@ export function renderScheduleTable(programme, version, stage) {
     (mod.assessments ?? []).forEach((a) => {
       const t = (a.type ?? "").toLowerCase();
       const w = a.weighting ?? 0;
-      if (t.includes("exam") && t.includes("campus")) {asmPcts.invigilated += w;}
-      else if (t.includes("exam") && t.includes("online")) {asmPcts.proctored += w;}
-      else if (t.includes("project")) {asmPcts.project += w;}
-      else if (t.includes("practical") || t.includes("lab")) {asmPcts.practical += w;}
-      else if (t.includes("work")) {asmPcts.workBased += w;}
-      else {asmPcts.continuous += w;}
+      if (t.includes("exam") && t.includes("campus")) {
+        asmPcts.invigilated += w;
+      } else if (t.includes("exam") && t.includes("online")) {
+        asmPcts.proctored += w;
+      } else if (t.includes("project")) {
+        asmPcts.project += w;
+      } else if (t.includes("practical") || t.includes("lab")) {
+        asmPcts.practical += w;
+      } else if (t.includes("work")) {
+        asmPcts.workBased += w;
+      } else {
+        asmPcts.continuous += w;
+      }
     });
 
     html += `<tr>
@@ -271,7 +287,9 @@ export function renderAllSchedules(data) {
 
   data.versions.forEach((version, vIdx) => {
     const stages = version.stages ?? [];
-    if (stages.length === 0) {return;}
+    if (stages.length === 0) {
+      return;
+    }
 
     stages.forEach((stage, sIdx) => {
       if (vIdx > 0 || sIdx > 0) {
