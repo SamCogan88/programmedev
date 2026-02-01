@@ -80,6 +80,14 @@ e2e/                     # Playwright tests
 // @ts-check at top of every file
 // @ts-check
 
+// K&R style braces - ALWAYS use braces, even for single statements
+function example() {
+  if (condition) {
+    return value;  // ✅ Correct - has braces
+  }
+  // if (condition) return value;  // ❌ Wrong - missing braces
+}
+
 // ES2022+ syntax required
 const arr = data ?? [];           // Nullish coalescing
 obj.prop ??= defaultValue;        // Nullish assignment
