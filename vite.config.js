@@ -6,4 +6,7 @@ export default {
       },
     },
   },
+  server: {
+    allowedHosts: ["gaming.emu-ordinal.ts.net"],
+  },
 };
