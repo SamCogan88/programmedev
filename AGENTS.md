@@ -19,6 +19,9 @@ npm run test:e2e     # Run Playwright end-to-end tests
 
 # TypeScript checking (run after changes)
 npx tsc -p jsconfig.json --noEmit
+
+# Lint checking (enforces curly braces)
+npx eslint "src/**/*.js" "e2e/**/*.js"
 ```
 
 ## Directory Structure
