@@ -15,9 +15,7 @@ import { escapeHtml } from "../utils/dom.js";
  */
 function getEffortHours(mod, versionKey) {
   const effort =
-    mod.effortHours?.[versionKey] ??
-    mod.effortHours?.[Object.keys(mod.effortHours ?? {})[0]] ??
-    {};
+    mod.effortHours?.[versionKey] ?? mod.effortHours?.[Object.keys(mod.effortHours ?? {})[0]] ?? {};
 
   const classroomHours = effort.classroomHours ?? 0;
   const mentoringHours = effort.mentoringHours ?? 0;
