@@ -14,11 +14,15 @@ let currentProgrammeData = null;
 
 /**
  * Copies content to clipboard by selecting and executing copy command.
+ * Temporarily sets font size to 11pt for clipboard, displays at 9pt.
  * @param {HTMLElement} container - Element to copy content from
  * @param {HTMLButtonElement} button - Button to show feedback on
  * @param {HTMLElement} statusEl - Status element for error messages
  */
 function copyToClipboard(container, button, statusEl) {
+  // Temporarily set font size to 11pt for copying
+  document.documentElement.style.setProperty("--display-font-size", "11pt");
+
   const selection = window.getSelection();
   const range = document.createRange();
   range.selectNodeContents(container);
@@ -36,6 +40,10 @@ function copyToClipboard(container, button, statusEl) {
     statusEl.textContent = "Copy failed - please select manually";
     statusEl.className = "error";
   }
+
+  // Restore display font size to 9pt
+  document.documentElement.style.setProperty("--display-font-size", "9pt");
+  selection?.removeAllRanges();
 }
 
 /**
