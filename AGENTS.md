@@ -595,3 +595,47 @@ Key testing patterns:
 - Wait 600ms after actions for debounced save to complete
 - Use `loadProgrammeData()` to set up test state
 - Use `getProgrammeData()` to verify localStorage
+
+## Planning Large Changes
+
+When a task spans multiple files or introduces a new subsystem:
+
+1. **Plan first.** Outline the phases and atomic steps before writing code.
+2. **Small steps within phases.** Each commit should compile, lint, and pass tests on its own.
+3. **Maintain green state.** Never leave the repo in a broken state between commits — if a refactor temporarily breaks imports, fix them in the same commit.
+4. **Verify after migration.** After moving code to a new abstraction, run the full validation checklist before continuing to the next phase.
+
+## Common Pitfalls
+
+- **Debounced save timing in tests:** When testing user input, wait 600ms after actions for the debounced save (400ms) to complete plus buffer time.
+- **Accordion button nesting:** Never use `<button>` inside accordion headers — browsers will move nested buttons outside, breaking layout. Use `<span role="button" tabindex="0">` instead.
+- **Missing null guards:** Always use `??` or `??=` for optional arrays before iteration: `(p.modules ?? []).forEach(...)`.
+- **HTML escaping:** Always use `escapeHtml()` for user-provided content in templates to prevent XSS.
+- **Test selector conflicts:** Use `data-testid` attributes rather than labels — the flags panel can cause duplicate label matches.
+
+## Dependencies Policy
+
+- Do **not** add new packages without clear justification — prefer the existing stack.
+- Prefer lightweight, well-maintained packages over large frameworks.
+- Pin major versions in `package.json` (e.g., `"vite": "^5.0.0"` not `"*"`).
+- After installing a new dependency, run the full validation checklist to ensure nothing breaks.
+
+## Git Conventions
+
+- Branch names: `feat/short-description`, `fix/short-description`, `refactor/short-description`.
+- Commit messages: [Conventional Commits](https://www.conventionalcommits.org/) format.
+  - `feat(scope): description` for new features
+  - `fix(scope): description` for bug fixes
+  - `refactor(scope): description` for non-functional changes
+  - Scope examples: `identity`, `structure`, `mapping`, `export`, `validation`, `e2e`
+- **Atomic commits:** Break work into small, atomic steps (e.g., adding a type, adding a utility function, updating a single component). Commit after each step with its own clear and concise conventional commit message. Do not batch unrelated changes into a single commit.
+
+## Validation Checklist
+
+Before considering work complete, verify:
+
+1. `npx tsc -p jsconfig.json --noEmit` passes with no errors.
+2. `npx eslint "src/**/*.js" "e2e/**/*.js"` passes with zero errors.
+3. `npm run build` succeeds.
+4. `npm run test:e2e` passes (requires dev server running).
+5. `npm run format:check` passes (or run `npm run format` to fix).
