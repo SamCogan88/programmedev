@@ -42,7 +42,10 @@ interface Programme {
   intakeMonths?: string[];
   modules?: Module[];
   plos?: PLO[];
+  /** @deprecated Use ploToMimlos instead. Kept for migration compatibility. */
   ploToModules?: Record<string, string[]>;
+  /** Mapping of PLO IDs to arrays of MIMLO IDs */
+  ploToMimlos?: Record<string, string[]>;
   versions?: ProgrammeVersion[];
   updatedAt?: string | null;
   mode?: string;
