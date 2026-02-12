@@ -6,6 +6,7 @@
  */
 
 import { downloadScheduleDocx } from "./export/schedule-docx.js";
+import { renderAllModuleDescriptors } from "./template/module-descriptors-html.js";
 import { renderAllSchedules } from "./template/schedule-html.js";
 
 /** @type {Programme | null} */
@@ -13,11 +14,15 @@ let currentProgrammeData = null;
 
 /**
  * Copies content to clipboard by selecting and executing copy command.
+ * Temporarily sets font size to 11pt for clipboard, displays at 9pt.
  * @param {HTMLElement} container - Element to copy content from
  * @param {HTMLButtonElement} button - Button to show feedback on
  * @param {HTMLElement} statusEl - Status element for error messages
  */
 function copyToClipboard(container, button, statusEl) {
+  // Temporarily set font size to 11pt for copying
+  document.documentElement.style.setProperty("--display-font-size", "11pt");
+
   const selection = window.getSelection();
   const range = document.createRange();
   range.selectNodeContents(container);
@@ -35,15 +40,29 @@ function copyToClipboard(container, button, statusEl) {
     statusEl.textContent = "Copy failed - please select manually";
     statusEl.className = "error";
   }
+
+  // Restore display font size to 9pt
+  document.documentElement.style.setProperty("--display-font-size", "9pt");
+  selection?.removeAllRanges();
 }
 
 /**
  * Handles file upload and parsing.
  * @param {File} file - Uploaded file
  * @param {HTMLElement} statusEl - Status element
- * @param {HTMLElement} container - Container for rendered content
+ * @param {HTMLElement} schedulesContainer - Container for schedule tables
+ * @param {HTMLElement} moduleDescriptorsContainer - Container for module descriptors
+ * @param {HTMLElement} schedulesHeader - Header for schedules section
+ * @param {HTMLElement} moduleDescriptorsHeader - Header for module descriptors section
  */
-async function handleFileUpload(file, statusEl, container) {
+async function handleFileUpload(
+  file,
+  statusEl,
+  schedulesContainer,
+  moduleDescriptorsContainer,
+  schedulesHeader,
+  moduleDescriptorsHeader,
+) {
   statusEl.textContent = "Loading...";
   statusEl.className = "";
 
@@ -60,7 +79,12 @@ async function handleFileUpload(file, statusEl, container) {
     statusEl.textContent = `✓ Loaded: ${data.title || file.name}`;
     statusEl.className = "success";
     currentProgrammeData = data;
-    container.innerHTML = renderAllSchedules(data);
+    schedulesContainer.innerHTML = renderAllSchedules(data);
+    moduleDescriptorsContainer.innerHTML = renderAllModuleDescriptors(data);
+
+    // Show section headers
+    schedulesHeader.style.display = "flex";
+    moduleDescriptorsHeader.style.display = "flex";
   } catch (error) {
     const err = /** @type {Error} */ (error);
     statusEl.textContent = `✗ Error: ${err.message}`;
@@ -96,19 +120,36 @@ async function handleDownloadDocx(button, statusEl) {
  * Initializes the template page.
  */
 function init() {
+  const uploadSection = /** @type {HTMLElement} */ (document.getElementById("upload-section"));
   const fileUpload = /** @type {HTMLInputElement} */ (document.getElementById("file-upload"));
   const uploadStatus = /** @type {HTMLElement} */ (document.getElementById("upload-status"));
   const schedulesContainer = /** @type {HTMLElement} */ (
     document.getElementById("schedules-container")
   );
-  const copyBtn = /** @type {HTMLButtonElement} */ (document.getElementById("copy-btn"));
+  const moduleDescriptorsContainer = /** @type {HTMLElement} */ (
+    document.getElementById("module-descriptors-container")
+  );
+  const schedulesHeader = /** @type {HTMLElement} */ (document.getElementById("schedules-header"));
+  const moduleDescriptorsHeader = /** @type {HTMLElement} */ (
+    document.getElementById("module-descriptors-header")
+  );
+  const copySchedulesBtn = /** @type {HTMLButtonElement} */ (
+    document.getElementById("copy-schedules-btn")
+  );
+  const copyModuleDescriptorsBtn = /** @type {HTMLButtonElement} */ (
+    document.getElementById("copy-module-descriptors-btn")
+  );
   const downloadDocxBtn = /** @type {HTMLButtonElement} */ (
     document.getElementById("download-docx-btn")
   );
 
   // Wire up event handlers
-  copyBtn?.addEventListener("click", () => {
-    copyToClipboard(schedulesContainer, copyBtn, uploadStatus);
+  copySchedulesBtn?.addEventListener("click", () => {
+    copyToClipboard(schedulesContainer, copySchedulesBtn, uploadStatus);
+  });
+
+  copyModuleDescriptorsBtn?.addEventListener("click", () => {
+    copyToClipboard(moduleDescriptorsContainer, copyModuleDescriptorsBtn, uploadStatus);
   });
 
   downloadDocxBtn?.addEventListener("click", () => {
@@ -119,7 +160,51 @@ function init() {
     const target = /** @type {HTMLInputElement} */ (e.target);
     const file = target.files?.[0];
     if (file) {
-      handleFileUpload(file, uploadStatus, schedulesContainer);
+      handleFileUpload(
+        file,
+        uploadStatus,
+        schedulesContainer,
+        moduleDescriptorsContainer,
+        schedulesHeader,
+        moduleDescriptorsHeader,
+      );
+    }
+  });
+
+  // Drag and drop handlers
+  uploadSection?.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    uploadSection.classList.add("drag-over");
+  });
+
+  uploadSection?.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    uploadSection.classList.remove("drag-over");
+  });
+
+  uploadSection?.addEventListener("drop", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    uploadSection.classList.remove("drag-over");
+
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.name.endsWith(".json")) {
+        handleFileUpload(
+          file,
+          uploadStatus,
+          schedulesContainer,
+          moduleDescriptorsContainer,
+          schedulesHeader,
+          moduleDescriptorsHeader,
+        );
+      } else {
+        uploadStatus.textContent = "✗ Please drop a JSON file";
+        uploadStatus.className = "error";
+      }
     }
   });
 }
