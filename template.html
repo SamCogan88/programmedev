@@ -105,40 +105,81 @@
         border-bottom: 2pt solid #2e75b6;
         padding-bottom: 4pt;
       }
-      table.module-descriptor {
-        margin-bottom: 20pt;
-        width: 100%;
-        table-layout: fixed;
+      /* Module Descriptor Tables */
+      .module-table,
+      .staff-table,
+      .assessment-table,
+      .mimlo-table,
+      .summative-table,
+      .content-table {
+        width: 900px;
+        max-width: 100%;
+        border-collapse: collapse;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 13px;
+        color: #111;
+        margin-bottom: 15pt;
+        background-color: white;
       }
-      table.module-descriptor td {
+      .module-table th,
+      .module-table td,
+      .staff-table th,
+      .staff-table td,
+      .assessment-table th,
+      .assessment-table td,
+      .mimlo-table th,
+      .mimlo-table td,
+      .summative-table th,
+      .summative-table td,
+      .content-table th,
+      .content-table td {
+        border: 1px solid #333;
+        padding: 6px 8px;
+        vertical-align: middle;
+      }
+      .mimlo-table th,
+      .mimlo-table td,
+      .summative-table th,
+      .summative-table td,
+      .content-table td {
         vertical-align: top;
-        padding: 4pt;
-        border: 1pt solid #000;
       }
-      table.module-descriptor .section-header {
-        background-color: #e7e6e6;
-        font-weight: normal;
+      .title-row th {
+        background: #e6e6e6;
+        font-weight: 700;
+        font-size: 14px;
+        text-align: left;
       }
-      table.module-descriptor .section-subheader {
-        background-color: #e7e6e6;
-        font-weight: bold;
+      .note {
+        font-weight: 400;
+        font-style: italic;
+        font-size: 11px;
       }
-      table.module-descriptor .subsection-header {
-        background-color: #f2f2f2;
-        font-weight: bold;
+      .hdr {
+        background: #d9e2f3;
+        font-weight: 700;
       }
-      table.module-descriptor .label-cell {
-        background-color: #d9e2f3;
-        font-weight: bold;
+      .subhdr {
+        background: #ffffff;
+        font-weight: 700;
       }
-      table.module-descriptor .data-cell {
-        background-color: #ffffff;
+      .grey {
+        background: #e6e6e6;
+        font-weight: 700;
       }
-      table.module-descriptor .modality-label {
-        background-color: #ffffff;
+      .blue {
+        background: #d9e2f3;
+        font-weight: 700;
       }
-      table.module-descriptor .content-area {
-        min-height: 50pt;
+      .center {
+        text-align: center;
+      }
+      .tight {
+        padding-top: 4px;
+        padding-bottom: 4px;
+      }
+      .content-area {
+        min-height: 60px;
       }
       .placeholder-text {
         color: #666;
