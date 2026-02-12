@@ -76,12 +76,28 @@
       .checked::after {
         content: " ✔";
       }
-      #schedules-container {
+      #schedules-container,
+      #module-descriptors-container {
         max-width: 260mm; /* A4 landscape width */
       }
       .page-break {
         page-break-after: always;
         margin-top: 30pt;
+      }
+      .section-title {
+        color: #2e75b6;
+        font-size: 14pt;
+        font-weight: bold;
+        margin-top: 20pt;
+        margin-bottom: 10pt;
+        border-bottom: 2pt solid #2e75b6;
+        padding-bottom: 4pt;
+      }
+      table.module-descriptor {
+        margin-bottom: 20pt;
+      }
+      table.module-descriptor td {
+        vertical-align: top;
       }
       .vertical-header {
         vertical-align: middle;
@@ -311,6 +327,11 @@
           <td colspan="2" class="empty-data"></td>
         </tr>
       </table>
+    </div>
+
+    <!-- Section 7: Module Descriptors -->
+    <div id="module-descriptors-container">
+      <!-- Module descriptor tables will be rendered here -->
     </div>
 
     <!-- NOTES -->
