@@ -13,7 +13,7 @@
  * @returns {any} The migrated programme data at current schema version
  */
 export function migrateProgramme(data) {
-  const currentVersion = 3;
+  const currentVersion = 4;
   const dataVersion = data.schemaVersion || 1;
 
   if (dataVersion === currentVersion) {
@@ -29,6 +29,10 @@ export function migrateProgramme(data) {
 
   if (dataVersion < 3) {
     migrated = migrateV2toV3(migrated);
+  }
+
+  if (dataVersion < 4) {
+    migrated = migrateV3toV4(migrated);
   }
 
   return migrated;
@@ -409,4 +413,61 @@ export function getDescriptor(standard, nfqLevel, criteria, thread) {
 
   const indicator = group.indicators.find((/** @type {any} */ i) => i.name === thread);
   return indicator?.descriptor || "";
+}
+
+/**
+ * Migrates programme data from schema v3 to v4.
+ * Converts ploToModules (PLO → Module mapping) to ploToMimlos (PLO → MIMLO mapping).
+ * When a module was mapped to a PLO, all MIMLOs of that module become mapped.
+ *
+ * @param {any} data - The v3 programme data
+ * @returns {any} The migrated v4 programme data
+ * @private
+ */
+function migrateV3toV4(data) {
+  console.log("Migrating programme from schema v3 to v4");
+
+  const migrated = {
+    ...data,
+    schemaVersion: 4,
+  };
+
+  // Convert ploToModules to ploToMimlos
+  if (migrated.ploToModules && typeof migrated.ploToModules === "object") {
+    /** @type {Record<string, string[]>} */
+    const ploToMimlos = {};
+    const modules = migrated.modules ?? [];
+
+    Object.entries(migrated.ploToModules).forEach(([ploId, moduleIds]) => {
+      /** @type {string[]} */
+      const mimloIds = [];
+
+      (moduleIds ?? []).forEach((/** @type {string} */ moduleId) => {
+        const mod = modules.find((/** @type {any} */ m) => m.id === moduleId);
+        if (mod && Array.isArray(mod.mimlos)) {
+          mod.mimlos.forEach((/** @type {any} */ mimlo) => {
+            if (mimlo.id && !mimloIds.includes(mimlo.id)) {
+              mimloIds.push(mimlo.id);
+            }
+          });
+        }
+      });
+
+      if (mimloIds.length > 0) {
+        ploToMimlos[ploId] = mimloIds;
+      }
+    });
+
+    migrated.ploToMimlos = ploToMimlos;
+    delete migrated.ploToModules;
+  }
+
+  // Initialize ploToMimlos if not present
+  if (!migrated.ploToMimlos) {
+    migrated.ploToMimlos = {};
+  }
+
+  migrated.updatedAt = new Date().toISOString();
+
+  return migrated;
 }
