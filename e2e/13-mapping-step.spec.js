@@ -125,9 +125,9 @@ test.describe("Step 12: PLO to MIMLO Mapping", () => {
   test("should display modules with MIMLO count badges", async ({ page }) => {
     // Should show module names with MIMLO count
     await expect(page.getByText("MOD1", { exact: false }).first()).toBeVisible();
-    // Should show "X MIMLOs" button to expand
-    const mimloButtons = page.locator('button:has-text("MIMLOs")');
-    expect(await mimloButtons.count()).toBeGreaterThan(0);
+    // Should show "X / N selected" badges for modules with MIMLOs
+    const mimboBadges = page.locator('.badge:has-text("selected")');
+    expect(await mimboBadges.count()).toBeGreaterThan(0);
   });
 
   test("should allow mapping PLO to all MIMLOs via module checkbox", async ({ page }) => {
@@ -147,10 +147,10 @@ test.describe("Step 12: PLO to MIMLO Mapping", () => {
   });
 
   test("should expand module to show individual MIMLO checkboxes", async ({ page }) => {
-    // Click the MIMLOs expand button
-    const expandBtn = page.locator('button:has-text("MIMLOs")').first();
-    if (await expandBtn.isVisible()) {
-      await expandBtn.click();
+    // Click the module name span to expand (it has data-bs-toggle="collapse")
+    const moduleNameSpan = page.locator('.module-mapping-group span.flex-grow-1[data-bs-toggle="collapse"]').first();
+    if (await moduleNameSpan.isVisible()) {
+      await moduleNameSpan.click();
       await page.waitForTimeout(300);
 
       // Should now see individual MIMLO checkboxes
@@ -160,10 +160,10 @@ test.describe("Step 12: PLO to MIMLO Mapping", () => {
   });
 
   test("should allow mapping individual MIMLOs", async ({ page }) => {
-    // Expand MIMLOs
-    const expandBtn = page.locator('button:has-text("MIMLOs")').first();
-    if (await expandBtn.isVisible()) {
-      await expandBtn.click();
+    // Expand MIMLOs by clicking the module name span
+    const moduleNameSpan = page.locator('.module-mapping-group span.flex-grow-1[data-bs-toggle="collapse"]').first();
+    if (await moduleNameSpan.isVisible()) {
+      await moduleNameSpan.click();
       await page.waitForTimeout(300);
     }
 
@@ -180,10 +180,10 @@ test.describe("Step 12: PLO to MIMLO Mapping", () => {
   });
 
   test("should show indeterminate state when some MIMLOs selected", async ({ page }) => {
-    // Expand MIMLOs
-    const expandBtn = page.locator('button:has-text("MIMLOs")').first();
-    if (await expandBtn.isVisible()) {
-      await expandBtn.click();
+    // Expand MIMLOs by clicking the module name span
+    const moduleNameSpan = page.locator('.module-mapping-group span.flex-grow-1[data-bs-toggle="collapse"]').first();
+    if (await moduleNameSpan.isVisible()) {
+      await moduleNameSpan.click();
       await page.waitForTimeout(300);
     }
 
@@ -202,10 +202,10 @@ test.describe("Step 12: PLO to MIMLO Mapping", () => {
   });
 
   test("checking module checkbox should check all MIMLOs", async ({ page }) => {
-    // First expand MIMLOs to see them
-    const expandBtn = page.locator('button:has-text("MIMLOs")').first();
-    if (await expandBtn.isVisible()) {
-      await expandBtn.click();
+    // First expand MIMLOs by clicking the module name span
+    const moduleNameSpan = page.locator('.module-mapping-group span.flex-grow-1[data-bs-toggle="collapse"]').first();
+    if (await moduleNameSpan.isVisible()) {
+      await moduleNameSpan.click();
       await page.waitForTimeout(300);
     }
 
@@ -228,10 +228,10 @@ test.describe("Step 12: PLO to MIMLO Mapping", () => {
   });
 
   test("unchecking module checkbox should uncheck all MIMLOs", async ({ page }) => {
-    // Expand MIMLOs
-    const expandBtn = page.locator('button:has-text("MIMLOs")').first();
-    if (await expandBtn.isVisible()) {
-      await expandBtn.click();
+    // Expand MIMLOs by clicking the module name span
+    const moduleNameSpan = page.locator('.module-mapping-group span.flex-grow-1[data-bs-toggle="collapse"]').first();
+    if (await moduleNameSpan.isVisible()) {
+      await moduleNameSpan.click();
       await page.waitForTimeout(300);
     }
 
