@@ -104,7 +104,15 @@
     },
     "ploToModules": {
       "type": "object",
-      "description": "Mapping of PLO IDs to arrays of module IDs",
+      "description": "DEPRECATED: Mapping of PLO IDs to arrays of module IDs. Use ploToMimlos instead.",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "ploToMimlos": {
+      "type": "object",
+      "description": "Mapping of PLO IDs to arrays of MIMLO IDs",
       "additionalProperties": {
         "type": "array",
         "items": { "type": "string" }
