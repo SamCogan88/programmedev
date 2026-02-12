@@ -172,6 +172,6 @@ test.describe("Step 13: Traceability Chain", () => {
     expect(data.plos.length).toBeGreaterThan(0);
     expect(data.modules.length).toBeGreaterThan(0);
     expect(data.modules[0].mimlos?.length || 0).toBeGreaterThan(0);
-    expect(Object.keys(data.ploToModules || {}).length).toBeGreaterThan(0);
+    expect(Object.keys(data.ploToMimlos || {}).length).toBeGreaterThan(0);
   });
 });
