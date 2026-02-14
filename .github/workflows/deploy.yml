@@ -11,6 +11,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  checks: write
 
 concurrency:
   group: "pages"
@@ -25,17 +26,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "lts/*"
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build application
-        run: npm run build -- --base=/programmedev/
+      - name: Build and run unit tests
+        uses: ./.github/actions/build-and-test
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4

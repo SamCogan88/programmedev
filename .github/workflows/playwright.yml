@@ -1,4 +1,4 @@
-name: Playwright Tests
+name: Build and Test
 
 env:
   VITE_PORT: 5173
@@ -14,9 +14,21 @@ permissions:
   pull-requests: write
 
 jobs:
-  test:
+  build-and-unit-test:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Build and run unit tests
+        uses: ./.github/actions/build-and-test
+
+  e2e-test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    needs: build-and-unit-test
 
     steps:
       - name: Checkout code
