@@ -25,8 +25,12 @@ import {
   SCHOOL_OPTIONS,
   getAwardStandard,
   getAwardStandards,
+  state,
 } from "../../../state/store.js";
 import { uid } from "../../../utils/uid.js";
+import { validateProgramme } from "../../../utils/validation.js";
+import { renderFlags } from "../../flags.js";
+import { renderHeader } from "../../header.js";
 
 // ============================================================================
 // Types
@@ -328,6 +332,17 @@ export const IdentityStep: React.FC = () => {
     new Set([programme.electiveDefinitions?.[0]?.id ?? ""].filter(Boolean)),
   );
 
+  // Helper to update flags and header without full re-render
+  const updateFlagsAndHeader = useCallback(() => {
+    const flags = validateProgramme(state.programme);
+    renderFlags(flags, () => {
+      // Navigate to step when flag is clicked - trigger global render
+      const win = window as Window & { render?: () => void | Promise<void> };
+      win.render?.();
+    });
+    renderHeader();
+  }, []);
+
   // Load award standards on mount
   useEffect(() => {
     if (!standardsLoaded) {
@@ -349,9 +364,14 @@ export const IdentityStep: React.FC = () => {
   const handleTitleChange = useCallback(
     (value: string) => {
       updateProgramme({ title: value });
-      saveDebounced();
+      // Update the legacy header title
+      const titleNav = document.getElementById("programmeTitleNav");
+      if (titleNav) {
+        titleNav.textContent = value.trim() || "New Programme (Draft)";
+      }
+      saveDebounced(updateFlagsAndHeader);
     },
-    [updateProgramme, saveDebounced],
+    [updateProgramme, saveDebounced, updateFlagsAndHeader],
   );
 
   const handleAwardTypeChange = useCallback(
@@ -361,43 +381,43 @@ export const IdentityStep: React.FC = () => {
       } else {
         updateProgramme({ awardTypeIsOther: false, awardType: value });
       }
-      saveDebounced();
+      saveDebounced(updateFlagsAndHeader);
     },
-    [updateProgramme, saveDebounced],
+    [updateProgramme, saveDebounced, updateFlagsAndHeader],
   );
 
   const handleAwardOtherChange = useCallback(
     (value: string) => {
       if (programme.awardTypeIsOther) {
         updateProgramme({ awardType: value });
-        saveDebounced();
+        saveDebounced(updateFlagsAndHeader);
       }
     },
-    [programme.awardTypeIsOther, updateProgramme, saveDebounced],
+    [programme.awardTypeIsOther, updateProgramme, saveDebounced, updateFlagsAndHeader],
   );
 
   const handleNfqLevelChange = useCallback(
     (value: string) => {
       updateProgramme({ nfqLevel: value ? Number(value) : null });
-      saveDebounced();
+      saveDebounced(updateFlagsAndHeader);
     },
-    [updateProgramme, saveDebounced],
+    [updateProgramme, saveDebounced, updateFlagsAndHeader],
   );
 
   const handleTotalCreditsChange = useCallback(
     (value: string) => {
       updateProgramme({ totalCredits: Number(value) || 0 });
-      saveDebounced();
+      saveDebounced(updateFlagsAndHeader);
     },
-    [updateProgramme, saveDebounced],
+    [updateProgramme, saveDebounced, updateFlagsAndHeader],
   );
 
   const handleSchoolChange = useCallback(
     (value: string) => {
       updateProgramme({ school: value });
-      saveDebounced();
+      saveDebounced(updateFlagsAndHeader);
     },
-    [updateProgramme, saveDebounced],
+    [updateProgramme, saveDebounced, updateFlagsAndHeader],
   );
 
   const handleIntakeChange = useCallback(
@@ -407,9 +427,9 @@ export const IdentityStep: React.FC = () => {
         .map((s) => s.trim())
         .filter(Boolean);
       updateProgramme({ intakeMonths: months });
-      saveDebounced();
+      saveDebounced(updateFlagsAndHeader);
     },
-    [updateProgramme, saveDebounced],
+    [updateProgramme, saveDebounced, updateFlagsAndHeader],
   );
 
   // ============================================================================
@@ -438,9 +458,15 @@ export const IdentityStep: React.FC = () => {
         awardStandardIds: newIds.filter(Boolean),
         awardStandardNames: newNames.filter(Boolean),
       });
-      saveDebounced();
+      saveDebounced(updateFlagsAndHeader);
     },
-    [programme.awardStandardIds, programme.awardStandardNames, updateProgramme, saveDebounced],
+    [
+      programme.awardStandardIds,
+      programme.awardStandardNames,
+      updateProgramme,
+      saveDebounced,
+      updateFlagsAndHeader,
+    ],
   );
 
   const handleRemoveStandard = useCallback(
@@ -453,9 +479,15 @@ export const IdentityStep: React.FC = () => {
         awardStandardIds: newIds,
         awardStandardNames: newNames,
       });
-      saveDebounced();
+      saveDebounced(updateFlagsAndHeader);
     },
-    [programme.awardStandardIds, programme.awardStandardNames, updateProgramme, saveDebounced],
+    [
+      programme.awardStandardIds,
+      programme.awardStandardNames,
+      updateProgramme,
+      saveDebounced,
+      updateFlagsAndHeader,
+    ],
   );
 
   // ============================================================================
