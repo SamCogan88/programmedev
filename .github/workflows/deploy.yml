@@ -11,6 +11,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  checks: write
 
 concurrency:
   group: "pages"
@@ -36,6 +37,17 @@ jobs:
 
       - name: Build application
         run: npm run build -- --base=/programmedev/
+
+      - name: Test application
+        run: npx vitest run --reporter=default --reporter=junit --outputFile.junit=test-results.xml
+
+      - name: Upload test results
+        uses: dorny/test-reporter@v2
+        if: always()
+        with:
+          name: Unit Tests
+          path: test-results.xml
+          reporter: java-junit
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
