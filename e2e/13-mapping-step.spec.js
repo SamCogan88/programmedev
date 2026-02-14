@@ -148,7 +148,9 @@ test.describe("Step 12: PLO to MIMLO Mapping", () => {
 
   test("should expand module to show individual MIMLO checkboxes", async ({ page }) => {
     // Click the module name span to expand (it has data-bs-toggle="collapse")
-    const moduleNameSpan = page.locator('.module-mapping-group span.flex-grow-1[data-bs-toggle="collapse"]').first();
+    const moduleNameSpan = page
+      .locator('.module-mapping-group span.flex-grow-1[data-bs-toggle="collapse"]')
+      .first();
     if (await moduleNameSpan.isVisible()) {
       await moduleNameSpan.click();
       await page.waitForTimeout(300);
@@ -161,7 +163,9 @@ test.describe("Step 12: PLO to MIMLO Mapping", () => {
 
   test("should allow mapping individual MIMLOs", async ({ page }) => {
     // Expand MIMLOs by clicking the module name span
-    const moduleNameSpan = page.locator('.module-mapping-group span.flex-grow-1[data-bs-toggle="collapse"]').first();
+    const moduleNameSpan = page
+      .locator('.module-mapping-group span.flex-grow-1[data-bs-toggle="collapse"]')
+      .first();
     if (await moduleNameSpan.isVisible()) {
       await moduleNameSpan.click();
       await page.waitForTimeout(300);
@@ -181,7 +185,9 @@ test.describe("Step 12: PLO to MIMLO Mapping", () => {
 
   test("should show indeterminate state when some MIMLOs selected", async ({ page }) => {
     // Expand MIMLOs by clicking the module name span
-    const moduleNameSpan = page.locator('.module-mapping-group span.flex-grow-1[data-bs-toggle="collapse"]').first();
+    const moduleNameSpan = page
+      .locator('.module-mapping-group span.flex-grow-1[data-bs-toggle="collapse"]')
+      .first();
     if (await moduleNameSpan.isVisible()) {
       await moduleNameSpan.click();
       await page.waitForTimeout(300);
@@ -203,7 +209,9 @@ test.describe("Step 12: PLO to MIMLO Mapping", () => {
 
   test("checking module checkbox should check all MIMLOs", async ({ page }) => {
     // First expand MIMLOs by clicking the module name span
-    const moduleNameSpan = page.locator('.module-mapping-group span.flex-grow-1[data-bs-toggle="collapse"]').first();
+    const moduleNameSpan = page
+      .locator('.module-mapping-group span.flex-grow-1[data-bs-toggle="collapse"]')
+      .first();
     if (await moduleNameSpan.isVisible()) {
       await moduleNameSpan.click();
       await page.waitForTimeout(300);
@@ -229,7 +237,9 @@ test.describe("Step 12: PLO to MIMLO Mapping", () => {
 
   test("unchecking module checkbox should uncheck all MIMLOs", async ({ page }) => {
     // Expand MIMLOs by clicking the module name span
-    const moduleNameSpan = page.locator('.module-mapping-group span.flex-grow-1[data-bs-toggle="collapse"]').first();
+    const moduleNameSpan = page
+      .locator('.module-mapping-group span.flex-grow-1[data-bs-toggle="collapse"]')
+      .first();
     if (await moduleNameSpan.isVisible()) {
       await moduleNameSpan.click();
       await page.waitForTimeout(300);

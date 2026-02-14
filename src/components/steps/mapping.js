@@ -151,7 +151,9 @@ export function renderMappingStep() {
           const hasMimlos = moduleMimlos.length > 0;
 
           // Count selected MIMLOs for this module
-          const selectedCount = moduleMimlos.filter((mimlo) => mappedMimloIds.includes(mimlo.id)).length;
+          const selectedCount = moduleMimlos.filter((mimlo) =>
+            mappedMimloIds.includes(mimlo.id),
+          ).length;
           const totalCount = moduleMimlos.length;
 
           // Make the module name clickable to expand/collapse if it has MIMLOs
