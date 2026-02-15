@@ -5,7 +5,7 @@
  * @module template
  */
 
-import { downloadScheduleDocx } from "./export/schedule-docx.js";
+import { downloadScheduleDocx } from "./export/schedule-docx";
 import { renderAllModuleDescriptors } from "./template/module-descriptors-html";
 import { renderAllSchedules } from "./template/schedule-html";
 
