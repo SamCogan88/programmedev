@@ -191,8 +191,8 @@ test.describe("Step 3: Programme Versions", () => {
     await page.getByTestId("add-version-btn").click();
     await page.waitForTimeout(300);
 
-    // Expand all
-    const expandAllBtn = page.locator('[data-accordion-expand-all="versionsAccordion"]');
+    // Expand all using data-testid
+    const expandAllBtn = page.getByTestId("accordion-expand-all");
     await expect(expandAllBtn).toBeVisible();
     await expect(page.locator("#versionsAccordion .accordion-item").nth(1)).toBeVisible();
     await expandAllBtn.click();
@@ -202,7 +202,7 @@ test.describe("Step 3: Programme Versions", () => {
     expect(beforeOpenIds.length).toBeGreaterThanOrEqual(2);
 
     // Change proctor select for first version to trigger render
-    const proctorSel = page.locator('select[id^="vproctor_"]').first();
+    const proctorSel = page.getByTestId(/^version-proctor-/).first();
     await expect(proctorSel).toBeVisible();
     await proctorSel.selectOption("YES");
     await page.waitForTimeout(400);
