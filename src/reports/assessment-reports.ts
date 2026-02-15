@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Assessment reports module.
  * Generates HTML reports analyzing assessment distribution across modules and stages.
@@ -6,58 +5,50 @@
  */
 
 import { escapeHtml } from "../utils/dom";
-import { formatPct } from "../utils/helpers";
-import { ensureMimloObjects } from "../utils/helpers";
+import { formatPct, ensureMimloObjects } from "../utils/helpers";
 
 /** Available assessment report types */
 export const ASSESSMENT_REPORT_TYPES = [
   { id: "byStageType", label: "By stage: assessment types + weighting" },
   { id: "byModule", label: "By module: assessment types + weighting" },
   { id: "coverage", label: "MIMLO coverage (unassessed outcomes)" },
-];
+] as const;
 
 /**
  * Finds a programme version by ID.
  *
- * @param {Programme} p - The programme data
- * @param {string} versionId - The version ID to find
- * @returns {ProgrammeVersion|null} The matching version or first version
- * @private
+ * @param p - The programme data
+ * @param versionId - The version ID to find
+ * @returns The matching version or first version
  */
-function getVersionById(p, versionId) {
-  return (
-    (p.versions ?? []).find((/** @type {ProgrammeVersion} */ v) => v.id === versionId) ??
-    (p.versions ?? [])[0] ??
-    null
-  );
+function getVersionById(p: Programme, versionId: string): ProgrammeVersion | null {
+  return (p.versions ?? []).find((v) => v.id === versionId) ?? (p.versions ?? [])[0] ?? null;
 }
 
 /**
  * Generates a report showing assessment distribution by stage and type.
  *
- * @param {Programme} p - The programme data
- * @param {string} versionId - The version ID to report on
- * @returns {string} HTML string containing the report table
+ * @param p - The programme data
+ * @param versionId - The version ID to report on
+ * @returns HTML string containing the report table
  */
-export function reportByStageType(p, versionId) {
+export function reportByStageType(p: Programme, versionId: string): string {
   const v = getVersionById(p, versionId);
   if (!v) {
     return `<div class="alert alert-warning mb-0">No versions found.</div>`;
   }
 
-  const modMap = new Map((p.modules ?? []).map((/** @type {Module} */ m) => [m.id, m]));
+  const modMap = new Map((p.modules ?? []).map((m) => [m.id, m]));
 
-  /** @type {string[]} */
-  const stageAgg = [];
-  (v.stages ?? []).forEach((/** @type {Stage} */ stg) => {
-    /** @type {Map<string, {weight: number, count: number}>} */
-    const typeMap = new Map();
-    (stg.modules ?? []).forEach((/** @type {any} */ ref) => {
+  const stageAgg: string[] = [];
+  (v.stages ?? []).forEach((stg) => {
+    const typeMap = new Map<string, { weight: number; count: number }>();
+    (stg.modules ?? []).forEach((ref) => {
       const m = modMap.get(ref.moduleId);
       if (!m) {
         return;
       }
-      (m.assessments ?? []).forEach((/** @type {ModuleAssessment} */ a) => {
+      (m.assessments ?? []).forEach((a) => {
         const t = a.type || "Unspecified";
         const rec = typeMap.get(t) ?? { weight: 0, count: 0 };
         rec.weight += Number(a.weighting ?? 0);
@@ -107,16 +98,16 @@ export function reportByStageType(p, versionId) {
 
 /**
  * Report: By module
- * @param {Programme} p - The programme data
- * @returns {string} HTML string containing the report
+ *
+ * @param p - The programme data
+ * @returns HTML string containing the report
  */
-export function reportByModule(p) {
+export function reportByModule(p: Programme): string {
   const rows =
     (p.modules ?? [])
-      .map((/** @type {Module} */ m) => {
-        /** @type {Map<string, {weight: number, count: number}>} */
-        const typeMap = new Map();
-        (m.assessments ?? []).forEach((/** @type {ModuleAssessment} */ a) => {
+      .map((m) => {
+        const typeMap = new Map<string, { weight: number; count: number }>();
+        (m.assessments ?? []).forEach((a) => {
           const t = a.type || "Unspecified";
           const rec = typeMap.get(t) ?? { weight: 0, count: 0 };
           rec.weight += Number(a.weighting ?? 0);
@@ -162,21 +153,19 @@ export function reportByModule(p) {
 
 /**
  * Report: MIMLO coverage (unassessed outcomes)
- * @param {Programme} p - The programme data
- * @returns {string} HTML string containing the report
+ *
+ * @param p - The programme data
+ * @returns HTML string containing the report
  */
-export function reportCoverage(p) {
+export function reportCoverage(p: Programme): string {
   const items = (p.modules ?? [])
-    .map((/** @type {Module} */ m) => {
+    .map((m) => {
       ensureMimloObjects(m);
       const mimlos = m.mimlos ?? [];
-      /** @type {Set<string>} */
-      const assessed = new Set();
-      (m.assessments ?? []).forEach((/** @type {ModuleAssessment} */ a) =>
-        (a.mimloIds ?? []).forEach((/** @type {string} */ id) => assessed.add(id)),
-      );
+      const assessed = new Set<string>();
+      (m.assessments ?? []).forEach((a) => (a.mimloIds ?? []).forEach((id) => assessed.add(id)));
 
-      const unassessed = mimlos.filter((/** @type {any} */ mi) => !assessed.has(mi.id));
+      const unassessed = mimlos.filter((mi) => !assessed.has(mi.id));
       if (!unassessed.length) {
         return `
         <div class="card border-0 bg-white shadow-sm mb-2">
@@ -193,7 +182,7 @@ export function reportCoverage(p) {
           <div class="fw-semibold">${escapeHtml(m.code || "")} — ${escapeHtml(m.title || "")}</div>
           <div class="small text-warning mb-2">Unassessed MIMLOs (${unassessed.length}):</div>
           <ul class="small mb-0">
-            ${unassessed.map((/** @type {any} */ mi) => `<li>${escapeHtml(mi.text || "")}</li>`).join("")}
+            ${unassessed.map((mi) => `<li>${escapeHtml(mi.text || "")}</li>`).join("")}
           </ul>
         </div>
       </div>
@@ -205,13 +194,18 @@ export function reportCoverage(p) {
 }
 
 /**
- * Build report HTML based on type
- * @param {Programme} p - The programme data
- * @param {string} reportId - The report type ID
- * @param {string} versionId - The version ID
- * @returns {string} HTML string containing the report
+ * Build report HTML based on type.
+ *
+ * @param p - The programme data
+ * @param reportId - The report type ID
+ * @param versionId - The version ID
+ * @returns HTML string containing the report
  */
-export function buildAssessmentReportHtml(p, reportId, versionId) {
+export function buildAssessmentReportHtml(
+  p: Programme,
+  reportId: string,
+  versionId: string,
+): string {
   switch (reportId) {
     case "byStageType":
       return reportByStageType(p, versionId);
@@ -225,11 +219,12 @@ export function buildAssessmentReportHtml(p, reportId, versionId) {
 }
 
 /**
- * Open report in new tab
- * @param {string} html - The HTML content to display
- * @param {string} [title="Report"] - The window title
+ * Open report in new tab.
+ *
+ * @param html - The HTML content to display
+ * @param title - The window title
  */
-export function openReportInNewTab(html, title = "Report") {
+export function openReportInNewTab(html: string, title: string = "Report"): void {
   const w = window.open("", "_blank");
   if (!w) {
     alert("Popup blocked. Allow popups to open report in a new tab.");
