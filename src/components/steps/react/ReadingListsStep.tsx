@@ -17,7 +17,7 @@ import {
 } from "../../ui";
 import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
 import { editableModuleIds, getSelectedModuleId, state } from "../../../state/store.js";
-import { uid } from "../../../utils/uid.js";
+import { uid } from "../../../utils/uid";
 
 // ============================================================================
 // Types

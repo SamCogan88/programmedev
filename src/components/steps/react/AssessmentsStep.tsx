@@ -9,9 +9,9 @@ import { Badge, Button, ButtonGroup, Card, Form, Table } from "react-bootstrap";
 import { Accordion, AccordionControls, AccordionItem, Alert, HeaderAction, Icon } from "../../ui";
 import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
 import { editableModuleIds, getSelectedModuleId, state } from "../../../state/store.js";
-import { uid } from "../../../utils/uid.js";
+import { uid } from "../../../utils/uid";
 import { ensureMimloObjects, formatPct, mimloText } from "../../../utils/helpers.js";
-import { escapeHtml } from "../../../utils/dom.js";
+import { escapeHtml } from "../../../utils/dom";
 
 // ============================================================================
 // Constants
