@@ -17,7 +17,7 @@ import {
 } from "../../ui";
 import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
 import { editableModuleIds, getSelectedModuleId, state } from "../../../state/store.js";
-import { lintLearningOutcome } from "../../../lib/lo-lint.js";
+import { lintLearningOutcome } from "../../../lib/lo-lint";
 import { uid } from "../../../utils/uid";
 import { ensureMimloObjects, mimloText } from "../../../utils/helpers.js";
 

@@ -1,29 +1,60 @@
-// @ts-check
 /**
  * Learning Outcome (LO) linting and language detection.
  * Provides quality checks for learning outcome text including vague verb detection.
  * @module lib/lo-lint
  */
 
+/** A single lint issue found in a learning outcome. */
+export interface LintIssue {
+  id: string;
+  severity: string;
+  start: number;
+  end: number;
+  match: string;
+  message: string;
+  suggestions: string[];
+}
+
+/** Result of language detection. */
+export interface LanguageResult {
+  lang: string;
+  confidence: number;
+  scores: Record<string, number>;
+}
+
+/** Result of linting a single learning outcome. */
+export interface LintResult {
+  issues: LintIssue[];
+  language: LanguageResult;
+}
+
+/** Options for linting learning outcomes. */
+export interface LintOptions {
+  expectedLanguage?: string;
+  allowUnknownLanguage?: boolean;
+  language?: { minTokens?: number };
+}
+
+/** A lint rule definition. */
+interface LintRule {
+  id: string;
+  severity: string;
+  pattern: RegExp;
+  message: string;
+  suggestions: string[];
+}
+
 /**
  * Normalizes text by collapsing whitespace and trimming.
- *
- * @param {string} text - Text to normalize
- * @returns {string} Normalized text
- * @private
  */
-function normalise(text) {
+function normalise(text: string): string {
   return (text ?? "").toString().normalize("NFKC").replace(/\s+/g, " ").trim();
 }
 
 /**
  * Tokenizes text into lowercase words for analysis.
- *
- * @param {string} text - Text to tokenize
- * @returns {string[]} Array of lowercase tokens
- * @private
  */
-function tokenize(text) {
+function tokenize(text: string): string[] {
   return normalise(text)
     .toLowerCase()
     .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
@@ -33,13 +64,8 @@ function tokenize(text) {
 
 /**
  * Counts how many tokens match a set of stopwords.
- *
- * @param {string[]} tokens - Tokens to check
- * @param {Set<string>} stopwordsSet - Set of stopwords to match against
- * @returns {number} Count of matching tokens
- * @private
  */
-function countMatches(tokens, stopwordsSet) {
+function countMatches(tokens: string[], stopwordsSet: Set<string>): number {
   let score = 0;
   for (const t of tokens) {
     if (stopwordsSet.has(t)) {
@@ -51,7 +77,7 @@ function countMatches(tokens, stopwordsSet) {
 
 // ---------- language detection (heuristic) ----------
 /** Stopwords by language for heuristic language detection */
-export const LANGUAGE_STOPWORDS = {
+export const LANGUAGE_STOPWORDS: Record<string, Set<string>> = {
   en: new Set([
     "the",
     "and",
@@ -158,20 +184,17 @@ export const LANGUAGE_STOPWORDS = {
 
 /**
  * Detects the language of text using stopword frequency heuristics.
- *
- * @param {string} text - Text to analyze
- * @param {Object} [options] - Detection options
- * @param {number} [options.minTokens=6] - Minimum tokens required for detection
- * @returns {{lang: string, confidence: number, scores: Object}} Detection result
  */
-export function detectLanguage(text, { minTokens = 6 } = {}) {
+export function detectLanguage(
+  text: string,
+  { minTokens = 6 }: { minTokens?: number } = {},
+): LanguageResult {
   const tokens = tokenize(text);
   if (tokens.length < minTokens) {
     return { lang: "unknown", confidence: 0, scores: {} };
   }
 
-  /** @type {Record<string, number>} */
-  const scores = {};
+  const scores: Record<string, number> = {};
   for (const [lang, sw] of Object.entries(LANGUAGE_STOPWORDS)) {
     scores[lang] = countMatches(tokens, sw);
   }
@@ -191,7 +214,7 @@ export function detectLanguage(text, { minTokens = 6 } = {}) {
 
 // ---------- LO wording lint ----------
 /** Lint rules for detecting vague or non-measurable language in learning outcomes */
-export const LO_LINT_RULES = [
+export const LO_LINT_RULES: LintRule[] = [
   {
     id: "vague_understand",
     severity: "warn",
@@ -225,18 +248,10 @@ export const LO_LINT_RULES = [
 /**
  * Lints a single learning outcome for quality issues.
  * Checks for vague verbs, language consistency, and measurability.
- *
- * @param {string} text - Learning outcome text to lint
- * @param {Object} [opts] - Linting options
- * @param {string} [opts.expectedLanguage="en"] - Expected language code
- * @param {boolean} [opts.allowUnknownLanguage=true] - Allow unknown language without warning
- * @param {Object} [opts.language] - Language detection options
- * @returns {{issues: any[], language: Object}} Lint result with issues and language detection
  */
-export function lintLearningOutcome(text, opts = {}) {
+export function lintLearningOutcome(text: string, opts: LintOptions = {}): LintResult {
   const t = normalise(text);
-  /** @type {any[]} */
-  const issues = [];
+  const issues: LintIssue[] = [];
 
   if (!t) {
     return { issues, language: { lang: "unknown", confidence: 0, scores: {} } };
@@ -295,12 +310,11 @@ export function lintLearningOutcome(text, opts = {}) {
 
 /**
  * Lints multiple learning outcomes.
- *
- * @param {string[]} outcomes - Array of learning outcome texts
- * @param {Object} [opts] - Linting options (passed to lintLearningOutcome)
- * @returns {Array<{index: number, text: string, issues: any[], language: Object}>} Array of lint results
  */
-export function lintLearningOutcomes(outcomes, opts = {}) {
+export function lintLearningOutcomes(
+  outcomes: string[],
+  opts: LintOptions = {},
+): Array<{ index: number; text: string } & LintResult> {
   return (outcomes ?? []).map((loText, idx) => ({
     index: idx,
     text: loText,

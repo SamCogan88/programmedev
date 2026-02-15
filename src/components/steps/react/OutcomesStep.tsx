@@ -23,7 +23,7 @@ import {
   getThreadList,
   state,
 } from "../../../state/store.js";
-import { lintLearningOutcome } from "../../../lib/lo-lint.js";
+import { lintLearningOutcome } from "../../../lib/lo-lint";
 import { uid } from "../../../utils/uid";
 
 // ============================================================================
