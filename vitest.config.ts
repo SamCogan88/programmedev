@@ -24,7 +24,7 @@ export default defineConfig({
         "src/test/**",
         "src/**/*.d.ts",
         "src/main.js",
-        "src/template.js",
+        "src/template.ts",
       ],
       thresholds: {
         statements: 90,
