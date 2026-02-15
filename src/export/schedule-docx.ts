@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Programme Schedule DOCX export using docx.js library.
  * Generates Word documents with proper vertical text headers.
@@ -26,19 +25,17 @@ const HEADER_SHADING = "D9E1F2";
 const LABEL_SHADING = "E7E6E6";
 const SUBTLE_SHADING = "F2F2F2";
 
-/**
- * Creates a table cell with common styling.
- * @param {string} text - Cell text
- * @param {Object} [opts] - Options
- * @param {number} [opts.columnSpan] - Column span
- * @param {string} [opts.shading] - Background color hex
- * @param {boolean} [opts.bold] - Bold text
- * @param {boolean} [opts.vertical] - Vertical text
- * @param {boolean} [opts.small] - Smaller font
- * @param {number} [opts.width] - Width in twips
- * @returns {TableCell}
- */
-function cell(text, opts = {}) {
+interface CellOpts {
+  columnSpan?: number;
+  shading?: string;
+  bold?: boolean;
+  vertical?: boolean;
+  small?: boolean;
+  width?: number;
+}
+
+/** Creates a table cell with common styling. */
+function cell(text: string, opts: CellOpts = {}): TableCell {
   const { columnSpan, shading, bold, vertical, small, width } = opts;
 
   return new TableCell({
@@ -70,14 +67,8 @@ function cell(text, opts = {}) {
   });
 }
 
-/**
- * Creates a table row.
- * @param {TableCell[]} cells - Cells in the row
- * @param {Object} [opts] - Options
- * @param {number} [opts.height] - Row height in twips
- * @returns {TableRow}
- */
-function row(cells, opts = {}) {
+/** Creates a table row. */
+function row(cells: TableCell[], opts: { height?: number } = {}): TableRow {
   const { height } = opts;
   return new TableRow({
     children: cells,
@@ -85,13 +76,17 @@ function row(cells, opts = {}) {
   });
 }
 
-/**
- * Determines assessment types used in a stage.
- * @param {Programme} programme - Programme data
- * @param {Stage["modules"]} stageModules - Modules in the stage
- * @returns {{continuous: boolean, invigilated: boolean, proctored: boolean, project: boolean, practical: boolean, workBased: boolean}}
- */
-function getAssessmentTypes(programme, stageModules) {
+interface AssessmentTypes {
+  continuous: boolean;
+  invigilated: boolean;
+  proctored: boolean;
+  project: boolean;
+  practical: boolean;
+  workBased: boolean;
+}
+
+/** Determines assessment types used in a stage. */
+function getAssessmentTypes(programme: Programme, stageModules: Stage["modules"]): AssessmentTypes {
   const types = {
     continuous: false,
     invigilated: false,
@@ -126,14 +121,12 @@ function getAssessmentTypes(programme, stageModules) {
   return types;
 }
 
-/**
- * Generates a schedule table for a version/stage.
- * @param {Programme} programme - Programme data
- * @param {ProgrammeVersion} version - Programme version
- * @param {Stage} stage - Stage data
- * @returns {Table}
- */
-function generateScheduleTable(programme, version, stage) {
+/** Generates a schedule table for a version/stage. */
+function generateScheduleTable(
+  programme: Programme,
+  version: ProgrammeVersion,
+  stage: Stage,
+): Table {
   const stageModules = stage.modules ?? [];
   const deliveryKey = `${version.id}_${version.deliveryModality}`;
   const dm = version.deliveryModality ?? "";
@@ -143,7 +136,7 @@ function generateScheduleTable(programme, version, stage) {
     ? stage.exitAward.awardTitle || "Exit Award Available"
     : "";
 
-  const rows = [];
+  const rows: TableRow[] = [];
 
   // Row 1: Title
   rows.push(
@@ -590,14 +583,12 @@ function generateScheduleTable(programme, version, stage) {
 
 /**
  * Generates and downloads a DOCX file for programme schedules.
- *
- * @param {Programme} data - Programme data
- * @param {string} [filename] - Output filename (default: programme-schedule.docx)
- * @returns {Promise<void>}
  */
-export async function downloadScheduleDocx(data, filename = "programme-schedule.docx") {
-  /** @type {(Table | Paragraph)[]} */
-  const children = [];
+export async function downloadScheduleDocx(
+  data: Programme,
+  filename = "programme-schedule.docx",
+): Promise<void> {
+  const children: (Table | Paragraph)[] = [];
 
   (data.versions ?? []).forEach((version, vIdx) => {
     (version.stages ?? []).forEach((stage, sIdx) => {
