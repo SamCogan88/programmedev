@@ -11,6 +11,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  checks: write
 
 concurrency:
   group: "pages"
@@ -23,10 +24,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "lts/*"
           cache: "npm"
@@ -37,8 +38,19 @@ jobs:
       - name: Build application
         run: npm run build -- --base=/programmedev/
 
+      - name: Test application
+        run: npx vitest run --reporter=default --reporter=junit --outputFile.junit=test-results.xml
+
+      - name: Upload test results
+        uses: dorny/test-reporter@v2
+        if: always()
+        with:
+          name: Unit Tests
+          path: test-results.xml
+          reporter: java-junit
+
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: "./dist"
 
