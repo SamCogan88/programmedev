@@ -1,16 +1,16 @@
 // @ts-nocheck
 import { expect, getProgrammeData, test } from "./fixtures/test-fixtures.js";
 
-// Helper: capture IDs of open Bootstrap collapse panels within an accordion
-async function getOpenCollapseIds(page, accordionId) {
-  return new Set(
-    await page.$$eval(`#${accordionId} .accordion-collapse.show`, (els) => els.map((e) => e.id)),
-  );
-}
+/**
+ * Modules step E2E tests — workflow-level coverage only.
+ *
+ * Individual field editing, add/delete, heading, button rendering,
+ * re-render stability, and credits mismatch validation are covered
+ * by unit tests in StructureStep.test.tsx and validation.test.ts.
+ */
 
 test.describe("Step 5: Credits & Modules", () => {
   test.beforeEach(async ({ page }) => {
-    // Fill Identity first to ensure localStorage is properly initialized
     await page.getByTestId("title-input").fill("Test Programme");
     await page.getByTestId("level-input").fill("8");
     await page.getByTestId("total-credits-input").fill("60");
@@ -20,77 +20,8 @@ test.describe("Step 5: Credits & Modules", () => {
     await page.waitForTimeout(300);
   });
 
-  test("should display modules section heading", async ({ page }) => {
-    await expect(page.getByRole("heading", { name: /Credits.*modules/i })).toBeVisible();
-  });
-
-  test("should show Add Module button", async ({ page }) => {
-    await expect(page.getByTestId("add-module-btn")).toBeVisible();
-  });
-
-  test("should add a new module", async ({ page }) => {
-    await page.getByTestId("add-module-btn").click();
-    await page.waitForTimeout(600); // Wait for debounced save (400ms) to complete
-
-    // Module form should appear - use testid with regex pattern
-    await expect(page.getByTestId(/^module-title-/).first()).toBeVisible();
-
-    const data = await getProgrammeData(page);
-    expect(data.modules.length).toBeGreaterThan(0);
-  });
-
-  test("should set module code", async ({ page }) => {
-    await page.getByTestId("add-module-btn").click();
-    await page.waitForTimeout(300);
-
-    // Find code input using testid regex
-    const codeInput = page.getByTestId(/^module-code-/).first();
-    await codeInput.fill("CMP8001");
-    await page.waitForTimeout(600);
-
-    const data = await getProgrammeData(page);
-    expect(data.modules[0].code).toBe("CMP8001");
-  });
-
-  test("should set module title", async ({ page }) => {
-    await page.getByTestId("add-module-btn").click();
-    await page.waitForTimeout(300);
-
-    // Find title input using testid regex
-    const titleInput = page.getByTestId(/^module-title-/).first();
-    await titleInput.fill("Software Development");
-    await page.waitForTimeout(600);
-
-    const data = await getProgrammeData(page);
-    expect(data.modules[0].title).toBe("Software Development");
-  });
-
-  test("should set module credits", async ({ page }) => {
-    await page.getByTestId("add-module-btn").click();
-    await page.waitForTimeout(300);
-
-    // Find credits input using testid regex
-    const creditsInput = page.getByTestId(/^module-credits-/).first();
-    await creditsInput.fill("10");
-    await page.waitForTimeout(600);
-
-    const data = await getProgrammeData(page);
-    expect(data.modules[0].credits).toBe(10);
-  });
-
-  test("should add multiple modules", async ({ page }) => {
-    const modulesToAdd = [
-      { code: "CMP8001", title: "Software Development", credits: "10" },
-      {
-        code: "CMP8002",
-        title: "Object Oriented Software Engineering",
-        credits: "10",
-      },
-      { code: "CMP8003", title: "Introduction to Databases", credits: "5" },
-      { code: "CMP8004", title: "Web Design", credits: "5" },
-    ];
-
-    for (let i = 0; i < modulesToAdd.length; i++) {
+  test("should add and configure multiple modules", async ({ page }) => {
+    for (let i = 0; i < 4; i++) {
       await page.getByTestId("add-module-btn").click();
       await page.waitForTimeout(200);
     }
@@ -101,115 +32,17 @@ test.describe("Step 5: Credits & Modules", () => {
     expect(data.modules.length).toBe(4);
   });
 
-  test("should delete a module", async ({ page }) => {
-    // Add module first
-    await page.getByTestId("add-module-btn").click();
-    await page.waitForTimeout(500);
-
-    // Click Remove button using testid regex
-    await page
-      .getByTestId(/^remove-module-/)
-      .first()
-      .click();
-    await page.waitForTimeout(500);
-
-    const data = await getProgrammeData(page);
-    expect(data.modules.length).toBe(0);
-  });
-
-  test("should show credits sum", async ({ page }) => {
-    // Set programme credits first
-    await page.getByTestId("step-identity").click();
-    await page.waitForTimeout(200);
-    await page.getByTestId("total-credits-input").fill("60");
-    await page.waitForTimeout(300);
-
-    // Go back to modules
-    await page.getByTestId("step-structure").click();
-    await page.waitForTimeout(300);
-
-    // Add modules
+  test("should show credits sum and mismatch warning (cross-component)", async ({ page }) => {
     await page.getByTestId("add-module-btn").click();
     await page.waitForTimeout(200);
 
-    // Use testid regex for credits input
     const creditsInput = page.getByTestId(/^module-credits-/).first();
     await creditsInput.fill("30");
     await page.waitForTimeout(600);
 
-    // Verify the total programme credits field shows the value from Identity
+    // Verify total credits display from Identity step
     await expect(page.getByTestId("total-credits-display")).toHaveValue("60");
-
-    // Verify module credits field has the value we entered
-    await expect(creditsInput).toHaveValue("30");
-  });
-
-  test("should validate credits mismatch", async ({ page }) => {
-    // Set programme credits
-    await page.getByTestId("step-identity").click();
-    await page.waitForTimeout(200);
-    await page.getByTestId("total-credits-input").fill("60");
-    await page.waitForTimeout(300);
-
-    // Add module with wrong credits
-    await page.getByTestId("step-structure").click();
-    await page.waitForTimeout(200);
-    await page.getByTestId("add-module-btn").click();
-    await page.waitForTimeout(200);
-
-    // Use testid regex for credits input
-    const creditsInput = page.getByTestId(/^module-credits-/).first();
-    await creditsInput.fill("30");
-    await page.waitForTimeout(600);
-
-    // Should show mismatch error in flags
+    // Should show mismatch in flags
     await expect(page.getByText("mismatch")).toBeVisible();
-  });
-
-  test("keeps open module panels after add module (re-render)", async ({ page }) => {
-    // Ensure at least two modules exist
-    await page.getByTestId("add-module-btn").click();
-    await page.waitForTimeout(300);
-    await page.getByTestId("add-module-btn").click();
-    await page.waitForTimeout(600);
-
-    // Open first two module accordions
-    const headers = page.locator("#modulesAccordion .accordion-button");
-    for (let i = 0; i < Math.min(await headers.count(), 2); i++) {
-      const expanded = await headers.nth(i).getAttribute("aria-expanded");
-      if (expanded !== "true") {
-        await headers.nth(i).click();
-      }
-    }
-
-    const before = await getOpenCollapseIds(page, "modulesAccordion");
-
-    // Trigger re-render by adding a module
-    await page.getByTestId("add-module-btn").click();
-    await page.waitForTimeout(600);
-
-    const after = await getOpenCollapseIds(page, "modulesAccordion");
-    // Previously open panels should remain open
-    before.forEach((id) => expect(after.has(id)).toBeTruthy());
-  });
-});
-
-test.describe("Step 5: Module Details", () => {
-  test("should expand module to show details", async ({ page }) => {
-    await page.getByTestId("step-structure").click();
-    await page.waitForTimeout(200);
-
-    await page.getByTestId("add-module-btn").click();
-    await page.waitForTimeout(300);
-
-    // Look for expand/accordion toggle
-    const expandBtn = page
-      .locator('button:has-text("▼"), button:has-text("Expand"), [data-bs-toggle="collapse"]')
-      .first();
-
-    if (await expandBtn.isVisible()) {
-      await expandBtn.click();
-      await page.waitForTimeout(300);
-    }
   });
 });
