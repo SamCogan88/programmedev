@@ -4,7 +4,7 @@
  * @module utils/helpers
  */
 
-import { escapeHtml } from "./dom.js";
+import { escapeHtml } from "./dom";
 
 /**
  * Formats a numeric value as a percentage string with the "%" suffix.

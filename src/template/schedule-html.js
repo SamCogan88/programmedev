@@ -5,7 +5,7 @@
  * @module template/schedule-html
  */
 
-import { escapeHtml } from "../utils/dom.js";
+import { escapeHtml } from "../utils/dom";
 
 /**
  * Determines assessment types used in a stage.

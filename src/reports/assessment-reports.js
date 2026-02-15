@@ -5,7 +5,7 @@
  * @module reports/assessment-reports
  */
 
-import { escapeHtml } from "../utils/dom.js";
+import { escapeHtml } from "../utils/dom";
 import { formatPct } from "../utils/helpers.js";
 import { ensureMimloObjects } from "../utils/helpers.js";
 

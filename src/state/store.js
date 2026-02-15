@@ -7,7 +7,7 @@
 
 import { defaultPatternFor } from "../utils/helpers.js";
 import { migrateProgramme } from "../utils/migrate-programme.js";
-import { uid } from "../utils/uid.js";
+import { uid } from "../utils/uid";
 
 // Storage key for localStorage
 const STORAGE_KEY = "nci_pds_mvp_programme_v1";

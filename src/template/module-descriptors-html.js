@@ -5,7 +5,7 @@
  * @module template/module-descriptors-html
  */
 
-import { escapeHtml } from "../utils/dom.js";
+import { escapeHtml } from "../utils/dom";
 
 /**
  * Formats effort hours for the teaching modalities table.
