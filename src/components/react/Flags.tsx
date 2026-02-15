@@ -8,7 +8,7 @@ import { useMemo } from "react";
 
 import { useProgramme } from "../../hooks/useStore";
 import { activeSteps } from "../../state/store.js";
-import { validateProgramme } from "../../utils/validation.js";
+import { validateProgramme } from "../../utils/validation";
 import { Icon } from "../ui/Icon";
 
 /** Validation flag from validateProgramme */

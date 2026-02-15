@@ -10,7 +10,7 @@ import { Button, ButtonGroup, Table } from "react-bootstrap";
 import { Accordion, AccordionControls, AccordionItem, Alert, Icon, SectionCard } from "../../ui";
 import { useProgramme } from "../../../hooks/useStore";
 import { state } from "../../../state/store.js";
-import { completionPercent } from "../../../utils/validation.js";
+import { completionPercent } from "../../../utils/validation";
 import { exportProgrammeToWord } from "../../../export/word.js";
 
 // ============================================================================

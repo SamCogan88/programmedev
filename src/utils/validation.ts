@@ -1,22 +1,23 @@
-// @ts-check
 /**
  * Programme validation and completion tracking utilities.
  * Provides validation rules and progress calculation for programme design.
  * @module utils/validation
  */
 
+export interface ValidationFlag {
+  type: "error" | "warn";
+  msg: string;
+  step: string;
+}
+
 /**
  * Validates a programme and returns an array of validation flags.
  * Checks identity fields, credit totals, versions, stages, PLOs, and mappings.
- *
- * @param {Programme} p - The programme to validate
- * @returns {Array<{type: string, msg: string, step: string}>} Array of validation flags with type ("error"|"warn"), message, and associated step key
  */
-export function validateProgramme(p) {
-  /** @type {Array<{type: string, msg: string, step: string}>} */
-  const flags = [];
+export function validateProgramme(p: Programme): ValidationFlag[] {
+  const flags: ValidationFlag[] = [];
   const sumCredits = (p.modules ?? []).reduce(
-    (/** @type {number} */ acc, /** @type {Module} */ m) => acc + (Number(m.credits) ?? 0),
+    (acc: number, m: Module) => acc + (Number(m.credits) ?? 0),
     0,
   );
 
@@ -58,11 +59,9 @@ export function validateProgramme(p) {
   }
 
   // Calculate mandatory vs elective credits
-  const mandatoryModules = (p.modules ?? []).filter(
-    (/** @type {Module & {isElective?: boolean}} */ m) => !m.isElective,
-  );
+  const mandatoryModules = (p.modules ?? []).filter((m: Module) => !m.isElective);
   const mandatoryCredits = mandatoryModules.reduce(
-    (/** @type {number} */ acc, /** @type {Module} */ m) => acc + (Number(m.credits) ?? 0),
+    (acc: number, m: Module) => acc + (Number(m.credits) ?? 0),
     0,
   );
 
@@ -82,99 +81,89 @@ export function validateProgramme(p) {
     // Students complete every definition (choosing one group per definition)
 
     // Check each definition and its groups
-    /** @type {Map<string, Array<{groupId: string, groupName: string}>>} */
-    const moduleGroupAssignments = new Map(); // moduleId -> [{ groupId, groupName }]
+    const moduleGroupAssignments = new Map<string, Array<{ groupId: string; groupName: string }>>();
 
-    electiveDefinitions.forEach(
-      (/** @type {ElectiveDefinition} */ def, /** @type {number} */ defIdx) => {
-        const defDisplayName = def.name ?? `Definition ${defIdx + 1}`;
-        const defCode = def.code ?? "";
-        const defLabel = defCode ? `[${defCode}] ${defDisplayName}` : defDisplayName;
-        const defCredits = def.credits ?? 0;
-        const groups = def.groups ?? [];
+    electiveDefinitions.forEach((def: ElectiveDefinition, defIdx: number) => {
+      const defDisplayName = def.name ?? `Definition ${defIdx + 1}`;
+      const defCode = def.code ?? "";
+      const defLabel = defCode ? `[${defCode}] ${defDisplayName}` : defDisplayName;
+      const defCredits = def.credits ?? 0;
+      const groups = def.groups ?? [];
 
-        // Check: Definition has no groups (students need at least one option)
-        if (groups.length === 0) {
+      // Check: Definition has no groups (students need at least one option)
+      if (groups.length === 0) {
+        flags.push({
+          type: "warn",
+          msg: `${defLabel}: no groups defined (students need at least one option).`,
+          step: "identity",
+        });
+      }
+
+      // Check: Definition has no credits set
+      if (defCredits === 0 && groups.length > 0) {
+        flags.push({
+          type: "warn",
+          msg: `${defLabel}: has groups but no credit value set.`,
+          step: "identity",
+        });
+      }
+
+      // Check each group within this definition
+      groups.forEach((g: ElectiveGroup, grpIdx: number) => {
+        const groupDisplayName = g.name ?? `Group ${grpIdx + 1}`;
+        const groupCode = g.code ?? "";
+        const groupLabel = groupCode ? `[${groupCode}] ${groupDisplayName}` : groupDisplayName;
+        const fullGroupName = `${defLabel} → ${groupLabel}`;
+
+        // Check: Group has no modules assigned
+        if (!g.moduleIds || g.moduleIds.length === 0) {
           flags.push({
             type: "warn",
-            msg: `${defLabel}: no groups defined (students need at least one option).`,
-            step: "identity",
+            msg: `${fullGroupName}: no modules assigned.`,
+            step: "electives",
           });
-        }
-
-        // Check: Definition has no credits set
-        if (defCredits === 0 && groups.length > 0) {
-          flags.push({
-            type: "warn",
-            msg: `${defLabel}: has groups but no credit value set.`,
-            step: "identity",
+        } else {
+          // Track module-to-group assignments
+          g.moduleIds.forEach((mId: string) => {
+            if (!moduleGroupAssignments.has(mId)) {
+              moduleGroupAssignments.set(mId, []);
+            }
+            moduleGroupAssignments.get(mId)?.push({ groupId: g.id, groupName: fullGroupName });
           });
-        }
 
-        // Check each group within this definition
-        groups.forEach((/** @type {ElectiveGroup} */ g, /** @type {number} */ grpIdx) => {
-          const groupDisplayName = g.name ?? `Group ${grpIdx + 1}`;
-          const groupCode = g.code ?? "";
-          const groupLabel = groupCode ? `[${groupCode}] ${groupDisplayName}` : groupDisplayName;
-          const fullGroupName = `${defLabel} → ${groupLabel}`;
-
-          // Check: Group has no modules assigned
-          if (!g.moduleIds || g.moduleIds.length === 0) {
+          // Check: Group includes a non-elective module
+          const groupModules = (p.modules ?? []).filter((m: Module) => g.moduleIds.includes(m.id));
+          const nonElectiveInGroup = groupModules.filter((m: Module) => !m.isElective);
+          if (nonElectiveInGroup.length > 0) {
             flags.push({
               type: "warn",
-              msg: `${fullGroupName}: no modules assigned.`,
+              msg: `${fullGroupName}: contains ${nonElectiveInGroup.length} mandatory module(s).`,
               step: "electives",
             });
-          } else {
-            // Track module-to-group assignments
-            g.moduleIds.forEach((/** @type {string} */ mId) => {
-              if (!moduleGroupAssignments.has(mId)) {
-                moduleGroupAssignments.set(mId, []);
-              }
-              moduleGroupAssignments.get(mId)?.push({ groupId: g.id, groupName: fullGroupName });
-            });
-
-            // Check: Group includes a non-elective module
-            const groupModules = (p.modules ?? []).filter((/** @type {Module} */ m) =>
-              g.moduleIds.includes(m.id),
-            );
-            const nonElectiveInGroup = groupModules.filter(
-              (/** @type {Module & {isElective?: boolean}} */ m) => !m.isElective,
-            );
-            if (nonElectiveInGroup.length > 0) {
-              flags.push({
-                type: "warn",
-                msg: `${fullGroupName}: contains ${nonElectiveInGroup.length} mandatory module(s).`,
-                step: "electives",
-              });
-            }
-
-            // Check: Module ECTS totals don't align with the definition's credit value
-            const groupCreditsSum = groupModules.reduce(
-              (/** @type {number} */ acc, /** @type {Module} */ m) =>
-                acc + (Number(m.credits) ?? 0),
-              0,
-            );
-            if (groupCreditsSum !== defCredits) {
-              flags.push({
-                type: "warn",
-                msg: `${fullGroupName}: module credits (${groupCreditsSum}) don't match definition requirement (${defCredits}).`,
-                step: "electives",
-              });
-            }
           }
-        });
-      },
-    );
+
+          // Check: Module ECTS totals don't align with the definition's credit value
+          const groupCreditsSum = groupModules.reduce(
+            (acc: number, m: Module) => acc + (Number(m.credits) ?? 0),
+            0,
+          );
+          if (groupCreditsSum !== defCredits) {
+            flags.push({
+              type: "warn",
+              msg: `${fullGroupName}: module credits (${groupCreditsSum}) don't match definition requirement (${defCredits}).`,
+              step: "electives",
+            });
+          }
+        }
+      });
+    });
 
     // Check: A module appears in multiple groups
     moduleGroupAssignments.forEach((assignments, moduleId) => {
       if (assignments.length > 1) {
-        const mod = (p.modules ?? []).find((/** @type {Module} */ m) => m.id === moduleId);
+        const mod = (p.modules ?? []).find((m: Module) => m.id === moduleId);
         const modName = mod ? (mod.code ?? mod.title ?? moduleId) : moduleId;
-        const groupNames = assignments
-          .map((/** @type {{groupId: string, groupName: string}} */ a) => a.groupName)
-          .join(", ");
+        const groupNames = assignments.map((a) => a.groupName).join(", ");
         flags.push({
           type: "warn",
           msg: `Module "${modName}" is assigned to ${assignments.length} groups: ${groupNames}.`,
@@ -186,8 +175,7 @@ export function validateProgramme(p) {
     // Credit check: mandatory + sum of all definition credits should = totalCredits
     // (Students complete every definition by choosing one group per definition)
     const definitionCreditsSum = electiveDefinitions.reduce(
-      (/** @type {number} */ acc, /** @type {ElectiveDefinition} */ def) =>
-        acc + (Number(def.credits) ?? 0),
+      (acc: number, def: ElectiveDefinition) => acc + (Number(def.credits) ?? 0),
       0,
     );
     const expectedTotal = mandatoryCredits + definitionCreditsSum;
@@ -208,8 +196,8 @@ export function validateProgramme(p) {
       step: "versions",
     });
   } else {
-    const labels = new Set();
-    p.versions.forEach((/** @type {ProgrammeVersion} */ v, /** @type {number} */ idx) => {
+    const labels = new Set<string>();
+    p.versions.forEach((v: ProgrammeVersion, idx: number) => {
       const prefix = `Version ${idx + 1}`;
       if (!v.label || !v.label.trim()) {
         flags.push({
@@ -230,9 +218,9 @@ export function validateProgramme(p) {
       }
 
       // Delivery pattern for selected modality must sum to 100
-      if (/** @type {any} */ (v).deliveryModality) {
-        const mod = /** @type {any} */ (v).deliveryModality;
-        const pat = /** @type {any} */ (v.deliveryPatterns ?? {})[mod];
+      if (v.deliveryModality) {
+        const mod = v.deliveryModality;
+        const pat = (v.deliveryPatterns ?? ({} as Record<string, any>))[mod];
         if (!pat) {
           flags.push({
             type: "error",
@@ -255,8 +243,8 @@ export function validateProgramme(p) {
       }
 
       if (
-        /** @type {any} */ (v.onlineProctoredExams ?? "TBC") === "YES" &&
-        !(/** @type {any} */ (v.onlineProctoredExamsNotes ?? "").trim())
+        (v.onlineProctoredExams ?? "TBC") === "YES" &&
+        !(v.onlineProctoredExamsNotes ?? "").trim()
       ) {
         flags.push({
           type: "warn",
@@ -265,7 +253,7 @@ export function validateProgramme(p) {
         });
       }
 
-      if (/** @type {any} */ (v.targetCohortSize ?? 0) <= 0) {
+      if ((v.targetCohortSize ?? 0) <= 0) {
         flags.push({
           type: "warn",
           msg: `${prefix}: cohort size is missing/zero.`,
@@ -281,8 +269,8 @@ export function validateProgramme(p) {
           step: "stages",
         });
       } else {
-        const stageTargetSum = /** @type {any[]} */ (v.stages ?? []).reduce(
-          (/** @type {number} */ acc, /** @type {any} */ s) => acc + Number(s.creditsTarget ?? 0),
+        const stageTargetSum = (v.stages ?? []).reduce(
+          (acc: number, s: Stage) => acc + Number(s.creditsTarget ?? 0),
           0,
         );
         if (
@@ -297,14 +285,11 @@ export function validateProgramme(p) {
           });
         }
 
-        /** @type {any[]} */ (v.stages ?? []).forEach((/** @type {any} */ s) => {
-          const stageMods = (s.modules ?? []).map((/** @type {any} */ x) => x.moduleId);
+        (v.stages ?? []).forEach((s: Stage) => {
+          const stageMods = (s.modules ?? []).map((x) => x.moduleId);
           const creditSum = (p.modules ?? [])
-            .filter((/** @type {Module} */ m) => stageMods.includes(m.id))
-            .reduce(
-              (/** @type {number} */ acc, /** @type {Module} */ m) => acc + Number(m.credits ?? 0),
-              0,
-            );
+            .filter((m: Module) => stageMods.includes(m.id))
+            .reduce((acc: number, m: Module) => acc + Number(m.credits ?? 0), 0);
 
           if ((s.creditsTarget ?? 0) > 0 && creditSum !== Number(s.creditsTarget ?? 0)) {
             flags.push({
@@ -343,7 +328,7 @@ export function validateProgramme(p) {
   }
 
   const modulesMissingMimlos = (p.modules ?? []).filter(
-    (/** @type {Module & {mimlos?: any[]}} */ m) => !m.mimlos || m.mimlos.length === 0,
+    (m: Module) => !m.mimlos || m.mimlos.length === 0,
   );
   if (modulesMissingMimlos.length > 0) {
     flags.push({
@@ -354,8 +339,7 @@ export function validateProgramme(p) {
   }
 
   const unmappedPLOs = (p.plos ?? []).filter(
-    (/** @type {PLO} */ o) =>
-      !(p.ploToMimlos ?? {})[o.id] || ((p.ploToMimlos ?? {})[o.id] ?? []).length === 0,
+    (o: PLO) => !(p.ploToMimlos ?? {})[o.id] || ((p.ploToMimlos ?? {})[o.id] ?? []).length === 0,
   );
   if (unmappedPLOs.length > 0) {
     flags.push({
@@ -371,11 +355,8 @@ export function validateProgramme(p) {
 /**
  * Calculates the overall completion percentage of a programme.
  * Checks identity fields, structure, outcomes, and versions for completion.
- *
- * @param {Programme} p - The programme to evaluate
- * @returns {number} Completion percentage (0-100), rounded to nearest integer
  */
-export function completionPercent(p) {
+export function completionPercent(p: Programme): number {
   let total = 0,
     done = 0;
 
