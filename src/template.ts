@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Programme Schedule Template - Entry point.
  * Handles file upload, rendering, and export functionality.
@@ -9,17 +8,13 @@ import { downloadScheduleDocx } from "./export/schedule-docx";
 import { renderAllModuleDescriptors } from "./template/module-descriptors-html";
 import { renderAllSchedules } from "./template/schedule-html";
 
-/** @type {Programme | null} */
-let currentProgrammeData = null;
+let currentProgrammeData: Programme | null = null;
 
-/**
- * Copies content to clipboard by selecting and executing copy command.
- * Temporarily sets font size to 11pt for clipboard, displays at 9pt.
- * @param {HTMLElement} container - Element to copy content from
- * @param {HTMLButtonElement} button - Button to show feedback on
- * @param {HTMLElement} statusEl - Status element for error messages
- */
-function copyToClipboard(container, button, statusEl) {
+function copyToClipboard(
+  container: HTMLElement,
+  button: HTMLButtonElement,
+  statusEl: HTMLElement,
+): void {
   // Temporarily set font size to 11pt for copying
   document.documentElement.style.setProperty("--display-font-size", "11pt");
 
@@ -46,30 +41,20 @@ function copyToClipboard(container, button, statusEl) {
   selection?.removeAllRanges();
 }
 
-/**
- * Handles file upload and parsing.
- * @param {File} file - Uploaded file
- * @param {HTMLElement} statusEl - Status element
- * @param {HTMLElement} schedulesContainer - Container for schedule tables
- * @param {HTMLElement} moduleDescriptorsContainer - Container for module descriptors
- * @param {HTMLElement} schedulesHeader - Header for schedules section
- * @param {HTMLElement} moduleDescriptorsHeader - Header for module descriptors section
- */
 async function handleFileUpload(
-  file,
-  statusEl,
-  schedulesContainer,
-  moduleDescriptorsContainer,
-  schedulesHeader,
-  moduleDescriptorsHeader,
-) {
+  file: File,
+  statusEl: HTMLElement,
+  schedulesContainer: HTMLElement,
+  moduleDescriptorsContainer: HTMLElement,
+  schedulesHeader: HTMLElement,
+  moduleDescriptorsHeader: HTMLElement,
+): Promise<void> {
   statusEl.textContent = "Loading...";
   statusEl.className = "";
 
   try {
     const text = await file.text();
-    /** @type {Programme} */
-    const data = JSON.parse(text);
+    const data: Programme = JSON.parse(text);
 
     // Basic validation
     if (!data.modules || !data.versions) {
@@ -86,18 +71,13 @@ async function handleFileUpload(
     schedulesHeader.style.display = "flex";
     moduleDescriptorsHeader.style.display = "flex";
   } catch (error) {
-    const err = /** @type {Error} */ (error);
+    const err = error as Error;
     statusEl.textContent = `✗ Error: ${err.message}`;
     statusEl.className = "error";
   }
 }
 
-/**
- * Handles DOCX download.
- * @param {HTMLButtonElement} button - Download button
- * @param {HTMLElement} statusEl - Status element
- */
-async function handleDownloadDocx(button, statusEl) {
+async function handleDownloadDocx(button: HTMLButtonElement, statusEl: HTMLElement): Promise<void> {
   if (!currentProgrammeData) {
     statusEl.textContent = "Please upload a programme JSON first";
     statusEl.className = "error";
@@ -109,39 +89,30 @@ async function handleDownloadDocx(button, statusEl) {
     await downloadScheduleDocx(currentProgrammeData);
     button.textContent = "Download DOCX";
   } catch (error) {
-    const err = /** @type {Error} */ (error);
+    const err = error as Error;
     statusEl.textContent = `✗ DOCX Error: ${err.message}`;
     statusEl.className = "error";
     button.textContent = "Download DOCX";
   }
 }
 
-/**
- * Initializes the template page.
- */
-function init() {
-  const uploadSection = /** @type {HTMLElement} */ (document.getElementById("upload-section"));
-  const fileUpload = /** @type {HTMLInputElement} */ (document.getElementById("file-upload"));
-  const uploadStatus = /** @type {HTMLElement} */ (document.getElementById("upload-status"));
-  const schedulesContainer = /** @type {HTMLElement} */ (
-    document.getElementById("schedules-container")
-  );
-  const moduleDescriptorsContainer = /** @type {HTMLElement} */ (
-    document.getElementById("module-descriptors-container")
-  );
-  const schedulesHeader = /** @type {HTMLElement} */ (document.getElementById("schedules-header"));
-  const moduleDescriptorsHeader = /** @type {HTMLElement} */ (
-    document.getElementById("module-descriptors-header")
-  );
-  const copySchedulesBtn = /** @type {HTMLButtonElement} */ (
-    document.getElementById("copy-schedules-btn")
-  );
-  const copyModuleDescriptorsBtn = /** @type {HTMLButtonElement} */ (
-    document.getElementById("copy-module-descriptors-btn")
-  );
-  const downloadDocxBtn = /** @type {HTMLButtonElement} */ (
-    document.getElementById("download-docx-btn")
-  );
+function init(): void {
+  const uploadSection = document.getElementById("upload-section") as HTMLElement;
+  const fileUpload = document.getElementById("file-upload") as HTMLInputElement;
+  const uploadStatus = document.getElementById("upload-status") as HTMLElement;
+  const schedulesContainer = document.getElementById("schedules-container") as HTMLElement;
+  const moduleDescriptorsContainer = document.getElementById(
+    "module-descriptors-container",
+  ) as HTMLElement;
+  const schedulesHeader = document.getElementById("schedules-header") as HTMLElement;
+  const moduleDescriptorsHeader = document.getElementById(
+    "module-descriptors-header",
+  ) as HTMLElement;
+  const copySchedulesBtn = document.getElementById("copy-schedules-btn") as HTMLButtonElement;
+  const copyModuleDescriptorsBtn = document.getElementById(
+    "copy-module-descriptors-btn",
+  ) as HTMLButtonElement;
+  const downloadDocxBtn = document.getElementById("download-docx-btn") as HTMLButtonElement;
 
   // Wire up event handlers
   copySchedulesBtn?.addEventListener("click", () => {
@@ -157,7 +128,7 @@ function init() {
   });
 
   fileUpload?.addEventListener("change", (e) => {
-    const target = /** @type {HTMLInputElement} */ (e.target);
+    const target = e.target as HTMLInputElement;
     const file = target.files?.[0];
     if (file) {
       handleFileUpload(
