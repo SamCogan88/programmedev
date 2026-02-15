@@ -12,7 +12,7 @@ import Plotly from "plotly.js-dist-min";
 import { Alert, Icon, SectionCard } from "../../ui";
 import { useProgramme } from "../../../hooks/useStore";
 import { state, getAwardStandard, getStandardIndicators } from "../../../state/store.js";
-import { validateProgramme } from "../../../utils/validation.js";
+import { validateProgramme } from "../../../utils/validation";
 
 // ============================================================================
 // Types

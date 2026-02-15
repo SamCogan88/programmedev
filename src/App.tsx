@@ -10,7 +10,7 @@ import { Header, Sidebar, Flags } from "./components/react";
 import { SectionCard, WarningAlert } from "./components/ui";
 import { useProgramme } from "./hooks/useStore";
 import { activeSteps, state } from "./state/store.js";
-import { validateProgramme } from "./utils/validation.js";
+import { validateProgramme } from "./utils/validation";
 
 // Import step components
 import { IdentityStep } from "./components/steps/react/IdentityStep";
