@@ -264,7 +264,7 @@ The project enforces **90% code coverage thresholds** across all metrics (statem
 
 ### E2E Tests (Playwright)
 
-E2E tests are in `e2e/` and use custom fixtures:
+E2E tests are in `e2e/` and use custom fixtures. The suite is **workflow-oriented** — it tests cross-step data flow, persistence, and full user journeys rather than individual component behavior (which is covered by unit tests).
 
 ```javascript
 import { test, expect, loadProgrammeData, getProgrammeData } from "./fixtures/test-fixtures.js";
@@ -280,12 +280,26 @@ test("should load and edit programme", async ({ page }) => {
 });
 ```
 
-Key E2E patterns:
+#### What belongs in E2E tests
+
+| ✅ Keep in E2E                                         | ❌ Cover in unit tests instead                     |
+| ------------------------------------------------------- | -------------------------------------------------- |
+| Cross-step data flow (Step A → Step B)                  | Individual field validation                        |
+| Data persistence (localStorage survives reload)         | Component rendering (headings, empty states)       |
+| Import/export full cycle (file → migration → state)     | Single add/delete/edit operations                  |
+| Navigation & routing (sidebar, next/back)               | Accordion expand/collapse behavior                 |
+| Role-based access (module editor mode)                  | Validation rule logic (pure functions)             |
+| App boot smoke test                                     | Schema migration logic (pure functions)            |
+
+#### Key E2E patterns
 
 - Use `data-testid` selectors (not labels — flags panel causes duplicates)
+- Use `getByTestId(/^prefix-/)` with regex for dynamic test IDs
 - Wait 600ms after actions for debounced save
 - Use `loadProgrammeData()` / `getProgrammeData()` for state setup/verification
 - Each test starts with cleared localStorage
+- Write workflow tests that exercise multiple fields/interactions in a single test
+- Do **not** add heading checks, button rendering checks, or empty state tests — these belong in unit tests
 
 ## Git Workflow
 
