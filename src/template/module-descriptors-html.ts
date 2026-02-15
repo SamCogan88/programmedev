@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Module Descriptors HTML table rendering (Section 7).
  * Generates HTML tables for module descriptors per the QQI template.
@@ -7,13 +6,30 @@
 
 import { escapeHtml } from "../utils/dom";
 
+interface EffortHoursResult {
+  classroomHours: number;
+  syncOnlineHours: number;
+  syncHybridHours: number;
+  asyncHours: number;
+  independentHours: number;
+  workBasedHours: number;
+  otherHours: number;
+  total: number;
+}
+
+interface AssessmentPercentages {
+  continuous: number;
+  invigilated: number;
+  proctored: number;
+  project: number;
+  practical: number;
+  workBased: number;
+}
+
 /**
  * Formats effort hours for the teaching modalities table.
- * @param {Module} mod - Module data
- * @param {string} versionKey - Version/delivery key to look up effort hours
- * @returns {{ classroomHours: number, syncOnlineHours: number, syncHybridHours: number, asyncHours: number, independentHours: number, workBasedHours: number, otherHours: number, total: number }}
  */
-function getEffortHours(mod, versionKey) {
+function getEffortHours(mod: Module, versionKey: string): EffortHoursResult {
   const effort =
     mod.effortHours?.[versionKey] ?? mod.effortHours?.[Object.keys(mod.effortHours ?? {})[0]] ?? {};
 
@@ -48,11 +64,9 @@ function getEffortHours(mod, versionKey) {
 
 /**
  * Gets assessment percentages by type.
- * @param {Module} mod - Module data
- * @returns {{ continuous: number, invigilated: number, proctored: number, project: number, practical: number, workBased: number }}
  */
-function getAssessmentPercentages(mod) {
-  const pcts = {
+function getAssessmentPercentages(mod: Module): AssessmentPercentages {
+  const pcts: AssessmentPercentages = {
     continuous: 0,
     invigilated: 0,
     proctored: 0,
@@ -84,13 +98,9 @@ function getAssessmentPercentages(mod) {
 
 /**
  * Gets the PLO numbers that a specific MIMLO is mapped to.
- * @param {Programme} programme - Programme data
- * @param {string} mimloId - MIMLO ID
- * @returns {string} Comma-separated PLO numbers
  */
-function getMimloRelatedPLOs(programme, mimloId) {
-  /** @type {string[]} */
-  const ploIds = [];
+function getMimloRelatedPLOs(programme: Programme, mimloId: string): string {
+  const ploIds: string[] = [];
   const mapping = programme.ploToMimlos ?? {};
   const plos = programme.plos ?? [];
 
@@ -107,20 +117,20 @@ function getMimloRelatedPLOs(programme, mimloId) {
       return index >= 0 ? index + 1 : null;
     })
     .filter((n) => n !== null)
-    .sort((a, b) => /** @type {number} */ (a) - /** @type {number} */ (b))
+    .sort((a, b) => (a as number) - (b as number))
     .join(", ");
 }
 
 /**
  * Renders the 7.1 Module Overview table.
- * @param {Module} mod - Module data
- * @param {Stage} stage - Stage data
- * @param {{ semester?: string }} stageModule - Stage module reference
- * @param {ProgrammeVersion} version - Programme version
- * @param {{ classroomHours: number, syncOnlineHours: number, syncHybridHours: number, asyncHours: number, independentHours: number, workBasedHours: number, otherHours: number, total: number }} effort - Effort hours
- * @returns {string} HTML table
  */
-function renderModuleOverviewTable(mod, stage, stageModule, version, effort) {
+function renderModuleOverviewTable(
+  mod: Module,
+  stage: Stage,
+  stageModule: { semester?: string },
+  version: ProgrammeVersion,
+  effort: EffortHoursResult,
+): string {
   const hoursPerWeek =
     effort.total > 0 && version.durationWeeks
       ? Math.round(effort.total / version.durationWeeks)
@@ -228,9 +238,8 @@ function renderModuleOverviewTable(mod, stage, stageModule, version, effort) {
 
 /**
  * Renders the staffing requirements table.
- * @returns {string} HTML table
  */
-function renderStaffTable() {
+function renderStaffTable(): string {
   return `
 <table class="staff-table" aria-label="Staffing Requirements">
   <colgroup>
@@ -266,10 +275,8 @@ function renderStaffTable() {
 
 /**
  * Renders the assessment techniques table.
- * @param {{ continuous: number, invigilated: number, proctored: number, project: number, practical: number, workBased: number }} asmPcts - Assessment percentages
- * @returns {string} HTML table
  */
-function renderAssessmentTable(asmPcts) {
+function renderAssessmentTable(asmPcts: AssessmentPercentages): string {
   return `
 <table class="assessment-table" aria-label="Assessment Techniques Percentage Contribution">
   <colgroup>
@@ -310,11 +317,8 @@ function renderAssessmentTable(asmPcts) {
 
 /**
  * Renders the MIMLOs table (Section 7.2).
- * @param {Programme} programme - Programme data
- * @param {Module} mod - Module data
- * @returns {string} HTML table
  */
-function renderMimloTable(programme, mod) {
+function renderMimloTable(programme: Programme, mod: Module): string {
   const mimlos = mod.mimlos ?? [];
 
   let rows = "";
@@ -346,13 +350,8 @@ function renderMimloTable(programme, mod) {
 
 /**
  * Renders a content section table (7.3, 7.4, 7.5, 7.6, 7.8, 7.9).
- * @param {string} sectionNum - Section number
- * @param {string} title - Section title
- * @param {string} [content] - Optional content
- * @param {string} [note] - Optional note text
- * @returns {string} HTML table
  */
-function renderContentTable(sectionNum, title, content = "", note = "") {
+function renderContentTable(sectionNum: string, title: string, content = "", note = ""): string {
   const noteHtml = note ? ` <span class="note">${note}</span>` : "";
   return `
 <table class="content-table" aria-label="${title}">
@@ -367,10 +366,8 @@ function renderContentTable(sectionNum, title, content = "", note = "") {
 
 /**
  * Renders the summative assessment strategy table (Section 7.7).
- * @param {Module} mod - Module data
- * @returns {string} HTML table
  */
-function renderSummativeTable(mod) {
+function renderSummativeTable(mod: Module): string {
   const mimlos = mod.mimlos ?? [];
   const assessments = mod.assessments ?? [];
 
@@ -412,10 +409,8 @@ function renderSummativeTable(mod) {
 
 /**
  * Renders the reading list table (Section 7.9).
- * @param {Module} mod - Module data
- * @returns {string} HTML table
  */
-function renderReadingListTable(mod) {
+function renderReadingListTable(mod: Module): string {
   const readingList = mod.readingList ?? [];
 
   let content = "";
@@ -443,15 +438,14 @@ function renderReadingListTable(mod) {
 
 /**
  * Renders a single module descriptor (Section 7).
- *
- * @param {Programme} programme - Programme data
- * @param {Module} mod - Module data
- * @param {ProgrammeVersion} version - Programme version
- * @param {Stage} stage - Stage containing this module
- * @param {{ semester?: string }} stageModule - Stage module reference
- * @returns {string} HTML markup
  */
-export function renderModuleDescriptor(programme, mod, version, stage, stageModule) {
+export function renderModuleDescriptor(
+  programme: Programme,
+  mod: Module,
+  version: ProgrammeVersion,
+  stage: Stage,
+  stageModule: { semester?: string },
+): string {
   const versionKey = `${version.id}_${version.deliveryModality}`;
   const effort = getEffortHours(mod, versionKey);
   const asmPcts = getAssessmentPercentages(mod);
@@ -508,11 +502,8 @@ export function renderModuleDescriptor(programme, mod, version, stage, stageModu
 
 /**
  * Renders all module descriptors for a programme (Section 7).
- *
- * @param {Programme} data - Programme data
- * @returns {string} HTML markup for all module descriptors
  */
-export function renderAllModuleDescriptors(data) {
+export function renderAllModuleDescriptors(data: Programme): string {
   if (!data.modules || data.modules.length === 0) {
     return "<p>No modules available.</p>";
   }
@@ -527,8 +518,14 @@ export function renderAllModuleDescriptors(data) {
   const defaultVersion = data.versions[0];
 
   // Build a map of moduleId -> stage/stageModule for lookup
-  /** @type {Map<string, { version: ProgrammeVersion, stage: Stage, stageModule: { moduleId: string, semester?: string } }>} */
-  const moduleContextMap = new Map();
+  const moduleContextMap = new Map<
+    string,
+    {
+      version: ProgrammeVersion;
+      stage: Stage;
+      stageModule: { moduleId: string; semester?: string };
+    }
+  >();
 
   data.versions.forEach((version) => {
     (version.stages ?? []).forEach((stage) => {
