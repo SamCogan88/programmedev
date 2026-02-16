@@ -11,40 +11,11 @@ import { Badge, Card, Form, ListGroup } from "react-bootstrap";
 
 import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
 import { Accordion, AccordionControls, AccordionItem, Alert, Icon, SectionCard } from "../../ui";
+import type { MIMLO, Module, PLO, Programme } from "../../../types";
 
 // ============================================================================
 // Types
 // ============================================================================
-
-interface MIMLO {
-  id: string;
-  text: string;
-  [key: string]: unknown;
-}
-
-interface Module {
-  id: string;
-  title: string;
-  code: string;
-  credits: number;
-  mimlos?: MIMLO[];
-  [key: string]: unknown;
-}
-
-interface PLO {
-  id: string;
-  text: string;
-  [key: string]: unknown;
-}
-
-interface Programme {
-  mode?: string;
-  modules?: Module[];
-  plos?: PLO[];
-  ploToMimlos?: Record<string, string[]>;
-  moduleEditor?: { assignedModuleIds?: string[] };
-  [key: string]: unknown;
-}
 
 type MappingState = "all" | "some" | "none";
 

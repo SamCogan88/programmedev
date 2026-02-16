@@ -26,34 +26,20 @@ import {
   Icon,
   SectionCard,
 } from "../../ui";
+import type { AwardStandard, PLO, Programme } from "../../../types";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-interface PLOMapping {
-  criteria: string;
-  thread: string;
-  standardId?: string;
-}
-
-interface PLO {
-  id: string;
-  text: string;
-  standardMappings: PLOMapping[];
-}
+/** Mapping of a PLO to award standard criteria */
+type PLOMapping = NonNullable<PLO["standardMappings"]>[number];
 
 interface LintIssue {
   severity: "warn" | "error" | "info";
   match: string;
   message: string;
   suggestions: string[];
-}
-
-interface AwardStandard {
-  id: string;
-  name: string;
-  [key: string]: unknown;
 }
 
 interface PLOItemProps {

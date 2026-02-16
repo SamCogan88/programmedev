@@ -13,6 +13,7 @@ import { useProgramme } from "../../../hooks/useStore";
 import { state } from "../../../state/store";
 import { completionPercent } from "../../../utils/validation";
 import { Accordion, AccordionControls, AccordionItem, Alert, Icon, SectionCard } from "../../ui";
+import type { Module, PLO, Programme, ProgrammeVersion, Stage } from "../../../types";
 
 // ============================================================================
 // Types

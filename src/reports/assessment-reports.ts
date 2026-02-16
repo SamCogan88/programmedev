@@ -6,6 +6,7 @@
 
 import { escapeHtml } from "../utils/dom";
 import { ensureMimloObjects, formatPct } from "../utils/helpers";
+import type { MIMLO, Module, Programme, ProgrammeVersion, Stage } from "../types";
 
 /** Available assessment report types */
 export const ASSESSMENT_REPORT_TYPES = [

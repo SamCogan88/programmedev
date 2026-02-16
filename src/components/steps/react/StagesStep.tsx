@@ -12,6 +12,7 @@ import { notifyStateChange, useProgramme, useSaveDebounced } from "../../../hook
 import { defaultStage, state } from "../../../state/store";
 import { sumStageCredits } from "../../../utils/helpers";
 import { Accordion, AccordionControls, AccordionItem, Alert, HeaderAction, Icon } from "../../ui";
+import type { Module, Programme, ProgrammeVersion, Stage } from "../../../types";
 
 // ============================================================================
 // Types (local aliases to avoid conflicts with global types)
@@ -284,7 +285,10 @@ export const StagesStep: React.FC = () => {
   const saveDebounced = useSaveDebounced();
 
   // Track expanded accordion items
-  const versions = useMemo(() => (programme.versions ?? []) as ProgrammeVersion[], [programme.versions]);
+  const versions = useMemo(
+    () => (programme.versions ?? []) as ProgrammeVersion[],
+    [programme.versions],
+  );
   const modules = (programme.modules ?? []) as Module[];
 
   // Initialize selectedVersionId if not set

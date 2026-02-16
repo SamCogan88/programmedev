@@ -5,6 +5,7 @@
  */
 
 import { escapeHtml } from "../utils/dom";
+import type { Module, ModuleAssessment, Programme, ProgrammeVersion, Stage } from "../types";
 
 /**
  * Determines assessment types used in a stage.

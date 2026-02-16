@@ -14,6 +14,7 @@ import { notifyStateChange, useProgramme } from "../../hooks/useStore";
 import { activeSteps, resetProgramme, saveNow, state } from "../../state/store";
 import { completionPercent, validateProgramme } from "../../utils/validation";
 import { Icon } from "../ui";
+import type { Programme } from "../../types";
 
 // ============================================================================
 // Types
@@ -89,9 +90,7 @@ const CompletionBadge: React.FC<CompletionBadgeProps> = ({
                 {stepMap[step] || step}
               </button>
             ) : (
-              <div className="fw-semibold text-primary">
-                {stepMap[step] || step}
-              </div>
+              <div className="fw-semibold text-primary">{stepMap[step] || step}</div>
             )}
             {items.map((flag, idx) => (
               <div

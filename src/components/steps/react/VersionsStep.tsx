@@ -13,6 +13,7 @@ import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hoo
 import { defaultVersion, state } from "../../../state/store";
 import { defaultPatternFor, sumPattern } from "../../../utils/helpers";
 import { Accordion, AccordionControls, AccordionItem, Alert, HeaderAction, Icon } from "../../ui";
+import type { Programme, ProgrammeVersion } from "../../../types";
 
 // ============================================================================
 // Types

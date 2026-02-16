@@ -7,6 +7,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AssessmentsStep } from "./AssessmentsStep";
+import type { Module, Programme, Stage } from "../../../types";
 
 // Mock programme data
 const mockProgramme = {

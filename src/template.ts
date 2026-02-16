@@ -7,6 +7,7 @@
 import { downloadScheduleDocx } from "./export/schedule-docx";
 import { renderAllModuleDescriptors } from "./template/module-descriptors-html";
 import { renderAllSchedules } from "./template/schedule-html";
+import type { Programme } from "./types";
 
 let currentProgrammeData: Programme | null = null;
 

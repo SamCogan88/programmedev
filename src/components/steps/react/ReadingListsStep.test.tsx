@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { state } from "../../../state/store";
 import { ReadingListsStep } from "./ReadingListsStep";
+import type { Programme } from "../../../types";
 
 // Store module mock functions
 const mockEditableModuleIds = vi.fn(() => ["mod_1", "mod_2"]);

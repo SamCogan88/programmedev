@@ -11,14 +11,7 @@ import { Badge, Button, Card, Col, Form, Row } from "react-bootstrap";
 import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
 import { editableModuleIds, getSelectedModuleId, state } from "../../../state/store";
 import { uid } from "../../../utils/uid";
-import {
-  Accordion,
-  AccordionControls,
-  AccordionItem,
-  Alert,
-  Icon,
-  SectionCard,
-} from "../../ui";
+import { Accordion, AccordionControls, AccordionItem, Alert, Icon, SectionCard } from "../../ui";
 
 // ============================================================================
 // Types

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { completionPercent, validateProgramme, type ValidationFlag } from "./validation";
+import type { MIMLO, Module, PLO, Programme, ProgrammeVersion } from "../types";
 
 /** Helper to create a minimal valid programme for testing. */
 function baseProgramme(overrides: Partial<Programme> = {}): Programme {

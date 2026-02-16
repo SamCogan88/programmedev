@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { renderAllModuleDescriptors, renderModuleDescriptor } from "./module-descriptors-html";
+import type { MIMLO, Module, PLO, Programme, ProgrammeVersion, Stage } from "../types";
 
 function makeProgramme(overrides: Partial<Programme> = {}): Programme {
   return {

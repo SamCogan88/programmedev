@@ -11,6 +11,7 @@ import {
   sumPattern,
   sumStageCredits,
 } from "./helpers";
+import type { Module, PLO } from "../types";
 
 describe("formatPct", () => {
   it("formats a number as a percentage string", () => {

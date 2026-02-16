@@ -5,6 +5,7 @@
  */
 
 import { migrateProgramme } from "../utils/migrate-programme";
+import type { Programme } from "../types";
 
 /**
  * Downloads a programme as a JSON file.

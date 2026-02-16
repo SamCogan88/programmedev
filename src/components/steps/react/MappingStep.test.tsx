@@ -7,6 +7,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MappingStep } from "./MappingStep";
+import type { MIMLO, Module, PLO, Programme } from "../../../types";
 
 // Mock programme data
 const mockProgramme = {

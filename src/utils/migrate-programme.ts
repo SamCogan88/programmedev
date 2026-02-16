@@ -8,6 +8,8 @@
  * Migrates programme data from older schema versions to the current version.
  * Applies sequential migrations (v1→v2→v3→v4) as needed.
  */
+import type { Programme } from "../types";
+
 export function migrateProgramme(data: any): any {
   const currentVersion = 4;
   const dataVersion = data.schemaVersion || 1;

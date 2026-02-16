@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { state } from "../../../state/store";
 import { StructureStep } from "./StructureStep";
+import type { MIMLO, Module, Programme } from "../../../types";
 
 // Mock the store module
 vi.mock("../../../state/store", async () => {

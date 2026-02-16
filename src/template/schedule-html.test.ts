@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { renderAllSchedules, renderScheduleTable } from "./schedule-html";
+import type { Module, Programme, ProgrammeVersion, Stage } from "../types";
 
 function makeProgramme(overrides: Partial<Programme> = {}): Programme {
   return {

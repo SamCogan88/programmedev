@@ -12,6 +12,7 @@ import { useProgramme } from "../../hooks/useStore";
 import { activeSteps } from "../../state/store";
 import { Icon } from "../ui";
 import { NavButtons } from "./NavButtons";
+import type { Programme } from "../../types";
 
 /**
  * Icon mapping for each step key.
