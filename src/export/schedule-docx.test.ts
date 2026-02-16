@@ -11,8 +11,8 @@ vi.mock("docx", async () => {
   };
 });
 
-import { downloadScheduleDocx } from "./schedule-docx";
 import type { Programme } from "../types";
+import { downloadScheduleDocx } from "./schedule-docx";
 
 function makeProgramme(overrides: Partial<Programme> = {}): Programme {
   return {
@@ -43,8 +43,8 @@ describe("downloadScheduleDocx", () => {
 
     createObjectURLMock = vi.fn().mockReturnValue("blob:mock-url");
     revokeObjectURLMock = vi.fn();
-    globalThis.URL.createObjectURL = createObjectURLMock;
-    globalThis.URL.revokeObjectURL = revokeObjectURLMock;
+    globalThis.URL.createObjectURL = createObjectURLMock as unknown as typeof URL.createObjectURL;
+    globalThis.URL.revokeObjectURL = revokeObjectURLMock as unknown as typeof URL.revokeObjectURL;
   });
 
   it("is exported and callable", () => {
