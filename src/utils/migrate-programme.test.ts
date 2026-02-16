@@ -85,7 +85,7 @@ describe("migrateProgramme", () => {
   });
 
   it("passes through data already at current schema version", () => {
-    const data = { schemaVersion: 4, title: "Test" };
+    const data = { schemaVersion: 5, title: "Test" };
     const result = migrateProgramme(data);
     expect(result).toEqual(data);
     expect(result).toBe(data); // short-circuit returns same reference
@@ -102,7 +102,7 @@ describe("migrateProgramme", () => {
         versions: [],
       };
       const result = migrateProgramme(v1);
-      expect(result.schemaVersion).toBe(4);
+      expect(result.schemaVersion).toBe(5);
       expect(result.awardStandardId).toBeUndefined();
       expect(result.awardStandardName).toBeUndefined();
       expect(result.awardStandardIds).toContain("computing"); // also migrated by v2→v3
@@ -286,7 +286,7 @@ describe("migrateProgramme", () => {
         versions: [],
       };
       const result = migrateProgramme(v3);
-      expect(result.schemaVersion).toBe(4);
+      expect(result.schemaVersion).toBe(5);
       expect(result.ploToModules).toBeUndefined();
       expect(result.ploToMimlos).toEqual({ plo1: ["mim1", "mim2", "mim3"] });
     });
@@ -333,9 +333,49 @@ describe("migrateProgramme", () => {
     });
   });
 
+  // ── v4 → v5 ──
+
+  describe("v4 → v5", () => {
+    it("adds teachingWeeks to all versions", () => {
+      const v4 = {
+        schemaVersion: 4,
+        versions: [
+          { id: "ver1", label: "Full-time" },
+          { id: "ver2", label: "Part-time" },
+        ],
+      };
+      const result = migrateProgramme(v4);
+      expect(result.schemaVersion).toBe(5);
+      expect(result.versions[0].teachingWeeks).toBe(12);
+      expect(result.versions[1].teachingWeeks).toBe(12);
+    });
+
+    it("preserves existing teachingWeeks values", () => {
+      const v4 = {
+        schemaVersion: 4,
+        versions: [{ id: "ver1", teachingWeeks: 15 }],
+      };
+      const result = migrateProgramme(v4);
+      expect(result.versions[0].teachingWeeks).toBe(15);
+    });
+
+    it("handles missing versions array", () => {
+      const v4 = { schemaVersion: 4 };
+      const result = migrateProgramme(v4);
+      expect(result.schemaVersion).toBe(5);
+    });
+
+    it("handles empty versions array", () => {
+      const v4 = { schemaVersion: 4, versions: [] };
+      const result = migrateProgramme(v4);
+      expect(result.schemaVersion).toBe(5);
+      expect(result.versions).toEqual([]);
+    });
+  });
+
   // ── Full chain ──
 
-  it("applies all migrations from v1 to v4", () => {
+  it("applies all migrations from v1 to v5", () => {
     const v1 = {
       title: "Test Programme",
       awardStandardId: "qqi-computing-l6-9",
@@ -357,12 +397,13 @@ describe("migrateProgramme", () => {
       ploToModules: { plo1: ["mod1"] },
     };
     const result = migrateProgramme(v1);
-    expect(result.schemaVersion).toBe(4);
+    expect(result.schemaVersion).toBe(5);
     expect(result.awardStandardIds).toEqual(["computing"]);
     expect(result.plos[0].standardMappings[0].criteria).toBe("Know-How & Skill");
     expect(result.plos[0].standardMappings[0].thread).toBe("Range");
     expect(result.ploToMimlos).toEqual({ plo1: ["mim1"] });
     expect(result.ploToModules).toBeUndefined();
+    expect(result.versions[0].teachingWeeks).toBe(12);
   });
 });
 

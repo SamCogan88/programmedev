@@ -53,7 +53,7 @@ export const AWARD_TYPE_OPTIONS: readonly string[] = [
  * Creates an empty programme object with default values.
  */
 export const defaultProgramme = (): Programme => ({
-  schemaVersion: 3,
+  schemaVersion: 5,
   id: "current",
 
   // Identity
@@ -91,6 +91,7 @@ export const defaultVersion = (): any => ({
   intakes: [],
   targetCohortSize: 0,
   numberOfGroups: 0,
+  teachingWeeks: 12,
 
   deliveryModality: "F2F",
   deliveryPatterns: {} as Record<string, any>,
