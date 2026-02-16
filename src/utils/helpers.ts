@@ -94,22 +94,19 @@ export function deliveryPatternsHtml(p: any): string {
 }
 
 /**
- * Extracts the text content from a MIMLO (Module Intended Minimum Learning Outcome).
+ * Extracts the text content from a learning outcome item (PLO or MIMLO).
  * Handles both legacy string format and current object format.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mimloText(x: any): string {
+export function itemText(x: any): string {
   return typeof x === "string" ? x : x && typeof x === "object" ? (x.text ?? "") : "";
 }
 
-/**
- * Extracts the text content from a PLO (Programme Learning Outcome).
- * Handles both legacy string format and current object format.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function ploText(x: any): string {
-  return typeof x === "string" ? x : x && typeof x === "object" ? (x.text ?? "") : "";
-}
+/** Alias for {@link itemText} — extracts text from a MIMLO. */
+export const mimloText = itemText;
+
+/** Alias for {@link itemText} — extracts text from a PLO. */
+export const ploText = itemText;
 
 /**
  * Migrates module MIMLOs from legacy string array format to object format.
