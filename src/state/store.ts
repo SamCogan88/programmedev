@@ -5,7 +5,7 @@
  */
 
 import type { Programme, ProgrammeVersion, Stage } from "../types";
-import { defaultPatternFor } from "../utils/helpers";
+import { defaultPatternFor, findVersion } from "../utils/helpers";
 import { migrateProgramme } from "../utils/migrate-programme";
 import { uid } from "../utils/uid";
 
@@ -194,7 +194,7 @@ export function getSelectedModuleId(): string {
  * Finds a programme version by its ID.
  */
 export function getVersionById(id: string): ProgrammeVersion | undefined {
-  return (state.programme.versions ?? []).find((v) => v.id === id);
+  return findVersion(state.programme.versions ?? [], id);
 }
 
 /**

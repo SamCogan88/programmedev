@@ -5,7 +5,7 @@
  */
 
 import { escapeHtml } from "../utils/dom";
-import { ensureMimloObjects, formatPct } from "../utils/helpers";
+import { ensureMimloObjects, findVersion, formatPct } from "../utils/helpers";
 import type { MIMLO, Module, Programme, ProgrammeVersion, Stage } from "../types";
 
 /** Available assessment report types */
@@ -23,7 +23,7 @@ export const ASSESSMENT_REPORT_TYPES = [
  * @returns The matching version or first version
  */
 function getVersionById(p: Programme, versionId: string): ProgrammeVersion | null {
-  return (p.versions ?? []).find((v) => v.id === versionId) ?? (p.versions ?? [])[0] ?? null;
+  return findVersion(p.versions ?? [], versionId) ?? (p.versions ?? [])[0] ?? null;
 }
 
 /**
