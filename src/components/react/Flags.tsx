@@ -87,10 +87,7 @@ function FlagItem({
   }
 
   return (
-    <div
-      className={`flag-item flag-${flag.type}`}
-      data-testid={`flag-${flag.type}-${index}`}
-    >
+    <div className={`flag-item flag-${flag.type}`} data-testid={`flag-${flag.type}-${index}`}>
       {content}
     </div>
   );

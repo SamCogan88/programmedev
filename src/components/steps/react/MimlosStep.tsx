@@ -13,33 +13,12 @@ import { lintLearningOutcome } from "../../../lib/lo-lint";
 import { editableModuleIds, getSelectedModuleId, state } from "../../../state/store";
 import { ensureMimloObjects, mimloText } from "../../../utils/helpers";
 import { uid } from "../../../utils/uid";
-import {
-  Accordion,
-  AccordionControls,
-  AccordionItem,
-  Alert,
-  Icon,
-  SectionCard,
-} from "../../ui";
+import { Accordion, AccordionControls, AccordionItem, Alert, Icon, SectionCard } from "../../ui";
+import type { MIMLO, Module } from "../../../types";
 
 // ============================================================================
 // Types
 // ============================================================================
-
-interface MIMLO {
-  id: string;
-  text: string;
-  [key: string]: unknown;
-}
-
-interface Module {
-  id: string;
-  title: string;
-  code: string;
-  credits: number;
-  mimlos?: MIMLO[];
-  [key: string]: unknown;
-}
 
 interface LintIssue {
   severity: "warn" | "error" | "info";

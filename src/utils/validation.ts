@@ -4,6 +4,17 @@
  * @module utils/validation
  */
 
+import type {
+  ElectiveDefinition,
+  ElectiveGroup,
+  MIMLO,
+  Module,
+  PLO,
+  Programme,
+  ProgrammeVersion,
+  Stage,
+} from "../types";
+
 export interface ValidationFlag {
   type: "error" | "warn";
   msg: string;

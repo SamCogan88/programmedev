@@ -19,38 +19,11 @@ import {
   Icon,
   SectionCard,
 } from "../../ui";
+import type { ElectiveDefinition, ElectiveGroup, Module } from "../../../types";
 
 // ============================================================================
 // Types
 // ============================================================================
-
-/** Module structure */
-interface Module {
-  id: string;
-  code: string;
-  title: string;
-  credits: number;
-  isElective: boolean;
-  mimlos?: { id: string }[];
-  assessments?: unknown[];
-}
-
-/** Elective definition structure */
-interface ElectiveDefinition {
-  id: string;
-  name: string;
-  code: string;
-  credits: number;
-  groups: ElectiveGroup[];
-}
-
-/** Elective group structure */
-interface ElectiveGroup {
-  id: string;
-  name: string;
-  code: string;
-  moduleIds: string[];
-}
 
 /** Props for ModuleItem component */
 interface ModuleItemProps {

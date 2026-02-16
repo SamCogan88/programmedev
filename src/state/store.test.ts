@@ -18,6 +18,7 @@ import {
   state,
   steps,
 } from "./store";
+import type { Programme, ProgrammeVersion, Stage } from "../types";
 
 const STORAGE_KEY = "nci_pds_mvp_programme_v1";
 

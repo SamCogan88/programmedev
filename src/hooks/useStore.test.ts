@@ -9,6 +9,7 @@ import {
   useStepIndex,
   useUpdateProgramme,
 } from "./useStore";
+import type { Programme } from "../types";
 
 // Mock the store module
 vi.mock("../state/store", async () => {

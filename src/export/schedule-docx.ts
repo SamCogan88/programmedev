@@ -20,6 +20,7 @@ import {
   VerticalAlign,
   WidthType,
 } from "docx";
+import type { Module, Programme, ProgrammeVersion, Stage } from "../types";
 
 const HEADER_SHADING = "D9E1F2";
 const LABEL_SHADING = "E7E6E6";

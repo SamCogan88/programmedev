@@ -30,6 +30,7 @@ import { saveAs } from "file-saver";
 import PizZip from "pizzip";
 
 import { exportProgrammeDescriptorWord, exportProgrammeToWord } from "./word";
+import type { PLO, Programme } from "../types";
 
 function makeProgramme(overrides: Partial<Programme> = {}): Programme {
   return { title: "Test Programme", totalCredits: 60, ...overrides } as Programme;

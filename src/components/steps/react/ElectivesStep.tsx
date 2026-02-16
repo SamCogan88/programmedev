@@ -11,6 +11,7 @@ import { Badge, Button, Card, Col, Form, ListGroup, Row } from "react-bootstrap"
 import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
 import { state, steps } from "../../../state/store";
 import { Accordion, AccordionControls, AccordionItem, Alert, Icon, SectionCard } from "../../ui";
+import type { ElectiveDefinition, ElectiveGroup, Module, Programme } from "../../../types";
 
 // ============================================================================
 // Types (using global types from types.d.ts where available)

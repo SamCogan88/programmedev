@@ -4,6 +4,7 @@
  */
 
 import { escapeHtml } from "./dom";
+import type { Module, PLO, Programme } from "../types";
 
 /**
  * Formats a numeric value as a percentage string with the "%" suffix.

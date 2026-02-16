@@ -7,6 +7,7 @@
 import Docxtemplater from "docxtemplater";
 import { saveAs } from "file-saver";
 import PizZip from "pizzip";
+import type { PLO, Programme } from "../types";
 
 /**
  * Exports programme descriptor as a Word document.

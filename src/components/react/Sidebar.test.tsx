@@ -7,6 +7,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Sidebar, SidebarProps } from "./Sidebar";
+import type { Programme, Stage } from "../../types";
 
 // Mock the store module
 vi.mock("../../state/store", () => ({

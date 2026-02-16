@@ -11,6 +11,7 @@ import { Button, Card, Col, Form, Row, Table } from "react-bootstrap";
 import { useProgramme } from "../../../hooks/useStore";
 import { state } from "../../../state/store";
 import { Accordion, AccordionControls, AccordionItem, Alert, Icon } from "../../ui";
+import type { Module, Programme, ProgrammeVersion, Stage } from "../../../types";
 
 // ============================================================================
 // Types

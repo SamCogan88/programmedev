@@ -12,6 +12,7 @@ vi.mock("docx", async () => {
 });
 
 import { downloadScheduleDocx } from "./schedule-docx";
+import type { Programme } from "../types";
 
 function makeProgramme(overrides: Partial<Programme> = {}): Programme {
   return {

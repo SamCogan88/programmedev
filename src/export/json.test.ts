@@ -7,6 +7,7 @@ vi.mock("../utils/migrate-programme", () => ({
 }));
 
 import { migrateProgramme } from "../utils/migrate-programme";
+import type { Programme } from "../types";
 
 /** Helper to create a minimal Programme-like object for testing. */
 function makeProgramme(overrides: Partial<Programme> = {}): Programme {

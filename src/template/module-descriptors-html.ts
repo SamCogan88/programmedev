@@ -5,6 +5,7 @@
  */
 
 import { escapeHtml } from "../utils/dom";
+import type { MIMLO, Module, Programme, ProgrammeVersion, Stage } from "../types";
 
 interface EffortHoursResult {
   classroomHours: number;

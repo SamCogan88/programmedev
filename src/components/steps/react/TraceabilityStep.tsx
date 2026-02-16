@@ -14,6 +14,7 @@ import { useProgramme } from "../../../hooks/useStore";
 import { getAwardStandard } from "../../../state/store";
 import { validateProgramme } from "../../../utils/validation";
 import { Alert, Icon, SectionCard } from "../../ui";
+import type { MIMLO, Module, PLO, Programme } from "../../../types";
 
 // ============================================================================
 // Types
@@ -726,11 +727,7 @@ const SankeyDiagram: React.FC<{ rows: TraceRow[] }> = ({ rows }) => {
         <Badge bg="danger">● Gap</Badge>
         <Badge bg="dark">● Uncovered</Badge>
       </div>
-      <div
-        ref={chartRef}
-        className="sankey-chart"
-        data-testid="traceability-sankey-chart"
-      />
+      <div ref={chartRef} className="sankey-chart" data-testid="traceability-sankey-chart" />
     </div>
   );
 };

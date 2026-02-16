@@ -11,6 +11,7 @@ import { Badge, Col, Form, Row, Table } from "react-bootstrap";
 import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
 import { editableModuleIds, getSelectedModuleId, state } from "../../../state/store";
 import { Accordion, AccordionControls, AccordionItem, Alert, Icon, SectionCard } from "../../ui";
+import type { Programme } from "../../../types";
 
 // ============================================================================
 // Types
@@ -399,11 +400,7 @@ const ModuleEffortCard: React.FC<ModuleEffortCardProps> = ({
                     <br />
                     Learning
                   </th>
-                  <th
-                    rowSpan={2}
-                    className="text-center align-middle effort-col-total"
-                    scope="col"
-                  >
+                  <th rowSpan={2} className="text-center align-middle effort-col-total" scope="col">
                     Total
                     <br />
                     Effort

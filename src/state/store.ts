@@ -4,6 +4,7 @@
  * @module state/store
  */
 
+import type { Programme, ProgrammeVersion, Stage } from "../types";
 import { defaultPatternFor } from "../utils/helpers";
 import { migrateProgramme } from "../utils/migrate-programme";
 import { uid } from "../utils/uid";
