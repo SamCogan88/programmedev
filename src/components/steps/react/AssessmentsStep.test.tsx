@@ -161,6 +161,7 @@ vi.mock("../../../utils/dom.js", () => ({
 
 describe("AssessmentsStep", () => {
   beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     mockState = {
       programme: JSON.parse(JSON.stringify(mockProgramme)),
       selectedModuleId: null,
@@ -168,6 +169,7 @@ describe("AssessmentsStep", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     cleanup();
     vi.clearAllMocks();
   });
@@ -246,6 +248,45 @@ describe("AssessmentsStep", () => {
       });
 
       expect(mockState.programme.modules[0].assessments).toHaveLength(1);
+    });
+  });
+
+  describe("Assessment Week Field", () => {
+    it("should render week number input for each assessment", () => {
+      render(<AssessmentsStep />);
+      expect(screen.getByTestId("asm-week-asm_test1")).toBeInTheDocument();
+      expect(screen.getByTestId("asm-week-asm_test2")).toBeInTheDocument();
+    });
+
+    it("should display empty week field by default", () => {
+      render(<AssessmentsStep />);
+      const weekInput = screen.getByTestId("asm-week-asm_test1");
+      expect(weekInput).toHaveValue(null);
+    });
+
+    it("should update indicative week when input changes", async () => {
+      render(<AssessmentsStep />);
+      const weekInput = screen.getByTestId("asm-week-asm_test1");
+
+      await act(async () => {
+        fireEvent.change(weekInput, { target: { value: "8" } });
+        vi.advanceTimersByTime(400);
+      });
+
+      expect(mockState.programme.modules[0].assessments[0].indicativeWeek).toBe(8);
+    });
+
+    it("should clear indicative week when input is emptied", async () => {
+      mockState.programme.modules[0].assessments[0].indicativeWeek = 10;
+      render(<AssessmentsStep />);
+      const weekInput = screen.getByTestId("asm-week-asm_test1");
+
+      await act(async () => {
+        fireEvent.change(weekInput, { target: { value: "" } });
+        vi.advanceTimersByTime(400);
+      });
+
+      expect(mockState.programme.modules[0].assessments[0].indicativeWeek).toBeUndefined();
     });
   });
 
