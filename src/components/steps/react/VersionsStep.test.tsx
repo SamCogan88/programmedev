@@ -201,6 +201,44 @@ describe("VersionsStep", () => {
 
       expect(state.programme.versions[0].numberOfGroups).toBe(3);
     });
+
+    it("renders teaching weeks field with default value", () => {
+      state.programme.versions = [
+        {
+          id: "ver_1",
+          label: "Test",
+          code: "T",
+          duration: "",
+          intakes: [],
+          targetCohortSize: 0,
+          numberOfGroups: 0,
+          teachingWeeks: 12,
+          deliveryModality: "",
+          deliveryPatterns: {},
+          deliveryNotes: "",
+          onlineProctoredExams: "TBC",
+          onlineProctoredExamsNotes: "",
+          stages: [],
+        },
+      ];
+      render(<VersionsStep />);
+
+      const input = screen.getByTestId("version-teaching-weeks-ver_1");
+      expect(input).toBeInTheDocument();
+      expect(input).toHaveValue(12);
+    });
+
+    it("updates teaching weeks on input change", async () => {
+      render(<VersionsStep />);
+
+      const input = screen.getByTestId("version-teaching-weeks-ver_1");
+      await act(async () => {
+        fireEvent.change(input, { target: { value: "15" } });
+        vi.advanceTimersByTime(400);
+      });
+
+      expect(state.programme.versions[0].teachingWeeks).toBe(15);
+    });
   });
 
   describe("Delivery modality", () => {
