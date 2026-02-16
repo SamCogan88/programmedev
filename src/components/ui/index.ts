@@ -44,3 +44,6 @@ export {
   type FormSelectProps,
   type SelectOption,
 } from "./Form";
+
+// BloomsGuidance
+export { BloomsGuidance } from "./BloomsGuidance";
