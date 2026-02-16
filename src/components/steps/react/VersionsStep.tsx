@@ -279,6 +279,21 @@ const VersionItem: React.FC<VersionItemProps> = ({
           />
         </Col>
 
+        {/* Teaching Weeks */}
+        <Col md={3}>
+          <Form.Label className="fw-semibold" htmlFor={`vteaching_${v.id}`}>
+            Teaching weeks
+          </Form.Label>
+          <Form.Control
+            type="number"
+            min={1}
+            id={`vteaching_${v.id}`}
+            data-testid={`version-teaching-weeks-${v.id}`}
+            value={v.teachingWeeks ?? 12}
+            onChange={(e) => onFieldChange("teachingWeeks", Number(e.target.value))}
+          />
+        </Col>
+
         {/* Delivery Modality */}
         <Col xs={12}>
           <Form.Label className="fw-semibold" id={`modality-label-${v.id}`}>
