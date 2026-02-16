@@ -9,7 +9,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { Badge, Button, ButtonGroup, Navbar, OverlayTrigger, Popover } from "react-bootstrap";
 
-import { exportProgrammeToJson, importProgrammeFromJson } from "../../export/json";
+import { downloadJson, importProgrammeFromJson } from "../../export/json";
 import { notifyStateChange, useProgramme } from "../../hooks/useStore";
 import { activeSteps, resetProgramme, saveNow, state } from "../../state/store";
 import { completionPercent, validateProgramme } from "../../utils/validation";
@@ -233,7 +233,7 @@ export const Header: React.FC<HeaderProps> = ({ onNavigateToStep }) => {
   // ============================================================================
 
   const handleExport = useCallback(() => {
-    exportProgrammeToJson(programme);
+    downloadJson(programme);
   }, [programme]);
 
   const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {

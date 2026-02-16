@@ -35,7 +35,7 @@ vi.mock("../../utils/validation.js", () => ({
 
 // Mock export/import functions
 vi.mock("../../export/json.js", () => ({
-  exportProgrammeToJson: vi.fn(),
+  downloadJson: vi.fn(),
   importProgrammeFromJson: vi.fn().mockResolvedValue({ success: true, programme: {} }),
 }));
 
@@ -176,7 +176,7 @@ describe("Header", () => {
 
   describe("Export Button", () => {
     it("calls export function on click", async () => {
-      const { exportProgrammeToJson } = await import("../../export/json.js");
+      const { downloadJson } = await import("../../export/json.js");
       render(<Header />);
 
       const exportBtn = screen.getByTestId("export-btn");
@@ -184,7 +184,7 @@ describe("Header", () => {
         fireEvent.click(exportBtn);
       });
 
-      expect(exportProgrammeToJson).toHaveBeenCalledWith(state.programme);
+      expect(downloadJson).toHaveBeenCalledWith(state.programme);
     });
   });
 
