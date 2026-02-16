@@ -6,11 +6,20 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { Programme } from "../../../types";
 import { MappingStep } from "./MappingStep";
-import type { MIMLO, Module, PLO, Programme } from "../../../types";
 
 // Mock programme data
-const mockProgramme = {
+const mockProgramme: Programme = {
+  schemaVersion: 5,
+  id: "test",
+  awardType: "Honours Bachelor Degree",
+  awardTypeIsOther: false,
+  school: "Computing",
+  awardStandardIds: [],
+  awardStandardNames: [],
+  totalCredits: 60,
+  electiveDefinitions: [],
   title: "Test Programme",
   nfqLevel: 8,
   mode: "PROGRAMME_OWNER",
@@ -54,7 +63,7 @@ const mockProgramme = {
   moduleEditor: { assignedModuleIds: [] },
 };
 
-let mockState: { programme: typeof mockProgramme } = {
+let mockState: { programme: Programme } = {
   programme: JSON.parse(JSON.stringify(mockProgramme)),
 };
 
