@@ -6,12 +6,12 @@
 
 /**
  * Migrates programme data from older schema versions to the current version.
- * Applies sequential migrations (v1→v2→v3→v4) as needed.
+ * Applies sequential migrations (v1→v2→v3→v4→v5) as needed.
  */
 import type { Programme } from "../types";
 
 export function migrateProgramme(data: any): any {
-  const currentVersion = 4;
+  const currentVersion = 5;
   const dataVersion = data.schemaVersion || 1;
 
   if (dataVersion === currentVersion) {
@@ -31,6 +31,10 @@ export function migrateProgramme(data: any): any {
 
   if (dataVersion < 4) {
     migrated = migrateV3toV4(migrated);
+  }
+
+  if (dataVersion < 5) {
+    migrated = migrateV4toV5(migrated);
   }
 
   return migrated;
@@ -419,6 +423,30 @@ function migrateV3toV4(data: any): any {
   // Initialize ploToMimlos if not present
   if (!migrated.ploToMimlos) {
     migrated.ploToMimlos = {};
+  }
+
+  migrated.updatedAt = new Date().toISOString();
+
+  return migrated;
+}
+
+/**
+ * Migrates programme data from schema v4 to v5.
+ * Adds teachingWeeks property to all programme versions.
+ */
+function migrateV4toV5(data: any): any {
+  console.log("Migrating programme from schema v4 to v5");
+
+  const migrated = {
+    ...data,
+    schemaVersion: 5,
+  };
+
+  // Add teachingWeeks to all versions
+  if (Array.isArray(migrated.versions)) {
+    migrated.versions.forEach((v: any) => {
+      v.teachingWeeks ??= 12;
+    });
   }
 
   migrated.updatedAt = new Date().toISOString();
