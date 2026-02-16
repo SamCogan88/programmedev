@@ -7,7 +7,7 @@
 /** A single lint issue found in a learning outcome. */
 export interface LintIssue {
   id: string;
-  severity: string;
+  severity: "warn" | "error" | "info";
   start: number;
   end: number;
   match: string;
@@ -38,7 +38,7 @@ export interface LintOptions {
 /** A lint rule definition. */
 interface LintRule {
   id: string;
-  severity: string;
+  severity: "warn" | "error" | "info";
   pattern: RegExp;
   message: string;
   suggestions: string[];
