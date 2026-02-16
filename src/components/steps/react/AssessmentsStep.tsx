@@ -550,7 +550,7 @@ const AssessmentInput: React.FC<AssessmentInputProps> = ({
     >
       <fieldset className="row g-2">
         <legend className="visually-hidden">Assessment details</legend>
-        <div className="col-md-4">
+        <div className="col-md-3">
           <Form.Label className="small fw-semibold" htmlFor={`asm-title-${assessment.id}`}>
             Title
           </Form.Label>
@@ -593,7 +593,7 @@ const AssessmentInput: React.FC<AssessmentInputProps> = ({
             data-testid={`asm-weight-${assessment.id}`}
           />
         </div>
-        <div className="col-md-3">
+        <div className="col-md-2">
           <Form.Label className="small fw-semibold" htmlFor={`asm-mode-${assessment.id}`}>
             Mode
           </Form.Label>
@@ -609,6 +609,21 @@ const AssessmentInput: React.FC<AssessmentInputProps> = ({
               </option>
             ))}
           </Form.Select>
+        </div>
+        <div className="col-md-2">
+          <Form.Label className="small fw-semibold" htmlFor={`asm-week-${assessment.id}`}>
+            Week #
+          </Form.Label>
+          <Form.Control
+            type="number"
+            min={1}
+            id={`asm-week-${assessment.id}`}
+            value={assessment.indicativeWeek ?? ""}
+            onChange={(e) =>
+              onUpdate("indicativeWeek", e.target.value ? Number(e.target.value) : undefined)
+            }
+            data-testid={`asm-week-${assessment.id}`}
+          />
         </div>
       </fieldset>
 
