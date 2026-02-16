@@ -6,8 +6,8 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { state } from "../../../state/store";
+import type { Programme } from "../../../types";
 import { StructureStep } from "./StructureStep";
-import type { MIMLO, Module, Programme } from "../../../types";
 
 // Mock the store module
 vi.mock("../../../state/store", async () => {
@@ -147,9 +147,9 @@ describe("StructureStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.modules.length).toBe(1);
-      expect(state.programme.modules[0].title).toBe("New module");
-      expect(state.programme.modules[0].isElective).toBe(false);
+      expect(state.programme.modules!.length).toBe(1);
+      expect(state.programme.modules![0].title).toBe("New module");
+      expect(state.programme.modules![0].isElective).toBe(false);
     });
 
     it("new module is visible after adding", async () => {
@@ -161,7 +161,7 @@ describe("StructureStep", () => {
       });
 
       // The module count should have increased
-      expect(state.programme.modules.length).toBeGreaterThan(0);
+      expect(state.programme.modules!.length).toBeGreaterThan(0);
     });
   });
 
@@ -241,7 +241,7 @@ describe("StructureStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.modules[0].title).toBe("Updated Title");
+      expect(state.programme.modules![0].title).toBe("Updated Title");
     });
 
     it("updates module code on input change", async () => {
@@ -253,7 +253,7 @@ describe("StructureStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.modules[0].code).toBe("CS999");
+      expect(state.programme.modules![0].code).toBe("CS999");
     });
 
     it("updates module credits on input change", async () => {
@@ -265,7 +265,7 @@ describe("StructureStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.modules[0].credits).toBe(20);
+      expect(state.programme.modules![0].credits).toBe(20);
     });
 
     it("updates module type from mandatory to elective", async () => {
@@ -277,11 +277,11 @@ describe("StructureStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.modules[0].isElective).toBe(true);
+      expect(state.programme.modules![0].isElective).toBe(true);
     });
 
     it("updates module type from elective to mandatory", async () => {
-      state.programme.modules[0].isElective = true;
+      state.programme.modules![0].isElective = true;
       render(<StructureStep />);
 
       const typeSelect = screen.getByTestId("module-type-mod_1");
@@ -290,7 +290,7 @@ describe("StructureStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.modules[0].isElective).toBe(false);
+      expect(state.programme.modules![0].isElective).toBe(false);
     });
   });
 
@@ -308,8 +308,8 @@ describe("StructureStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.modules.length).toBe(1);
-      expect(state.programme.modules[0].id).toBe("mod_2");
+      expect(state.programme.modules!.length).toBe(1);
+      expect(state.programme.modules![0].id).toBe("mod_2");
     });
 
     it("cleans up MIMLO mappings when removing module", async () => {
@@ -320,7 +320,7 @@ describe("StructureStep", () => {
           title: "Module 1",
           credits: 10,
           isElective: false,
-          mimlos: [{ id: "mimlo_1" }, { id: "mimlo_2" }],
+          mimlos: [{ id: "mimlo_1", text: "" }, { id: "mimlo_2", text: "" }],
         },
       ];
       state.programme.ploToMimlos = {

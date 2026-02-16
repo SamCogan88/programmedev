@@ -6,8 +6,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { state } from "../../../state/store";
+import type { Programme } from "../../../types";
 import { ScheduleStep } from "./ScheduleStep";
-import type { Module, Programme } from "../../../types";
 
 // Mock the store module
 vi.mock("../../../state/store", async () => {
@@ -253,7 +253,7 @@ describe("ScheduleStep", () => {
     });
 
     it("shows no stages message when version has no stages", () => {
-      state.programme.versions[0].stages = [];
+      state.programme.versions![0].stages = [];
       render(<ScheduleStep />);
 
       expect(screen.getByTestId("schedule-no-stages")).toBeInTheDocument();
