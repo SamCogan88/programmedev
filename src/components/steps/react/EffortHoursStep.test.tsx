@@ -7,7 +7,6 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EffortHoursStep } from "./EffortHoursStep";
-import type { Module, Programme } from "../../../types";
 
 // Mock programme data
 const mockProgramme = {
@@ -177,7 +176,7 @@ describe("EffortHoursStep", () => {
 
     it("shows message when no versions with modalities defined", () => {
       mockState.programme.versions = [
-        { id: "ver_1", label: "No Modality", code: "NM", stages: [] },
+        { id: "ver_1", label: "No Modality", code: "NM", deliveryModality: "", stages: [] },
       ];
       render(<EffortHoursStep />);
 

@@ -8,7 +8,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { state } from "../../../state/store";
 import type { TraceRow } from "./TraceabilityStep";
 import { buildSankeyData, TraceabilityStep } from "./TraceabilityStep";
-import type { MIMLO, Module, PLO, Programme } from "../../../types";
 
 // Mock the store module
 vi.mock("../../../state/store", async () => {
@@ -36,6 +35,7 @@ describe("TraceabilityStep", () => {
       id: "test",
       title: "Test Programme",
       awardType: "Honours Bachelor Degree",
+      awardTypeIsOther: false,
       nfqLevel: 8,
       school: "Computing",
       awardStandardIds: ["computing"],
