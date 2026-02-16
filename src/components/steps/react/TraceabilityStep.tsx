@@ -12,6 +12,7 @@ import { Badge, Button, Form, Nav, Tab, Table } from "react-bootstrap";
 
 import { useProgramme } from "../../../hooks/useStore";
 import { getAwardStandard } from "../../../state/store";
+import { downloadBlob } from "../../../utils/dom";
 import { validateProgramme } from "../../../utils/validation";
 import { Alert, Icon, SectionCard } from "../../ui";
 import type { MIMLO, Module, PLO, Programme } from "../../../types";
@@ -890,12 +891,7 @@ export const TraceabilityStep: React.FC = () => {
 
     const csv = csvRows.join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "traceability_matrix.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, "traceability_matrix.csv");
   }, [filteredRows]);
 
   if (isLoading && standardIds.length > 0) {

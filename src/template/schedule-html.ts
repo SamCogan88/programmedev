@@ -6,6 +6,7 @@
 
 import { escapeHtml } from "../utils/dom";
 import { getAssessmentFlags, getAssessmentPercentages } from "../utils/assessments";
+import { resolveEffortHours } from "../utils/helpers";
 import type { Module, Programme, ProgrammeVersion, Stage } from "../types";
 
 /**
@@ -151,10 +152,7 @@ export function renderScheduleTable(
       return;
     }
 
-    const effort: any =
-      mod.effortHours?.[deliveryKey] ??
-      mod.effortHours?.[Object.keys(mod.effortHours ?? {})[0]] ??
-      {};
+    const effort: any = resolveEffortHours(mod, deliveryKey);
     const totalHours = (mod.credits ?? 0) * 25;
 
     const asmPcts = getAssessmentPercentages(mod);

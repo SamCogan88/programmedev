@@ -6,6 +6,7 @@
 
 import { escapeHtml } from "../utils/dom";
 import { type AssessmentPercentages, getAssessmentPercentages } from "../utils/assessments";
+import { resolveEffortHours } from "../utils/helpers";
 import type { MIMLO, Module, Programme, ProgrammeVersion, Stage } from "../types";
 
 interface EffortHoursResult {
@@ -23,8 +24,7 @@ interface EffortHoursResult {
  * Formats effort hours for the teaching modalities table.
  */
 function getEffortHours(mod: Module, versionKey: string): EffortHoursResult {
-  const effort =
-    mod.effortHours?.[versionKey] ?? mod.effortHours?.[Object.keys(mod.effortHours ?? {})[0]] ?? {};
+  const effort = resolveEffortHours(mod, versionKey);
 
   const classroomHours = effort.classroomHours ?? 0;
   const syncOnlineHours = effort.mentoringHours ?? 0;

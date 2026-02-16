@@ -11,6 +11,7 @@ import { Button, ButtonGroup, Table } from "react-bootstrap";
 import { exportProgrammeToWord } from "../../../export/word";
 import { useProgramme } from "../../../hooks/useStore";
 import { state } from "../../../state/store";
+import { downloadBlob } from "../../../utils/dom";
 import { completionPercent } from "../../../utils/validation";
 import { Accordion, AccordionControls, AccordionItem, Alert, Icon, SectionCard } from "../../ui";
 import type { Module, PLO, Programme, ProgrammeVersion, Stage } from "../../../types";
@@ -384,12 +385,7 @@ const ExportActionsGroup: React.FC<{ isComplete: boolean }> = ({ isComplete }) =
     const blob = new Blob([JSON.stringify(state.programme, null, 2)], {
       type: "application/json",
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, filename);
   }, []);
 
   return (
