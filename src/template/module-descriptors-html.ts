@@ -5,6 +5,7 @@
  */
 
 import { escapeHtml } from "../utils/dom";
+import { type AssessmentPercentages, getAssessmentPercentages } from "../utils/assessments";
 import type { MIMLO, Module, Programme, ProgrammeVersion, Stage } from "../types";
 
 interface EffortHoursResult {
@@ -16,15 +17,6 @@ interface EffortHoursResult {
   workBasedHours: number;
   otherHours: number;
   total: number;
-}
-
-interface AssessmentPercentages {
-  continuous: number;
-  invigilated: number;
-  proctored: number;
-  project: number;
-  practical: number;
-  workBased: number;
 }
 
 /**
@@ -61,40 +53,6 @@ function getEffortHours(mod: Module, versionKey: string): EffortHoursResult {
     otherHours,
     total,
   };
-}
-
-/**
- * Gets assessment percentages by type.
- */
-function getAssessmentPercentages(mod: Module): AssessmentPercentages {
-  const pcts: AssessmentPercentages = {
-    continuous: 0,
-    invigilated: 0,
-    proctored: 0,
-    project: 0,
-    practical: 0,
-    workBased: 0,
-  };
-
-  (mod.assessments ?? []).forEach((a) => {
-    const t = (a.type ?? "").toLowerCase();
-    const w = a.weighting ?? 0;
-    if (t.includes("exam") && t.includes("campus")) {
-      pcts.invigilated += w;
-    } else if (t.includes("exam") && t.includes("online")) {
-      pcts.proctored += w;
-    } else if (t.includes("project")) {
-      pcts.project += w;
-    } else if (t.includes("practical") || t.includes("lab")) {
-      pcts.practical += w;
-    } else if (t.includes("work")) {
-      pcts.workBased += w;
-    } else {
-      pcts.continuous += w;
-    }
-  });
-
-  return pcts;
 }
 
 /**

@@ -21,6 +21,11 @@ import {
   WidthType,
 } from "docx";
 import type { Module, Programme, ProgrammeVersion, Stage } from "../types";
+import {
+  type AssessmentFlags,
+  getAssessmentFlags,
+  getAssessmentPercentages,
+} from "../utils/assessments";
 
 const HEADER_SHADING = "D9E1F2";
 const LABEL_SHADING = "E7E6E6";
@@ -77,51 +82,6 @@ function row(cells: TableCell[], opts: { height?: number } = {}): TableRow {
   });
 }
 
-interface AssessmentTypes {
-  continuous: boolean;
-  invigilated: boolean;
-  proctored: boolean;
-  project: boolean;
-  practical: boolean;
-  workBased: boolean;
-}
-
-/** Determines assessment types used in a stage. */
-function getAssessmentTypes(programme: Programme, stageModules: Stage["modules"]): AssessmentTypes {
-  const types = {
-    continuous: false,
-    invigilated: false,
-    proctored: false,
-    project: false,
-    practical: false,
-    workBased: false,
-  };
-
-  (stageModules ?? []).forEach((sm) => {
-    const mod = (programme.modules ?? []).find((m) => m.id === sm.moduleId);
-    if (mod?.assessments) {
-      mod.assessments.forEach((a) => {
-        const t = (a.type ?? "").toLowerCase();
-        if (t.includes("exam") && t.includes("campus")) {
-          types.invigilated = true;
-        } else if (t.includes("exam") && t.includes("online")) {
-          types.proctored = true;
-        } else if (t.includes("project")) {
-          types.project = true;
-        } else if (t.includes("practical") || t.includes("lab")) {
-          types.practical = true;
-        } else if (t.includes("work")) {
-          types.workBased = true;
-        } else {
-          types.continuous = true;
-        }
-      });
-    }
-  });
-
-  return types;
-}
-
 /** Generates a schedule table for a version/stage. */
 function generateScheduleTable(
   programme: Programme,
@@ -132,7 +92,7 @@ function generateScheduleTable(
   const deliveryKey = `${version.id}_${version.deliveryModality}`;
   const dm = version.deliveryModality ?? "";
 
-  const assessmentTypes = getAssessmentTypes(programme, stageModules);
+  const assessmentTypes = getAssessmentFlags(programme, stageModules);
   const exitAwardTitle = stage.exitAward?.enabled
     ? stage.exitAward.awardTitle || "Exit Award Available"
     : "";
@@ -486,31 +446,7 @@ function generateScheduleTable(
       {};
     const totalHours = (mod.credits ?? 0) * 25;
 
-    const asmPcts = {
-      continuous: 0,
-      invigilated: 0,
-      proctored: 0,
-      project: 0,
-      practical: 0,
-      workBased: 0,
-    };
-    (mod.assessments ?? []).forEach((a) => {
-      const t = (a.type ?? "").toLowerCase();
-      const w = a.weighting ?? 0;
-      if (t.includes("exam") && t.includes("campus")) {
-        asmPcts.invigilated += w;
-      } else if (t.includes("exam") && t.includes("online")) {
-        asmPcts.proctored += w;
-      } else if (t.includes("project")) {
-        asmPcts.project += w;
-      } else if (t.includes("practical") || t.includes("lab")) {
-        asmPcts.practical += w;
-      } else if (t.includes("work")) {
-        asmPcts.workBased += w;
-      } else {
-        asmPcts.continuous += w;
-      }
-    });
+    const asmPcts = getAssessmentPercentages(mod);
 
     rows.push(
       row([
