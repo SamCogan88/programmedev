@@ -620,6 +620,180 @@ describe("validateProgramme", () => {
     });
   });
 
+  // --- Assessments ---
+  describe("assessment validation", () => {
+    it("does not flag when indicative week is not set", () => {
+      const p = baseProgramme({
+        modules: [
+          {
+            id: "mod_1",
+            title: "Module A",
+            code: "MA",
+            credits: 30,
+            mimlos: [{ id: "m1", text: "LO1" }],
+            assessments: [{ id: "a1", title: "Test", type: "Exam", weighting: 100 }],
+          },
+        ],
+      });
+      const flags = validateProgramme(p);
+      expect(flagMsgs(flags).some((m) => m.includes("indicative week"))).toBe(false);
+    });
+
+    it("does not flag when indicative week is within teaching weeks", () => {
+      const p = baseProgramme({
+        versions: [
+          {
+            id: "v1",
+            label: "FT",
+            code: "FT",
+            teachingWeeks: 12,
+            targetCohortSize: 30,
+            stages: [{ id: "s1", name: "Year 1", creditsTarget: 60, modules: [] }],
+          } as ProgrammeVersion,
+        ],
+        modules: [
+          {
+            id: "mod_1",
+            title: "Module A",
+            code: "MA",
+            credits: 30,
+            mimlos: [{ id: "m1", text: "LO1" }],
+            assessments: [
+              { id: "a1", title: "Test", type: "Exam", weighting: 100, indicativeWeek: 10 },
+            ],
+          },
+        ],
+      });
+      const flags = validateProgramme(p);
+      expect(flagMsgs(flags).some((m) => m.includes("indicative week"))).toBe(false);
+    });
+
+    it("flags when indicative week exceeds teaching weeks", () => {
+      const p = baseProgramme({
+        versions: [
+          {
+            id: "v1",
+            label: "FT",
+            code: "FT",
+            teachingWeeks: 10,
+            targetCohortSize: 30,
+            stages: [{ id: "s1", name: "Year 1", creditsTarget: 60, modules: [] }],
+          } as ProgrammeVersion,
+        ],
+        modules: [
+          {
+            id: "mod_1",
+            title: "Module A",
+            code: "MA",
+            credits: 30,
+            mimlos: [{ id: "m1", text: "LO1" }],
+            assessments: [
+              { id: "a1", title: "Test", type: "Exam", weighting: 100, indicativeWeek: 12 },
+            ],
+          },
+        ],
+      });
+      const flags = validateProgramme(p);
+      const msg = flagMsgs(flags).find((m) => m.includes("indicative week"));
+      expect(msg).toBeDefined();
+      expect(msg).toContain("[MA]");
+      expect(msg).toContain("Test");
+      expect(msg).toContain("indicative week (12) exceeds teaching weeks (10)");
+    });
+
+    it("uses minimum teaching weeks across all versions", () => {
+      const p = baseProgramme({
+        versions: [
+          {
+            id: "v1",
+            label: "FT",
+            code: "FT",
+            teachingWeeks: 8,
+            targetCohortSize: 30,
+            stages: [{ id: "s1", name: "Year 1", creditsTarget: 60, modules: [] }],
+          } as ProgrammeVersion,
+          {
+            id: "v2",
+            label: "PT",
+            code: "PT",
+            teachingWeeks: 15,
+            targetCohortSize: 20,
+            stages: [{ id: "s2", name: "Year 1", creditsTarget: 60, modules: [] }],
+          } as ProgrammeVersion,
+        ],
+        modules: [
+          {
+            id: "mod_1",
+            title: "Module A",
+            code: "MA",
+            credits: 30,
+            mimlos: [{ id: "m1", text: "LO1" }],
+            assessments: [
+              { id: "a1", title: "Test", type: "Exam", weighting: 100, indicativeWeek: 10 },
+            ],
+          },
+        ],
+      });
+      const flags = validateProgramme(p);
+      const msg = flagMsgs(flags).find((m) => m.includes("indicative week"));
+      expect(msg).toBeDefined();
+      expect(msg).toContain("indicative week (10) exceeds teaching weeks (8)");
+    });
+
+    it("flags as warning, not error", () => {
+      const p = baseProgramme({
+        versions: [
+          {
+            id: "v1",
+            label: "FT",
+            code: "FT",
+            teachingWeeks: 8,
+            targetCohortSize: 30,
+            stages: [{ id: "s1", name: "Year 1", creditsTarget: 60, modules: [] }],
+          } as ProgrammeVersion,
+        ],
+        modules: [
+          {
+            id: "mod_1",
+            title: "Module A",
+            code: "MA",
+            credits: 30,
+            mimlos: [{ id: "m1", text: "LO1" }],
+            assessments: [
+              { id: "a1", title: "Test", type: "Exam", weighting: 100, indicativeWeek: 10 },
+            ],
+          },
+        ],
+      });
+      const flags = validateProgramme(p);
+      const flag = flags.find((f) => f.msg.includes("indicative week"));
+      expect(flag?.type).toBe("warn");
+      expect(flag?.step).toBe("assessments");
+    });
+
+    it("defaults to 12 weeks when no versions", () => {
+      const p = baseProgramme({
+        versions: [],
+        modules: [
+          {
+            id: "mod_1",
+            title: "Module A",
+            code: "MA",
+            credits: 30,
+            mimlos: [{ id: "m1", text: "LO1" }],
+            assessments: [
+              { id: "a1", title: "Test", type: "Exam", weighting: 100, indicativeWeek: 15 },
+            ],
+          },
+        ],
+      });
+      const flags = validateProgramme(p);
+      const msg = flagMsgs(flags).find((m) => m.includes("indicative week"));
+      expect(msg).toBeDefined();
+      expect(msg).toContain("indicative week (15) exceeds teaching weeks (12)");
+    });
+  });
+
   // --- Clean programme ---
   describe("clean programme", () => {
     it("returns no errors for a well-formed programme", () => {

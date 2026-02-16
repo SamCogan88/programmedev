@@ -6,11 +6,20 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { Programme } from "../../../types";
 import { MimlosStep } from "./MimlosStep";
-import type { MIMLO, Module, Programme } from "../../../types";
 
 // Mock the store module
-const mockProgramme = {
+const mockProgramme: Programme = {
+  schemaVersion: 5,
+  id: "test",
+  awardType: "Honours Bachelor Degree",
+  awardTypeIsOther: false,
+  school: "Computing",
+  awardStandardIds: [],
+  awardStandardNames: [],
+  totalCredits: 60,
+  electiveDefinitions: [],
   title: "Test Programme",
   nfqLevel: 8,
   mode: "PROGRAMME_OWNER",
@@ -36,7 +45,7 @@ const mockProgramme = {
   moduleEditor: { assignedModuleIds: [] },
 };
 
-let mockState: { programme: typeof mockProgramme; selectedModuleId: string | null } = {
+let mockState: { programme: Programme; selectedModuleId: string | null } = {
   programme: { ...mockProgramme },
   selectedModuleId: null,
 };
@@ -58,8 +67,8 @@ vi.mock("../../../state/store", () => ({
       cb();
     }
   }),
-  editableModuleIds: vi.fn(() => mockState.programme.modules.map((m) => m.id)),
-  getSelectedModuleId: vi.fn(() => mockState.programme.modules[0]?.id ?? ""),
+  editableModuleIds: vi.fn(() => mockState.programme.modules!.map((m) => m.id)),
+  getSelectedModuleId: vi.fn(() => mockState.programme.modules![0]?.id ?? ""),
 }));
 
 vi.mock("../../../hooks/useStore", () => ({
@@ -75,7 +84,10 @@ vi.mock("../../../lib/lo-lint.js", () => ({
     issues: text.toLowerCase().includes("understand")
       ? [
           {
+            id: "vague-verb",
             severity: "warn",
+            start: 0,
+            end: 10,
             match: "understand",
             message: "Avoid vague terms",
             suggestions: ["analyse"],
@@ -195,7 +207,7 @@ describe("MimlosStep", () => {
         fireEvent.click(addButton);
       });
 
-      expect(mockState.programme.modules[0].mimlos).toHaveLength(3);
+      expect(mockState.programme.modules![0].mimlos).toHaveLength(3);
     });
   });
 
@@ -208,7 +220,7 @@ describe("MimlosStep", () => {
         fireEvent.click(removeButton);
       });
 
-      expect(mockState.programme.modules[0].mimlos).toHaveLength(1);
+      expect(mockState.programme.modules![0].mimlos).toHaveLength(1);
     });
   });
 
@@ -227,7 +239,7 @@ describe("MimlosStep", () => {
         fireEvent.change(input, { target: { value: "Evaluate computing architectures" } });
       });
 
-      expect(mockState.programme.modules[0].mimlos[0].text).toBe(
+      expect(mockState.programme.modules![0].mimlos![0].text).toBe(
         "Evaluate computing architectures",
       );
     });
@@ -235,12 +247,16 @@ describe("MimlosStep", () => {
 
   describe("Linting", () => {
     it("should show lint warnings for vague terms", async () => {
-      mockState.programme.modules[0].mimlos[0].text = "Understand the system";
+      mockState.programme.modules![0].mimlos![0].text = "Understand the system";
       const { lintLearningOutcome } = await import("../../../lib/lo-lint.js");
       vi.mocked(lintLearningOutcome).mockReturnValue({
+        language: { lang: "en", confidence: 1, scores: { en: 1 } },
         issues: [
           {
+            id: "vague-verb",
             severity: "warn",
+            start: 0,
+            end: 10,
             match: "understand",
             message: "Avoid vague terms",
             suggestions: ["analyse"],
@@ -300,7 +316,7 @@ describe("MimlosStep", () => {
     it("should not show module picker when only one assigned module", () => {
       // Only one module assigned means no picker needed
       mockState.programme.mode = "MODULE_EDITOR";
-      mockState.programme.modules = [mockState.programme.modules[0]];
+      mockState.programme.modules = [mockState.programme.modules![0]];
 
       render(<MimlosStep />);
       expect(screen.queryByTestId("mimlo-module-picker")).not.toBeInTheDocument();

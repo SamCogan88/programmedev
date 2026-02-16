@@ -15,6 +15,7 @@ export interface ProgrammeVersion {
   intakes?: string[];
   startMonth?: string;
   durationWeeks?: number;
+  teachingWeeks?: number;
   admissionsDeadline?: string;
   duration?: string;
   targetCohortSize?: number;

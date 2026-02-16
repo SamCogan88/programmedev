@@ -90,10 +90,9 @@ function makeProgramme(overrides: Partial<Programme> = {}): Programme {
     versions: [
       {
         id: "v1",
-        title: "Full Time",
-        deliveryMode: "Full-time",
+        label: "Full Time",
+        code: "FT",
         stages: [],
-        attendancePatterns: [],
       } as ProgrammeVersion,
     ],
     ...overrides,
@@ -173,7 +172,7 @@ describe("template entry point", () => {
       const changeCall = (fileUpload.addEventListener as ReturnType<typeof vi.fn>).mock.calls.find(
         (c: unknown[]) => c[0] === "change",
       );
-      const changeHandler = changeCall[1] as (e: Partial<Event>) => void;
+      const changeHandler = changeCall![1] as (e: Partial<Event>) => void;
 
       // Trigger the change event
       changeHandler({
@@ -206,7 +205,7 @@ describe("template entry point", () => {
       const changeCall = (fileUpload.addEventListener as ReturnType<typeof vi.fn>).mock.calls.find(
         (c: unknown[]) => c[0] === "change",
       );
-      const changeHandler = changeCall[1] as (e: Partial<Event>) => void;
+      const changeHandler = changeCall![1] as (e: Partial<Event>) => void;
 
       changeHandler({
         target: { files: [mockFile] } as unknown as EventTarget,
@@ -230,7 +229,7 @@ describe("template entry point", () => {
       const changeCall = (fileUpload.addEventListener as ReturnType<typeof vi.fn>).mock.calls.find(
         (c: unknown[]) => c[0] === "change",
       );
-      const changeHandler = changeCall[1] as (e: Partial<Event>) => void;
+      const changeHandler = changeCall![1] as (e: Partial<Event>) => void;
 
       changeHandler({
         target: { files: [mockFile] } as unknown as EventTarget,
@@ -254,7 +253,7 @@ describe("template entry point", () => {
       const dragoverCall = (
         uploadSection.addEventListener as ReturnType<typeof vi.fn>
       ).mock.calls.find((c: unknown[]) => c[0] === "dragover");
-      const dragoverHandler = dragoverCall[1] as (e: Partial<DragEvent>) => void;
+      const dragoverHandler = dragoverCall![1] as (e: Partial<DragEvent>) => void;
 
       const mockEvent = {
         preventDefault: vi.fn(),
@@ -276,7 +275,7 @@ describe("template entry point", () => {
       const dragleaveCall = (
         uploadSection.addEventListener as ReturnType<typeof vi.fn>
       ).mock.calls.find((c: unknown[]) => c[0] === "dragleave");
-      const dragleaveHandler = dragleaveCall[1] as (e: Partial<DragEvent>) => void;
+      const dragleaveHandler = dragleaveCall![1] as (e: Partial<DragEvent>) => void;
 
       const mockEvent = {
         preventDefault: vi.fn(),
@@ -300,13 +299,13 @@ describe("template entry point", () => {
       const dropCall = (uploadSection.addEventListener as ReturnType<typeof vi.fn>).mock.calls.find(
         (c: unknown[]) => c[0] === "drop",
       );
-      const dropHandler = dropCall[1] as (e: Partial<DragEvent>) => void;
+      const dropHandler = dropCall![1] as (e: Partial<DragEvent>) => void;
 
       const mockEvent = {
         preventDefault: vi.fn(),
         stopPropagation: vi.fn(),
         dataTransfer: { files: [mockFile] as unknown as FileList },
-      };
+      } as unknown as Partial<DragEvent>;
       dropHandler(mockEvent);
 
       expect(uploadSection.classList.remove).toHaveBeenCalledWith("drag-over");
@@ -327,13 +326,13 @@ describe("template entry point", () => {
       const dropCall = (uploadSection.addEventListener as ReturnType<typeof vi.fn>).mock.calls.find(
         (c: unknown[]) => c[0] === "drop",
       );
-      const dropHandler = dropCall[1] as (e: Partial<DragEvent>) => void;
+      const dropHandler = dropCall![1] as (e: Partial<DragEvent>) => void;
 
       const mockEvent = {
         preventDefault: vi.fn(),
         stopPropagation: vi.fn(),
         dataTransfer: { files: [mockFile] as unknown as FileList },
-      };
+      } as unknown as Partial<DragEvent>;
       dropHandler(mockEvent);
 
       expect(elements["upload-status"].textContent).toBe("✗ Please drop a JSON file");
@@ -351,7 +350,7 @@ describe("template entry point", () => {
       const clickCall = (
         downloadDocxBtn.addEventListener as ReturnType<typeof vi.fn>
       ).mock.calls.find((c: unknown[]) => c[0] === "click");
-      const clickHandler = clickCall[1] as () => void;
+      const clickHandler = clickCall![1] as () => void;
 
       clickHandler();
 
@@ -373,7 +372,7 @@ describe("template entry point", () => {
       const changeCall = (fileUpload.addEventListener as ReturnType<typeof vi.fn>).mock.calls.find(
         (c: unknown[]) => c[0] === "change",
       );
-      const changeHandler = changeCall[1] as (e: Partial<Event>) => void;
+      const changeHandler = changeCall![1] as (e: Partial<Event>) => void;
       changeHandler({
         target: { files: [mockFile] } as unknown as EventTarget,
       });
@@ -387,7 +386,7 @@ describe("template entry point", () => {
       const clickCall = (
         downloadDocxBtn.addEventListener as ReturnType<typeof vi.fn>
       ).mock.calls.find((c: unknown[]) => c[0] === "click");
-      const clickHandler = clickCall[1] as () => void;
+      const clickHandler = clickCall![1] as () => void;
 
       clickHandler();
 
@@ -413,7 +412,7 @@ describe("template entry point", () => {
       const changeCall = (fileUpload.addEventListener as ReturnType<typeof vi.fn>).mock.calls.find(
         (c: unknown[]) => c[0] === "change",
       );
-      (changeCall[1] as (e: Partial<Event>) => void)({
+      (changeCall![1] as (e: Partial<Event>) => void)({
         target: { files: [mockFile] } as unknown as EventTarget,
       });
 
@@ -426,7 +425,7 @@ describe("template entry point", () => {
       const clickCall = (
         downloadDocxBtn.addEventListener as ReturnType<typeof vi.fn>
       ).mock.calls.find((c: unknown[]) => c[0] === "click");
-      (clickCall[1] as () => void)();
+      (clickCall![1] as () => void)();
 
       await vi.waitFor(() => {
         expect(elements["upload-status"].textContent).toContain("DOCX Error:");
@@ -458,7 +457,7 @@ describe("template entry point", () => {
       const clickCall = (
         copySchedulesBtn.addEventListener as ReturnType<typeof vi.fn>
       ).mock.calls.find((c: unknown[]) => c[0] === "click");
-      const clickHandler = clickCall[1] as () => void;
+      const clickHandler = clickCall![1] as () => void;
 
       clickHandler();
 
@@ -488,7 +487,7 @@ describe("template entry point", () => {
       const clickCall = (
         copyModuleDescriptorsBtn.addEventListener as ReturnType<typeof vi.fn>
       ).mock.calls.find((c: unknown[]) => c[0] === "click");
-      (clickCall[1] as () => void)();
+      (clickCall![1] as () => void)();
 
       expect(elements["upload-status"].textContent).toBe("Copy failed - please select manually");
       expect(elements["upload-status"].className).toBe("error");

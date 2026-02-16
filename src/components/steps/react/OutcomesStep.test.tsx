@@ -6,11 +6,20 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { Programme } from "../../../types";
 import { OutcomesStep } from "./OutcomesStep";
-import type { PLO, Programme } from "../../../types";
 
 // Mock the store module
-const mockProgramme = {
+const mockProgramme: Programme = {
+  schemaVersion: 5,
+  id: "test",
+  awardType: "Honours Bachelor Degree",
+  awardTypeIsOther: false,
+  school: "Computing",
+  awardStandardIds: ["computing"],
+  awardStandardNames: ["Computing"],
+  totalCredits: 60,
+  electiveDefinitions: [],
   title: "Test Programme",
   nfqLevel: 8,
   plos: [
@@ -20,8 +29,6 @@ const mockProgramme = {
       standardMappings: [{ criteria: "Knowledge", thread: "General", standardId: "computing" }],
     },
   ],
-  awardStandardIds: ["computing"],
-  awardStandardNames: ["Computing"],
   ploToMimlos: {},
 };
 
@@ -186,18 +193,22 @@ describe("OutcomesStep", () => {
         fireEvent.change(textarea, { target: { value: "Design and implement new systems" } });
       });
 
-      expect(mockState.programme.plos[0].text).toBe("Design and implement new systems");
+      expect(mockState.programme.plos![0].text).toBe("Design and implement new systems");
     });
   });
 
   describe("Linting", () => {
     it("should show lint warnings for vague terms", async () => {
-      mockState.programme.plos[0].text = "Understand the system";
+      mockState.programme.plos![0].text = "Understand the system";
       const { lintLearningOutcome } = await import("../../../lib/lo-lint.js");
       vi.mocked(lintLearningOutcome).mockReturnValue({
+        language: { lang: "en", confidence: 1, scores: { en: 1 } },
         issues: [
           {
+            id: "vague-verb",
             severity: "warn",
+            start: 0,
+            end: 10,
             match: "understand",
             message: "Avoid vague terms",
             suggestions: ["analyse"],

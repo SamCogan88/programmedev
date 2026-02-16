@@ -9,6 +9,7 @@ import type {
   ElectiveGroup,
   MIMLO,
   Module,
+  ModuleAssessment,
   PLO,
   Programme,
   ProgrammeVersion,
@@ -348,6 +349,24 @@ export function validateProgramme(p: Programme): ValidationFlag[] {
       step: "mimlos",
     });
   }
+
+  // Assessment week validation
+  const minTeachingWeeks = (p.versions ?? []).reduce((min, v) => {
+    const weeks = v.teachingWeeks ?? 12;
+    return weeks < min ? weeks : min;
+  }, 12);
+
+  (p.modules ?? []).forEach((m: Module) => {
+    (m.assessments ?? []).forEach((a: ModuleAssessment) => {
+      if (a.indicativeWeek && a.indicativeWeek > minTeachingWeeks) {
+        flags.push({
+          type: "warn",
+          msg: `[${m.code || "Module"}] Assessment '${a.title || "Untitled"}': indicative week (${a.indicativeWeek}) exceeds teaching weeks (${minTeachingWeeks}).`,
+          step: "assessments",
+        });
+      }
+    });
+  });
 
   const unmappedPLOs = (p.plos ?? []).filter(
     (o: PLO) => !(p.ploToMimlos ?? {})[o.id] || ((p.ploToMimlos ?? {})[o.id] ?? []).length === 0,

@@ -6,8 +6,8 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { state } from "../../../state/store";
+import type { Programme } from "../../../types";
 import { StagesStep } from "./StagesStep";
-import type { Module, Programme, Stage } from "../../../types";
 
 // Mock the store module
 vi.mock("../../../state/store", async () => {
@@ -128,12 +128,12 @@ describe("StagesStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      const version = state.programme.versions.find((v: any) => v.id === "ver_1");
-      expect(version?.stages.length).toBe(1);
+      const version = state.programme.versions!.find((v: any) => v.id === "ver_1");
+      expect(version?.stages!.length).toBe(1);
     });
 
     it("displays existing stages", () => {
-      state.programme.versions[0].stages = [
+      state.programme.versions![0].stages = [
         {
           id: "stage_1",
           name: "Year 1",
@@ -150,7 +150,7 @@ describe("StagesStep", () => {
     });
 
     it("updates stage name", async () => {
-      state.programme.versions[0].stages = [
+      state.programme.versions![0].stages = [
         {
           id: "stage_1",
           name: "Year 1",
@@ -168,11 +168,11 @@ describe("StagesStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions[0].stages[0].name).toBe("First Year");
+      expect(state.programme.versions![0].stages![0].name).toBe("First Year");
     });
 
     it("updates stage sequence", async () => {
-      state.programme.versions[0].stages = [
+      state.programme.versions![0].stages = [
         {
           id: "stage_1",
           name: "Year 1",
@@ -190,11 +190,11 @@ describe("StagesStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions[0].stages[0].sequence).toBe(2);
+      expect(state.programme.versions![0].stages![0].sequence).toBe(2);
     });
 
     it("updates stage credits target", async () => {
-      state.programme.versions[0].stages = [
+      state.programme.versions![0].stages = [
         {
           id: "stage_1",
           name: "Year 1",
@@ -212,11 +212,11 @@ describe("StagesStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions[0].stages[0].creditsTarget).toBe(90);
+      expect(state.programme.versions![0].stages![0].creditsTarget).toBe(90);
     });
 
     it("removes a stage", async () => {
-      state.programme.versions[0].stages = [
+      state.programme.versions![0].stages = [
         {
           id: "stage_1",
           name: "Year 1",
@@ -234,13 +234,13 @@ describe("StagesStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions[0].stages.length).toBe(0);
+      expect(state.programme.versions![0].stages.length).toBe(0);
     });
   });
 
   describe("Exit award", () => {
     it("toggles exit award enabled", async () => {
-      state.programme.versions[0].stages = [
+      state.programme.versions![0].stages = [
         {
           id: "stage_1",
           name: "Year 1",
@@ -258,11 +258,11 @@ describe("StagesStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions[0].stages[0].exitAward.enabled).toBe(true);
+      expect(state.programme.versions![0].stages![0].exitAward!.enabled).toBe(true);
     });
 
     it("shows exit title field when exit award is enabled", () => {
-      state.programme.versions[0].stages = [
+      state.programme.versions![0].stages = [
         {
           id: "stage_1",
           name: "Year 1",
@@ -286,7 +286,7 @@ describe("StagesStep", () => {
         { id: "mod_1", code: "CS101", title: "Introduction to Computing", credits: 10 },
         { id: "mod_2", code: "CS102", title: "Programming Fundamentals", credits: 10 },
       ];
-      state.programme.versions[0].stages = [
+      state.programme.versions![0].stages = [
         {
           id: "stage_1",
           name: "Year 1",
@@ -304,7 +304,7 @@ describe("StagesStep", () => {
 
     it("shows message when no modules defined", () => {
       state.programme.modules = [];
-      state.programme.versions[0].stages = [
+      state.programme.versions![0].stages = [
         {
           id: "stage_1",
           name: "Year 1",
@@ -326,7 +326,7 @@ describe("StagesStep", () => {
         { id: "mod_1", code: "CS101", title: "Introduction to Computing", credits: 10 },
         { id: "mod_2", code: "CS102", title: "Programming Fundamentals", credits: 15 },
       ];
-      state.programme.versions[0].stages = [
+      state.programme.versions![0].stages = [
         {
           id: "stage_1",
           name: "Year 1",
@@ -348,7 +348,7 @@ describe("StagesStep", () => {
 
   describe("Accessibility", () => {
     it("has proper form labels", () => {
-      state.programme.versions[0].stages = [
+      state.programme.versions![0].stages = [
         {
           id: "stage_1",
           name: "Year 1",
@@ -366,7 +366,7 @@ describe("StagesStep", () => {
     });
 
     it("has hidden legend for accessibility", () => {
-      state.programme.versions[0].stages = [
+      state.programme.versions![0].stages = [
         {
           id: "stage_1",
           name: "Year 1",

@@ -37,6 +37,7 @@ export interface ModuleAssessment {
   integrity?: Record<string, boolean>;
   mimloIds?: string[];
   notes?: string;
+  indicativeWeek?: number;
   [key: string]: unknown;
 }
 
