@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockSetData = vi.fn();
 const mockRender = vi.fn();
@@ -26,8 +26,9 @@ vi.mock("file-saver", () => ({
 }));
 
 import Docxtemplater from "docxtemplater";
-import PizZip from "pizzip";
 import { saveAs } from "file-saver";
+import PizZip from "pizzip";
+
 import { exportProgrammeDescriptorWord, exportProgrammeToWord } from "./word";
 
 function makeProgramme(overrides: Partial<Programme> = {}): Programme {

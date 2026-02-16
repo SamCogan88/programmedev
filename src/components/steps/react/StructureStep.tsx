@@ -5,7 +5,12 @@
  */
 
 import React, { useCallback } from "react";
+
 import { Badge, Button, Col, Form, Row } from "react-bootstrap";
+
+import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
+import { state } from "../../../state/store";
+import { uid } from "../../../utils/uid";
 import {
   Accordion,
   AccordionControls,
@@ -15,9 +20,6 @@ import {
   Icon,
   SectionCard,
 } from "../../ui";
-import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
-import { state } from "../../../state/store";
-import { uid } from "../../../utils/uid";
 
 // ============================================================================
 // Types

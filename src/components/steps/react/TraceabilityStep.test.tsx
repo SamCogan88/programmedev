@@ -6,8 +6,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { state } from "../../../state/store";
-import { TraceabilityStep, buildSankeyData } from "./TraceabilityStep";
 import type { TraceRow } from "./TraceabilityStep";
+import { buildSankeyData, TraceabilityStep } from "./TraceabilityStep";
 
 // Mock the store module
 vi.mock("../../../state/store", async () => {

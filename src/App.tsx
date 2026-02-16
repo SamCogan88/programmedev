@@ -6,27 +6,26 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 
-import { Header, Sidebar, Flags } from "./components/react";
+import { Flags, Header, Sidebar } from "./components/react";
+import { AssessmentsStep } from "./components/steps/react/AssessmentsStep";
+import { EffortHoursStep } from "./components/steps/react/EffortHoursStep";
+import { ElectivesStep } from "./components/steps/react/ElectivesStep";
+// Import step components
+import { IdentityStep } from "./components/steps/react/IdentityStep";
+import { MappingStep } from "./components/steps/react/MappingStep";
+import { MimlosStep } from "./components/steps/react/MimlosStep";
+import { OutcomesStep } from "./components/steps/react/OutcomesStep";
+import { ReadingListsStep } from "./components/steps/react/ReadingListsStep";
+import { ScheduleStep } from "./components/steps/react/ScheduleStep";
+import { SnapshotStep } from "./components/steps/react/SnapshotStep";
+import { StagesStep } from "./components/steps/react/StagesStep";
+import { StructureStep } from "./components/steps/react/StructureStep";
+import { TraceabilityStep } from "./components/steps/react/TraceabilityStep";
+import { VersionsStep } from "./components/steps/react/VersionsStep";
 import { SectionCard, WarningAlert } from "./components/ui";
 import { useProgramme } from "./hooks/useStore";
 import { activeSteps, state } from "./state/store";
 import { validateProgramme } from "./utils/validation";
-
-// Import step components
-import { IdentityStep } from "./components/steps/react/IdentityStep";
-import { OutcomesStep } from "./components/steps/react/OutcomesStep";
-import { VersionsStep } from "./components/steps/react/VersionsStep";
-import { StagesStep } from "./components/steps/react/StagesStep";
-import { SnapshotStep } from "./components/steps/react/SnapshotStep";
-import { StructureStep } from "./components/steps/react/StructureStep";
-import { ElectivesStep } from "./components/steps/react/ElectivesStep";
-import { MimlosStep } from "./components/steps/react/MimlosStep";
-import { EffortHoursStep } from "./components/steps/react/EffortHoursStep";
-import { ReadingListsStep } from "./components/steps/react/ReadingListsStep";
-import { ScheduleStep } from "./components/steps/react/ScheduleStep";
-import { AssessmentsStep } from "./components/steps/react/AssessmentsStep";
-import { MappingStep } from "./components/steps/react/MappingStep";
-import { TraceabilityStep } from "./components/steps/react/TraceabilityStep";
 
 /**
  * Step component registry mapping step keys to React components.

@@ -6,7 +6,18 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Form, Row, Col, Button, InputGroup, Badge } from "react-bootstrap";
+
+import { Badge, Button, Col, Form, InputGroup, Row } from "react-bootstrap";
+
+import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
+import {
+  AWARD_TYPE_OPTIONS,
+  getAwardStandard,
+  getAwardStandards,
+  SCHOOL_OPTIONS,
+  state,
+} from "../../../state/store";
+import { uid } from "../../../utils/uid";
 import {
   Accordion,
   AccordionControls,
@@ -19,15 +30,6 @@ import {
   Icon,
   SectionCard,
 } from "../../ui";
-import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
-import {
-  AWARD_TYPE_OPTIONS,
-  SCHOOL_OPTIONS,
-  getAwardStandard,
-  getAwardStandards,
-  state,
-} from "../../../state/store";
-import { uid } from "../../../utils/uid";
 
 // ============================================================================
 // Types

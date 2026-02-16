@@ -6,10 +6,11 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+
 import { Badge, Button, ButtonGroup, Nav, Navbar, OverlayTrigger, Popover } from "react-bootstrap";
 
-import { notifyStateChange, useProgramme } from "../../hooks/useStore";
 import { exportProgrammeToJson, importProgrammeFromJson } from "../../export/json";
+import { notifyStateChange, useProgramme } from "../../hooks/useStore";
 import { activeSteps, resetProgramme, saveNow, state } from "../../state/store";
 import { completionPercent, validateProgramme } from "../../utils/validation";
 import { Icon } from "../ui";

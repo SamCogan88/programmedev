@@ -1,11 +1,12 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import {
+  getCriteriaList,
+  getDescriptor,
+  getStandardIndicators,
+  getThreadList,
   migrateProgramme,
   validateStandardMappings,
-  getStandardIndicators,
-  getCriteriaList,
-  getThreadList,
-  getDescriptor,
 } from "./migrate-programme";
 
 /** Helper: build a standard object with the hierarchical format used by the app. */

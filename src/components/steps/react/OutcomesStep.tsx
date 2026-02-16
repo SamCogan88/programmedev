@@ -5,7 +5,19 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
+
 import { Badge, Button, Form, Table } from "react-bootstrap";
+
+import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
+import { lintLearningOutcome } from "../../../lib/lo-lint";
+import {
+  getAwardStandard,
+  getCriteriaList,
+  getDescriptor,
+  getThreadList,
+  state,
+} from "../../../state/store";
+import { uid } from "../../../utils/uid";
 import {
   Accordion,
   AccordionControls,
@@ -15,16 +27,6 @@ import {
   Icon,
   SectionCard,
 } from "../../ui";
-import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
-import {
-  getAwardStandard,
-  getCriteriaList,
-  getDescriptor,
-  getThreadList,
-  state,
-} from "../../../state/store";
-import { lintLearningOutcome } from "../../../lib/lo-lint";
-import { uid } from "../../../utils/uid";
 
 // ============================================================================
 // Types

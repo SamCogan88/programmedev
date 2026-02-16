@@ -5,7 +5,14 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
+
 import { Badge, Button, Form, InputGroup } from "react-bootstrap";
+
+import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
+import { lintLearningOutcome } from "../../../lib/lo-lint";
+import { editableModuleIds, getSelectedModuleId, state } from "../../../state/store";
+import { ensureMimloObjects, mimloText } from "../../../utils/helpers";
+import { uid } from "../../../utils/uid";
 import {
   Accordion,
   AccordionControls,
@@ -15,11 +22,6 @@ import {
   Icon,
   SectionCard,
 } from "../../ui";
-import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
-import { editableModuleIds, getSelectedModuleId, state } from "../../../state/store";
-import { lintLearningOutcome } from "../../../lib/lo-lint";
-import { uid } from "../../../utils/uid";
-import { ensureMimloObjects, mimloText } from "../../../utils/helpers";
 
 // ============================================================================
 // Types

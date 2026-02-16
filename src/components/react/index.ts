@@ -3,14 +3,11 @@
  * @module components/react
  */
 
-export { Header } from "./Header";
-export type { HeaderProps } from "./Header";
-
-export { Sidebar } from "./Sidebar";
-export type { SidebarProps } from "./Sidebar";
-
-export { Flags } from "./Flags";
 export type { FlagsProps } from "./Flags";
-
-export { NavButtons } from "./NavButtons";
+export { Flags } from "./Flags";
+export type { HeaderProps } from "./Header";
+export { Header } from "./Header";
 export type { NavButtonsProps } from "./NavButtons";
+export { NavButtons } from "./NavButtons";
+export type { SidebarProps } from "./Sidebar";
+export { Sidebar } from "./Sidebar";

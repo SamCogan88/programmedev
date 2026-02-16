@@ -4,8 +4,9 @@
  * @module components/ui/Accordion/Accordion
  */
 
-import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+
+import type { ReactNode } from "react";
 import { Accordion as BsAccordion } from "react-bootstrap";
 
 export interface AccordionContextValue {

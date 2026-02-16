@@ -1,14 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
+
 import {
-  formatPct,
   defaultPatternFor,
-  sumPattern,
-  sumStageCredits,
   deliveryPatternsHtml,
-  mimloText,
-  ploText,
   ensureMimloObjects,
   ensurePloObjects,
+  formatPct,
+  mimloText,
+  ploText,
+  sumPattern,
+  sumStageCredits,
 } from "./helpers";
 
 describe("formatPct", () => {
