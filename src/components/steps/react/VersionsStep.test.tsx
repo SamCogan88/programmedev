@@ -6,8 +6,8 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { state } from "../../../state/store";
-import { VersionsStep } from "./VersionsStep";
 import type { Programme } from "../../../types";
+import { VersionsStep } from "./VersionsStep";
 
 // Mock the store module
 vi.mock("../../../state/store", async () => {
@@ -104,8 +104,8 @@ describe("VersionsStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions.length).toBe(1);
-      expect(state.programme.versions[0].label).toBe("Full-time");
+      expect(state.programme.versions!.length).toBe(1);
+      expect(state.programme.versions![0].label).toBe("Full-time");
     });
   });
 
@@ -145,7 +145,7 @@ describe("VersionsStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions[0].label).toBe("Part-time");
+      expect(state.programme.versions![0].label).toBe("Part-time");
     });
 
     it("displays the version code", () => {
@@ -163,7 +163,7 @@ describe("VersionsStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions[0].code).toBe("PT");
+      expect(state.programme.versions![0].code).toBe("PT");
     });
 
     it("updates intakes on input change", async () => {
@@ -175,7 +175,7 @@ describe("VersionsStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions[0].intakes).toEqual(["Sep", "Jan"]);
+      expect(state.programme.versions![0].intakes).toEqual(["Sep", "Jan"]);
     });
 
     it("updates target cohort size on input change", async () => {
@@ -187,7 +187,7 @@ describe("VersionsStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions[0].targetCohortSize).toBe(30);
+      expect(state.programme.versions![0].targetCohortSize).toBe(30);
     });
 
     it("updates number of groups on input change", async () => {
@@ -199,7 +199,7 @@ describe("VersionsStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions[0].numberOfGroups).toBe(3);
+      expect(state.programme.versions![0].numberOfGroups).toBe(3);
     });
 
     it("renders teaching weeks field with default value", () => {
@@ -237,7 +237,7 @@ describe("VersionsStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions[0].teachingWeeks).toBe(15);
+      expect(state.programme.versions![0].teachingWeeks).toBe(15);
     });
   });
 
@@ -279,11 +279,11 @@ describe("VersionsStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions[0].deliveryModality).toBe("BLENDED");
+      expect(state.programme.versions![0].deliveryModality).toBe("BLENDED");
     });
 
     it("shows delivery pattern card when modality is selected", async () => {
-      state.programme.versions[0].deliveryModality = "F2F";
+      state.programme.versions![0].deliveryModality = "F2F";
       render(<VersionsStep />);
 
       expect(screen.getByText(/F2F delivery pattern/)).toBeInTheDocument();
@@ -330,7 +330,7 @@ describe("VersionsStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions[0].deliveryPatterns.F2F.syncOnlinePct).toBe(20);
+      expect(state.programme.versions![0].deliveryPatterns!.F2F.syncOnlinePct).toBe(20);
     });
 
     it("shows OK badge when percentages total 100", () => {
@@ -340,7 +340,7 @@ describe("VersionsStep", () => {
     });
 
     it("shows warning badge when percentages do not total 100", () => {
-      state.programme.versions[0].deliveryPatterns.F2F = {
+      state.programme.versions![0].deliveryPatterns!.F2F = {
         syncOnlinePct: 10,
         asyncDirectedPct: 10,
         onCampusPct: 10,
@@ -390,18 +390,18 @@ describe("VersionsStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions[0].onlineProctoredExams).toBe("YES");
+      expect(state.programme.versions![0].onlineProctoredExams).toBe("YES");
     });
 
     it("shows proctoring notes when YES is selected", () => {
-      state.programme.versions[0].onlineProctoredExams = "YES";
+      state.programme.versions![0].onlineProctoredExams = "YES";
       render(<VersionsStep />);
 
       expect(screen.getByTestId("version-proctor-notes-ver_1")).toBeInTheDocument();
     });
 
     it("hides proctoring notes when TBC or NO is selected", () => {
-      state.programme.versions[0].onlineProctoredExams = "NO";
+      state.programme.versions![0].onlineProctoredExams = "NO";
       render(<VersionsStep />);
 
       expect(screen.queryByTestId("version-proctor-notes-ver_1")).not.toBeInTheDocument();
@@ -453,8 +453,8 @@ describe("VersionsStep", () => {
         vi.advanceTimersByTime(400);
       });
 
-      expect(state.programme.versions.length).toBe(1);
-      expect(state.programme.versions[0].id).toBe("ver_2");
+      expect(state.programme.versions!.length).toBe(1);
+      expect(state.programme.versions![0].id).toBe("ver_2");
     });
   });
 
