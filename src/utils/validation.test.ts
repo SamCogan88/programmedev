@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { completionPercent, validateProgramme, type ValidationFlag } from "./validation";
+import type { MIMLO, Module, PLO, Programme, ProgrammeVersion } from "../types";
 
 /** Helper to create a minimal valid programme for testing. */
 function baseProgramme(overrides: Partial<Programme> = {}): Programme {
@@ -683,7 +684,7 @@ describe("completionPercent", () => {
     const p = baseProgramme({
       versions: [{ id: "v1", label: "FT", code: "FT", stages: [] } as ProgrammeVersion],
     });
-    const full = baseProgramme();
+    const _full = baseProgramme();
     // Has version but no stages, so 9/10
     expect(completionPercent(p)).toBe(Math.round((9 / 10) * 100));
   });

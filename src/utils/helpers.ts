@@ -4,6 +4,7 @@
  */
 
 import { escapeHtml } from "./dom";
+import type { Module, PLO, Programme, ProgrammeVersion } from "../types";
 
 /**
  * Formats a numeric value as a percentage string with the "%" suffix.
@@ -93,22 +94,19 @@ export function deliveryPatternsHtml(p: any): string {
 }
 
 /**
- * Extracts the text content from a MIMLO (Module Intended Minimum Learning Outcome).
+ * Extracts the text content from a learning outcome item (PLO or MIMLO).
  * Handles both legacy string format and current object format.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mimloText(x: any): string {
+export function itemText(x: any): string {
   return typeof x === "string" ? x : x && typeof x === "object" ? (x.text ?? "") : "";
 }
 
-/**
- * Extracts the text content from a PLO (Programme Learning Outcome).
- * Handles both legacy string format and current object format.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function ploText(x: any): string {
-  return typeof x === "string" ? x : x && typeof x === "object" ? (x.text ?? "") : "";
-}
+/** Alias for {@link itemText} — extracts text from a MIMLO. */
+export const mimloText = itemText;
+
+/** Alias for {@link itemText} — extracts text from a PLO. */
+export const ploText = itemText;
 
 /**
  * Migrates module MIMLOs from legacy string array format to object format.
@@ -138,4 +136,31 @@ export function ensurePloObjects(programme: Programme): void {
       standardId: null,
     })) as PLO[];
   }
+}
+
+/**
+ * Find a programme version by ID.
+ */
+export function findVersion(
+  versions: ProgrammeVersion[],
+  id: string,
+): ProgrammeVersion | undefined {
+  return versions.find((v) => v.id === id);
+}
+
+/**
+ * Find a module by ID.
+ */
+export function findModule(modules: Module[], id: string): Module | undefined {
+  return modules.find((m) => m.id === id);
+}
+
+/**
+ * Resolve effort hours for a module, falling back to the first available
+ * version key if the requested one is not present.
+ */
+export function resolveEffortHours(mod: Module, versionKey: string): Record<string, number> {
+  return (mod.effortHours?.[versionKey] ??
+    mod.effortHours?.[Object.keys(mod.effortHours ?? {})[0]] ??
+    {}) as Record<string, number>;
 }

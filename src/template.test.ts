@@ -16,6 +16,7 @@ vi.mock("./template/schedule-html", () => ({
 import { downloadScheduleDocx } from "./export/schedule-docx";
 import { renderAllModuleDescriptors } from "./template/module-descriptors-html";
 import { renderAllSchedules } from "./template/schedule-html";
+import type { Module, Programme, ProgrammeVersion } from "./types";
 
 /** Create a File-like object with a working text() method */
 function createMockFile(content: string, name: string): File {

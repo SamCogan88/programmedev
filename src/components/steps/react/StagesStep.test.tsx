@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { state } from "../../../state/store";
 import { StagesStep } from "./StagesStep";
+import type { Module, Programme, Stage } from "../../../types";
 
 // Mock the store module
 vi.mock("../../../state/store", async () => {

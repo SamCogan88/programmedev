@@ -5,6 +5,8 @@
  */
 
 import { migrateProgramme } from "../utils/migrate-programme";
+import { downloadBlob } from "../utils/dom";
+import type { Programme } from "../types";
 
 /**
  * Downloads a programme as a JSON file.
@@ -16,19 +18,7 @@ export function downloadJson(programme: Programme): void {
   const blob = new Blob([JSON.stringify(programme, null, 2)], {
     type: "application/json",
   });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-/**
- * Exports programme to JSON file (alias for downloadJson).
- */
-export function exportProgrammeToJson(programme: Programme): void {
-  downloadJson(programme);
+  downloadBlob(blob, filename);
 }
 
 /**

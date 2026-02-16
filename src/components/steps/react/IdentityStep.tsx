@@ -15,7 +15,6 @@ import {
   getAwardStandard,
   getAwardStandards,
   SCHOOL_OPTIONS,
-  state,
 } from "../../../state/store";
 import { uid } from "../../../utils/uid";
 import {
@@ -30,34 +29,17 @@ import {
   Icon,
   SectionCard,
 } from "../../ui";
+import type {
+  AwardStandard,
+  ElectiveDefinition,
+  ElectiveGroup,
+  PLO,
+  Programme,
+} from "../../../types";
 
 // ============================================================================
 // Types
 // ============================================================================
-
-/** Award standard from QQI database */
-interface AwardStandard {
-  id: string;
-  name: string;
-  [key: string]: unknown;
-}
-
-/** Elective group within a definition */
-interface ElectiveGroup {
-  id: string;
-  name: string;
-  code: string;
-  moduleIds: string[];
-}
-
-/** Elective definition containing groups */
-interface ElectiveDefinition {
-  id: string;
-  name: string;
-  code: string;
-  credits: number;
-  groups: ElectiveGroup[];
-}
 
 /** Props for ElectiveGroupRow component */
 interface ElectiveGroupRowProps {
@@ -103,7 +85,7 @@ interface StandardSelectorProps {
 const ElectiveGroupRow: React.FC<ElectiveGroupRowProps> = ({
   group,
   groupIndex,
-  definitionId,
+  definitionId: _definitionId,
   onCodeChange,
   onNameChange,
   onRemove,

@@ -11,15 +11,7 @@ import { Badge, Button, Card, Col, Form, Row } from "react-bootstrap";
 import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
 import { editableModuleIds, getSelectedModuleId, state } from "../../../state/store";
 import { uid } from "../../../utils/uid";
-import {
-  Accordion,
-  AccordionControls,
-  AccordionItem,
-  Alert,
-  HeaderAction,
-  Icon,
-  SectionCard,
-} from "../../ui";
+import { Accordion, AccordionControls, AccordionItem, Alert, Icon, SectionCard } from "../../ui";
 
 // ============================================================================
 // Types
@@ -448,7 +440,7 @@ export const ReadingListsStep: React.FC = () => {
     [programme.modules, updateProgramme, saveDebounced, updateFlagsAndHeader],
   );
 
-  const toggleModule = useCallback((moduleId: string) => {
+  const _toggleModule = useCallback((moduleId: string) => {
     setExpandedModules((prev) => {
       const next = new Set(prev);
       if (next.has(moduleId)) {

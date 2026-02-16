@@ -8,6 +8,7 @@ import {
   migrateProgramme,
   validateStandardMappings,
 } from "./migrate-programme";
+import type { PLO, Programme } from "../types";
 
 /** Helper: build a standard object with the hierarchical format used by the app. */
 function makeStandard(

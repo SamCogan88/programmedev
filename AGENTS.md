@@ -40,7 +40,14 @@ src/
 ├── index.tsx                  # Entry point (React root, theme, state load)
 ├── template.ts                # Template page entry point (schedule/descriptor export)
 ├── style.css                  # Global styles
-├── types.d.ts                 # Global TypeScript type definitions
+├── types/
+│   ├── index.ts               # Barrel re-export of all domain types
+│   ├── programme.ts           # Programme interface
+│   ├── module.ts              # Module, MIMLO, ModuleAssessment, ReadingListItem, Elective types
+│   ├── plo.ts                 # PLO interface
+│   ├── version.ts             # ProgrammeVersion, Stage interfaces
+│   ├── validation.ts          # ValidationResult, AwardStandard interfaces
+│   └── window.d.ts            # Window augmentation + plotly module declaration (ambient)
 ├── components/
 │   ├── react/                 # App-level React components
 │   │   ├── Header.tsx         # App header (title, import/export, theme)
@@ -67,6 +74,7 @@ src/
 │       ├── Accordion/         # Custom accordion (Accordion, AccordionItem, AccordionControls)
 │       ├── Form/              # Form components (FormField, FormInput, FormSelect)
 │       ├── Alert.tsx          # Warning/info alert
+│       ├── BloomsGuidance.tsx # Bloom's Taxonomy verb guidance panel
 │       ├── Icon.tsx           # Phosphor icon wrapper
 │       ├── SectionCard.tsx    # Card wrapper for step sections
 │       └── index.ts           # Barrel export
@@ -75,10 +83,11 @@ src/
 ├── state/
 │   └── store.ts               # Central state management (singleton, localStorage)
 ├── utils/
+│   ├── assessments.ts         # Assessment type classification utilities
 │   ├── validation.ts          # Programme validation rules
-│   ├── helpers.ts             # Formatting, delivery patterns, MIMLO/PLO utils
+│   ├── helpers.ts             # Formatting, delivery patterns, entity lookups
 │   ├── migrate-programme.ts   # Schema migration (v1→v2→v3→v4)
-│   ├── dom.ts                 # escapeHtml, tagHtml
+│   ├── dom.ts                 # escapeHtml, tagHtml, downloadBlob
 │   └── uid.ts                 # Unique ID generation
 ├── lib/
 │   └── lo-lint.ts             # Learning outcome linter (vague verb detection)
@@ -189,7 +198,13 @@ import { Accordion, AccordionItem, AccordionControls } from "../../ui/Accordion"
 
 ## Type System
 
-Types are defined in `src/types.d.ts` as global declarations. Key interfaces:
+Types are defined as exported interfaces in `src/types/`, organized by domain. Import them explicitly:
+
+```typescript
+import type { Programme, Module, PLO } from "../types";
+```
+
+Key interfaces:
 
 - **Programme** — Root data structure with all programme information
 - **Module** — Individual module (code, title, credits, assessments, mimlos)
@@ -199,11 +214,13 @@ Types are defined in `src/types.d.ts` as global declarations. Key interfaces:
 - **ModuleAssessment** — Assessment with type, weighting, integrity options
 - **ElectiveDefinition** / **ElectiveGroup** — Elective structure
 
-These types are globally available — do **not** import them.
+Use `import type` (type-only imports) since these are used only as types. The barrel export in `src/types/index.ts` re-exports all types.
+
+`src/types/window.d.ts` remains ambient (`.d.ts`) for Window augmentation and plotly module declaration — do **not** add `export` to it.
 
 ### Adding New Properties
 
-1. Add to `types.d.ts` with appropriate type
+1. Add to the appropriate file in `src/types/` (e.g., `programme.ts`, `module.ts`)
 2. Make optional if not always present: `newProp?: string`
 3. Use nullish coalescing when accessing: `obj.newProp ?? defaultValue`
 
@@ -368,7 +385,7 @@ For final validation before raising a PR, also run:
 - Use `||` for null/undefined checks (use `??` instead)
 - Skip null guards on optional array properties
 - Add dependencies without clear justification
-- Modify `types.d.ts` without updating affected code
+- Modify type files in `src/types/` without updating affected code
 - Use inline styles (use Bootstrap utilities or CSS classes)
 - Use Allman style braces (opening brace on its own line)
 - Create `.js` files in `src/` — all source must be TypeScript
@@ -386,7 +403,7 @@ For final validation before raising a PR, also run:
 
 ### Adding a New Field to Programme
 
-1. Add type to `Programme` interface in `types.d.ts`
+1. Add type to `Programme` interface in `src/types/programme.ts`
 2. Initialize in `defaultProgramme()` in `store.ts` if needed
 3. Handle in migration if loading old data (`migrate-programme.ts`)
 4. Add UI in appropriate step component

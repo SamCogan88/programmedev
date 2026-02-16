@@ -3,11 +3,11 @@
  */
 
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { state } from "../../../state/store";
 import { IdentityStep } from "./IdentityStep";
+import type { Programme } from "../../../types";
 
 // Mock the store module
 vi.mock("../../../state/store", async () => {

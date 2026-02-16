@@ -9,9 +9,10 @@ import React from "react";
 import { ListGroup } from "react-bootstrap";
 
 import { useProgramme } from "../../hooks/useStore";
-import { activeSteps, state } from "../../state/store";
+import { activeSteps } from "../../state/store";
 import { Icon } from "../ui";
 import { NavButtons } from "./NavButtons";
+import type { Programme } from "../../types";
 
 /**
  * Icon mapping for each step key.
@@ -46,7 +47,7 @@ export interface SidebarProps {
  */
 export function Sidebar({ currentStep, onStepChange }: SidebarProps): React.JSX.Element {
   // Subscribe to programme state for mode-dependent steps
-  const { programme } = useProgramme();
+  const { programme: _programme } = useProgramme();
 
   // Get active steps based on current mode
   const steps = activeSteps();

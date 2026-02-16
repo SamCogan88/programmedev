@@ -4,12 +4,11 @@
  * @module components/steps/react/StructureStep
  */
 
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 
 import { Badge, Button, Col, Form, Row } from "react-bootstrap";
 
 import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
-import { state } from "../../../state/store";
 import { uid } from "../../../utils/uid";
 import {
   Accordion,
@@ -20,38 +19,11 @@ import {
   Icon,
   SectionCard,
 } from "../../ui";
+import type { ElectiveDefinition, ElectiveGroup, Module } from "../../../types";
 
 // ============================================================================
 // Types
 // ============================================================================
-
-/** Module structure */
-interface Module {
-  id: string;
-  code: string;
-  title: string;
-  credits: number;
-  isElective: boolean;
-  mimlos?: { id: string }[];
-  assessments?: unknown[];
-}
-
-/** Elective definition structure */
-interface ElectiveDefinition {
-  id: string;
-  name: string;
-  code: string;
-  credits: number;
-  groups: ElectiveGroup[];
-}
-
-/** Elective group structure */
-interface ElectiveGroup {
-  id: string;
-  name: string;
-  code: string;
-  moduleIds: string[];
-}
 
 /** Props for ModuleItem component */
 interface ModuleItemProps {
@@ -91,8 +63,7 @@ const CreditSummary: React.FC<{
 
   return (
     <div
-      className="d-flex gap-3 flex-wrap align-items-center"
-      style={{ minHeight: 38 }}
+      className="d-flex gap-3 flex-wrap align-items-center credit-summary"
       data-testid="credit-summary"
     >
       <Badge bg="primary" className="fs-6">
@@ -246,7 +217,7 @@ export const StructureStep: React.FC = () => {
   const updateProgramme = useUpdateProgramme();
   const saveDebounced = useSaveDebounced();
 
-  const modules = (programme.modules ?? []) as Module[];
+  const modules = useMemo(() => (programme.modules ?? []) as Module[], [programme.modules]);
 
   // Helper to update flags and header without full re-render
   const updateFlagsAndHeader = useCallback(() => {

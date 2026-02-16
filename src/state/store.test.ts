@@ -18,6 +18,7 @@ import {
   state,
   steps,
 } from "./store";
+import type { Programme, ProgrammeVersion, Stage } from "../types";
 
 const STORAGE_KEY = "nci_pds_mvp_programme_v1";
 
@@ -350,7 +351,7 @@ describe("saveNow", () => {
   });
 
   it("resets saving flag even on error", () => {
-    const origSetItem = localStorage.setItem.bind(localStorage);
+    const _origSetItem = localStorage.setItem.bind(localStorage);
     vi.spyOn(localStorage, "setItem").mockImplementation(() => {
       throw new Error("quota exceeded");
     });

@@ -8,6 +8,7 @@ import {
   reportByStageType,
   reportCoverage,
 } from "./assessment-reports";
+import type { Programme } from "../types";
 
 /** Minimal programme fixture for testing. */
 function makeProgramme(overrides: Partial<Programme> = {}): Programme {

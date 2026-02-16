@@ -11,8 +11,10 @@ import { Button, ButtonGroup, Table } from "react-bootstrap";
 import { exportProgrammeToWord } from "../../../export/word";
 import { useProgramme } from "../../../hooks/useStore";
 import { state } from "../../../state/store";
+import { downloadBlob } from "../../../utils/dom";
 import { completionPercent } from "../../../utils/validation";
 import { Accordion, AccordionControls, AccordionItem, Alert, Icon, SectionCard } from "../../ui";
+import type { Module, PLO, Programme, ProgrammeVersion, Stage } from "../../../types";
 
 // ============================================================================
 // Types
@@ -133,18 +135,19 @@ const VersionItem: React.FC<{
   index: number;
   allModules: Module[];
 }> = ({ version, index, allModules }) => {
-  const mods: string[] = Array.isArray((version as any).deliveryModalities)
-    ? (version as any).deliveryModalities
-    : (version as any).deliveryModality
-      ? [(version as any).deliveryModality]
+  const modalities = version["deliveryModalities" as keyof ProgrammeVersion];
+  const mods: string[] = Array.isArray(modalities)
+    ? modalities
+    : version.deliveryModality
+      ? [version.deliveryModality]
       : [];
-  const patterns = (version as any).deliveryPatterns ?? {};
+  const patterns = version.deliveryPatterns ?? {};
 
-  const stages = ((version as any).stages ?? [])
+  const stages = (version.stages ?? [])
     .slice()
-    .sort((a: any, b: any) => Number(a.sequence ?? 0) - Number(b.sequence ?? 0));
+    .sort((a, b) => Number(a.sequence ?? 0) - Number(b.sequence ?? 0));
 
-  const summary = `${version.label ?? version.code ?? "Version"} • ${(version as any).duration ?? "—"} • Intakes: ${((version as any).intakes ?? []).join(", ") || "—"}`;
+  const summary = `${version.label ?? version.code ?? "Version"} • ${version.duration ?? "—"} • Intakes: ${(version.intakes ?? []).join(", ") || "—"}`;
 
   return (
     <AccordionItem
@@ -157,14 +160,14 @@ const VersionItem: React.FC<{
         <div>
           <div className="small">
             <span className="fw-semibold">Cohort:</span>{" "}
-            {Number((version as any).targetCohortSize ?? 0) || "—"} •{" "}
+            {Number(version.targetCohortSize ?? 0) || "—"} •{" "}
             <span className="fw-semibold">Groups:</span>{" "}
-            {Number((version as any).numberOfGroups ?? 0) || "—"}
+            {Number(version.numberOfGroups ?? 0) || "—"}
           </div>
         </div>
         <div className="small">
           <span className="fw-semibold">Online proctored exams:</span>{" "}
-          {(version as any).onlineProctoredExams ?? "TBC"}
+          {version.onlineProctoredExams ?? "TBC"}
         </div>
       </div>
 
@@ -216,17 +219,17 @@ const VersionItem: React.FC<{
         )}
       </div>
 
-      {(version as any).onlineProctoredExams === "YES" &&
-        ((version as any).onlineProctoredExamsNotes ?? "").trim() && (
+      {version.onlineProctoredExams === "YES" &&
+        (version.onlineProctoredExamsNotes ?? "").trim() && (
           <div className="mt-2 small">
             <span className="fw-semibold">Proctoring notes:</span>{" "}
-            {(version as any).onlineProctoredExamsNotes}
+            {version.onlineProctoredExamsNotes}
           </div>
         )}
 
-      {((version as any).deliveryNotes ?? "").trim() && (
+      {(version.deliveryNotes ?? "").trim() && (
         <div className="mt-2 small">
-          <span className="fw-semibold">Delivery notes:</span> {(version as any).deliveryNotes}
+          <span className="fw-semibold">Delivery notes:</span> {version.deliveryNotes}
         </div>
       )}
     </AccordionItem>
@@ -269,7 +272,7 @@ const VersionsSection: React.FC<{
  */
 const MappingMatrix: React.FC<{ programme: Programme }> = ({ programme }) => {
   const plos = programme.plos ?? [];
-  const modules = programme.modules ?? [];
+  const modules = useMemo(() => programme.modules ?? [], [programme.modules]);
 
   // Build module labels
   const moduleLabels: ModuleLabel[] = useMemo(
@@ -312,7 +315,7 @@ const MappingMatrix: React.FC<{ programme: Programme }> = ({ programme }) => {
         <Table size="sm" bordered className="align-middle mb-0">
           <thead>
             <tr>
-              <th style={{ minWidth: 260 }}>PLO</th>
+              <th className="snapshot-col-plo">PLO</th>
               {moduleLabels.map((m) => (
                 <th key={m.id} className="text-center" title={m.full}>
                   {m.label}
@@ -322,10 +325,10 @@ const MappingMatrix: React.FC<{ programme: Programme }> = ({ programme }) => {
           </thead>
           <tbody>
             {plos.map((o, i) => {
-              const mappedMimloIds = (programme as any).ploToMimlos?.[o.id] ?? [];
+              const mappedMimloIds = programme.ploToMimlos?.[o.id] ?? [];
               return (
                 <tr key={o.id}>
-                  <th className="small" style={{ minWidth: 260 }} title={o.text || ""}>
+                  <th className="small snapshot-col-plo" title={o.text || ""}>
                     PLO {i + 1}
                   </th>
                   {moduleLabels.map((m) => {
@@ -382,12 +385,7 @@ const ExportActionsGroup: React.FC<{ isComplete: boolean }> = ({ isComplete }) =
     const blob = new Blob([JSON.stringify(state.programme, null, 2)], {
       type: "application/json",
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, filename);
   }, []);
 
   return (

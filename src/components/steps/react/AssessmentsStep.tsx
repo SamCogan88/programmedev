@@ -11,9 +11,10 @@ import { Badge, Button, ButtonGroup, Card, Form, Table } from "react-bootstrap";
 import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
 import { editableModuleIds, getSelectedModuleId, state } from "../../../state/store";
 import { escapeHtml } from "../../../utils/dom";
-import { ensureMimloObjects, formatPct, mimloText } from "../../../utils/helpers";
+import { ensureMimloObjects, findVersion, formatPct, mimloText } from "../../../utils/helpers";
 import { uid } from "../../../utils/uid";
 import { Accordion, AccordionControls, AccordionItem, Alert, HeaderAction, Icon } from "../../ui";
+import type { MIMLO, Module, ModuleAssessment, ProgrammeVersion, Stage } from "../../../types";
 
 // ============================================================================
 // Constants
@@ -64,47 +65,6 @@ interface IntegrityOptions {
   [key: string]: boolean | undefined;
 }
 
-interface ModuleAssessment {
-  id: string;
-  title: string;
-  type: string;
-  weighting: number;
-  mode?: string;
-  integrity?: IntegrityOptions;
-  mimloIds?: string[];
-  notes?: string;
-}
-
-interface MIMLO {
-  id: string;
-  text: string;
-  [key: string]: unknown;
-}
-
-interface Module {
-  id: string;
-  title: string;
-  code: string;
-  credits: number;
-  mimlos?: MIMLO[];
-  assessments?: ModuleAssessment[];
-  [key: string]: unknown;
-}
-
-interface Stage {
-  name?: string;
-  modules?: Array<{ moduleId: string }>;
-  [key: string]: unknown;
-}
-
-interface ProgrammeVersion {
-  id: string;
-  code?: string;
-  label?: string;
-  stages?: Stage[];
-  [key: string]: unknown;
-}
-
 interface AssessmentInputProps {
   moduleId: string;
   assessment: ModuleAssessment;
@@ -136,7 +96,7 @@ function getVersionById(
   versions: ProgrammeVersion[] | undefined,
   versionId: string,
 ): ProgrammeVersion | null {
-  return (versions ?? []).find((v) => v.id === versionId) ?? (versions ?? [])[0] ?? null;
+  return findVersion(versions ?? [], versionId) ?? (versions ?? [])[0] ?? null;
 }
 
 /**
@@ -541,7 +501,7 @@ const ReportControls: React.FC<{
  * Single assessment input form
  */
 const AssessmentInput: React.FC<AssessmentInputProps> = ({
-  moduleId,
+  moduleId: _moduleId,
   assessment,
   mimlos,
   onUpdate,

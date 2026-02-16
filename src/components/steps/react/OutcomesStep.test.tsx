@@ -7,6 +7,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OutcomesStep } from "./OutcomesStep";
+import type { PLO, Programme } from "../../../types";
 
 // Mock the store module
 const mockProgramme = {

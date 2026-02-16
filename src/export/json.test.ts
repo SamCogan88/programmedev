@@ -1,12 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { downloadJson, exportProgrammeToJson, importJson, importProgrammeFromJson } from "./json";
+import { downloadJson, importJson, importProgrammeFromJson } from "./json";
+
+vi.mock("../utils/dom", () => ({
+  downloadBlob: vi.fn(),
+}));
+
+import { downloadBlob } from "../utils/dom";
 
 vi.mock("../utils/migrate-programme", () => ({
   migrateProgramme: vi.fn((data: unknown) => data),
 }));
 
 import { migrateProgramme } from "../utils/migrate-programme";
+import type { Programme } from "../types";
 
 /** Helper to create a minimal Programme-like object for testing. */
 function makeProgramme(overrides: Partial<Programme> = {}): Programme {
@@ -22,67 +29,31 @@ function makeJsonFile(content: string, name = "test.json"): File {
 
 describe("downloadJson", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
-  it("creates a download link and triggers a click", () => {
-    const fakeUrl = "blob:http://localhost/fake-url";
-    vi.spyOn(URL, "createObjectURL").mockReturnValue(fakeUrl);
-    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
-
-    const clickSpy = vi.fn();
-    const fakeAnchor = { href: "", download: "", click: clickSpy } as unknown as HTMLAnchorElement;
-    vi.spyOn(document, "createElement").mockReturnValue(fakeAnchor);
-
+  it("creates a download blob and triggers a download", () => {
     const programme = makeProgramme({ title: "My Programme" });
     downloadJson(programme);
 
-    expect(URL.createObjectURL).toHaveBeenCalledOnce();
-    expect(fakeAnchor.href).toBe(fakeUrl);
-    expect(fakeAnchor.download).toBe("My_Programme.json");
-    expect(clickSpy).toHaveBeenCalledOnce();
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith(fakeUrl);
+    expect(downloadBlob).toHaveBeenCalledOnce();
+    const [blob, filename] = (downloadBlob as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(blob).toBeInstanceOf(Blob);
+    expect(filename).toBe("My_Programme.json");
   });
 
   it("uses 'programme' as default filename when title is empty", () => {
-    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:fake");
-    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
-
-    const fakeAnchor = { href: "", download: "", click: vi.fn() } as unknown as HTMLAnchorElement;
-    vi.spyOn(document, "createElement").mockReturnValue(fakeAnchor);
-
     downloadJson(makeProgramme({ title: "" }));
 
-    expect(fakeAnchor.download).toBe("programme.json");
+    const [, filename] = (downloadBlob as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(filename).toBe("programme.json");
   });
 
   it("replaces whitespace in title with underscores for filename", () => {
-    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:fake");
-    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
-
-    const fakeAnchor = { href: "", download: "", click: vi.fn() } as unknown as HTMLAnchorElement;
-    vi.spyOn(document, "createElement").mockReturnValue(fakeAnchor);
-
     downloadJson(makeProgramme({ title: "Higher  Diploma in  Computing" }));
 
-    expect(fakeAnchor.download).toBe("Higher_Diploma_in_Computing.json");
-  });
-});
-
-describe("exportProgrammeToJson", () => {
-  it("is an alias for downloadJson", () => {
-    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:fake");
-    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
-
-    const clickSpy = vi.fn();
-    const fakeAnchor = { href: "", download: "", click: clickSpy } as unknown as HTMLAnchorElement;
-    vi.spyOn(document, "createElement").mockReturnValue(fakeAnchor);
-
-    const programme = makeProgramme({ title: "Alias Test" });
-    exportProgrammeToJson(programme);
-
-    expect(clickSpy).toHaveBeenCalledOnce();
-    expect(fakeAnchor.download).toBe("Alias_Test.json");
+    const [, filename] = (downloadBlob as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(filename).toBe("Higher_Diploma_in_Computing.json");
   });
 });
 

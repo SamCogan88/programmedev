@@ -15,7 +15,6 @@ import {
   getCriteriaList,
   getDescriptor,
   getThreadList,
-  state,
 } from "../../../state/store";
 import { uid } from "../../../utils/uid";
 import {
@@ -23,38 +22,25 @@ import {
   AccordionControls,
   AccordionItem,
   Alert,
+  BloomsGuidance,
   HeaderAction,
   Icon,
   SectionCard,
 } from "../../ui";
+import type { AwardStandard, PLO, Programme } from "../../../types";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-interface PLOMapping {
-  criteria: string;
-  thread: string;
-  standardId?: string;
-}
-
-interface PLO {
-  id: string;
-  text: string;
-  standardMappings: PLOMapping[];
-}
+/** Mapping of a PLO to award standard criteria */
+type PLOMapping = NonNullable<PLO["standardMappings"]>[number];
 
 interface LintIssue {
-  severity: "warn" | "error";
+  severity: "warn" | "error" | "info";
   match: string;
   message: string;
   suggestions: string[];
-}
-
-interface AwardStandard {
-  id: string;
-  name: string;
-  [key: string]: unknown;
 }
 
 interface PLOItemProps {
@@ -68,103 +54,6 @@ interface PLOItemProps {
   standardNames: string[];
   nfqLevel: number | null;
 }
-
-interface BloomsGuidanceProps {
-  nfqLevel: number | null;
-  contextLabel: string;
-}
-
-// ============================================================================
-// Sub-components
-// ============================================================================
-
-/**
- * Bloom's guidance helper showing NFQ-level appropriate verbs.
- */
-const BloomsGuidance: React.FC<BloomsGuidanceProps> = ({ nfqLevel, contextLabel }) => {
-  const lvl = Number(nfqLevel ?? 0);
-  const title = lvl
-    ? `Bloom helper (aligned to NFQ level ${lvl})`
-    : "Bloom helper (choose NFQ level first)";
-
-  let focus: string;
-  let verbs: string[];
-
-  if (!lvl) {
-    focus =
-      "Pick the programme NFQ level in Identity, then come back here for tailored verb suggestions.";
-    verbs = ["describe", "explain", "apply", "analyse", "evaluate", "design"];
-  } else if (lvl <= 6) {
-    focus =
-      "Emphasise foundational knowledge and applied skills (remember/understand/apply), with some analysis.";
-    verbs = [
-      "identify",
-      "describe",
-      "explain",
-      "apply",
-      "demonstrate",
-      "use",
-      "outline",
-      "compare",
-    ];
-  } else if (lvl === 7) {
-    focus = "Balance application and analysis. Show problem-solving and autonomy.";
-    verbs = [
-      "apply",
-      "analyse",
-      "evaluate",
-      "compare",
-      "develop",
-      "justify",
-      "implement",
-      "design",
-    ];
-  } else if (lvl === 8) {
-    focus = "Push beyond application: critical analysis, evaluation, and creation/design.";
-    verbs = [
-      "analyse",
-      "evaluate",
-      "synthesise",
-      "design",
-      "develop",
-      "critique",
-      "justify",
-      "implement",
-    ];
-  } else {
-    focus = "Focus on creation, research, and leadership. Expect original contribution.";
-    verbs = [
-      "design",
-      "develop",
-      "evaluate",
-      "create",
-      "synthesise",
-      "lead",
-      "formulate",
-      "originate",
-    ];
-  }
-
-  return (
-    <Alert variant="secondary" className="mb-3 small">
-      <div className="fw-semibold mb-1">
-        {title} — for {contextLabel}
-      </div>
-      <div className="mb-2">{focus}</div>
-      <div className="d-flex flex-wrap gap-1">
-        {verbs.map((v) => (
-          <Badge key={v} bg="light" text="dark">
-            {v}
-          </Badge>
-        ))}
-      </div>
-      <div className="mt-2 text-secondary">
-        Tip: start outcomes with a verb + object + standard (e.g., "Analyse X using Y to produce
-        Z").
-      </div>
-    </Alert>
-  );
-};
 
 /**
  * Lint warning display for a single PLO.
@@ -332,7 +221,7 @@ const MappingControls: React.FC<{
         role="group"
         aria-labelledby={`plo-mapping-heading-${ploId}`}
       >
-        <div style={{ minWidth: 220 }}>
+        <div className="plo-field-criteria">
           <Form.Label className="small mb-1" htmlFor={`plo-criteria-${ploId}`}>
             Criteria
           </Form.Label>
@@ -352,7 +241,7 @@ const MappingControls: React.FC<{
           </Form.Select>
         </div>
 
-        <div style={{ minWidth: 260 }}>
+        <div className="plo-field-thread">
           <Form.Label className="small mb-1" htmlFor={`plo-thread-${ploId}`}>
             Thread
           </Form.Label>
@@ -390,7 +279,7 @@ const MappingControls: React.FC<{
         </div>
       )}
 
-      <div className="mt-2" role="list" aria-label={`Current mappings for PLO ${ploIndex + 1}`}>
+      <div className="mt-2" role="group" aria-label={`Current mappings for PLO ${ploIndex + 1}`}>
         {currentMappings.length === 0 ? (
           <div className="small text-secondary">No mappings yet for this PLO.</div>
         ) : hasMultipleStandards ? (
@@ -560,7 +449,7 @@ const MappingSnapshot: React.FC<{
       <Table size="sm" className="align-middle">
         <thead>
           <tr>
-            <th style={{ width: 90 }}>PLO</th>
+            <th className="plo-col-label">PLO</th>
             <th>PLO Text</th>
             <th>Mapped Standards (at NFQ Level {level ?? ""})</th>
           </tr>

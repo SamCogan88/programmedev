@@ -7,6 +7,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AssessmentsStep } from "./AssessmentsStep";
+import type { Module, Programme, Stage } from "../../../types";
 
 // Mock programme data
 const mockProgramme = {
@@ -148,6 +149,9 @@ vi.mock("../../../utils/helpers.js", () => ({
       : x && typeof x === "object"
         ? ((x as { text?: string }).text ?? "")
         : "",
+  ),
+  findVersion: vi.fn((versions: { id: string }[], id: string) =>
+    (versions ?? []).find((v) => v.id === id),
   ),
 }));
 
