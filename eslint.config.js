@@ -1,18 +1,59 @@
+import pluginReact from "eslint-plugin-react";
+import pluginReactHooks from "eslint-plugin-react-hooks";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
+import tseslint from "typescript-eslint";
 
 export default [
+  // TypeScript + React source files
+  ...tseslint.configs.recommended.map((config) => ({
+    ...config,
+    files: ["src/**/*.{ts,tsx}"],
+  })),
   {
-    files: ["src/**/*.{ts,tsx}", "e2e/**/*.js", "*.js"],
+    files: ["src/**/*.{ts,tsx}"],
     plugins: {
+      react: pluginReact,
+      "react-hooks": pluginReactHooks,
       "simple-import-sort": simpleImportSort,
+    },
+    settings: {
+      react: { version: "detect" },
+    },
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      parserOptions: {
+        ecmaFeatures: { jsx: true },
+      },
     },
     rules: {
       curly: ["error", "all"],
+
+      // React
+      "react/react-in-jsx-scope": "off",
+      "react/prop-types": "off",
+      "react/jsx-uses-react": "off",
+      "react/jsx-uses-vars": "error",
+
+      // React Hooks
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
+
+      // TypeScript — warn for pre-existing patterns, fix incrementally
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+
+      // Import sorting: React → third-party → internal
       "simple-import-sort/imports": [
         "error",
         {
           groups: [
-            // External packages (node_modules)
+            // React imports
+            ["^react$", "^react-dom", "^react/"],
+            // Third-party packages
             ["^[a-z@]"],
             // Internal imports (relative paths)
             ["^\\."],
@@ -21,9 +62,27 @@ export default [
       ],
       "simple-import-sort/exports": "error",
     },
+  },
+
+  // E2E tests and config files (plain JS)
+  {
+    files: ["e2e/**/*.js", "*.js"],
+    plugins: {
+      "simple-import-sort": simpleImportSort,
+    },
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
+    },
+    rules: {
+      curly: ["error", "all"],
+      "simple-import-sort/imports": [
+        "error",
+        {
+          groups: [["^[a-z@]"], ["^\\."]],
+        },
+      ],
+      "simple-import-sort/exports": "error",
     },
   },
 ];
