@@ -79,7 +79,7 @@ describe("AWARD_TYPE_OPTIONS", () => {
 describe("defaultProgramme", () => {
   it("returns a valid programme structure", () => {
     const p = defaultProgramme();
-    expect(p.schemaVersion).toBe(3);
+    expect(p.schemaVersion).toBe(5);
     expect(p.id).toBe("current");
     expect(p.title).toBe("");
     expect(p.awardType).toBe("");
@@ -312,7 +312,7 @@ describe("load", () => {
     const ts = "2024-01-01T00:00:00.000Z";
     const prog = {
       ...defaultProgramme(),
-      schemaVersion: 4,
+      schemaVersion: 5,
       updatedAt: ts,
       versions: [{ id: "ver_1", label: "FT", code: "FT", stages: [] }],
     };
