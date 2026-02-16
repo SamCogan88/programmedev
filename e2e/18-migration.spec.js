@@ -11,7 +11,7 @@ import { expect, getProgrammeData, loadProgrammeData, test } from "./fixtures/te
  */
 
 test.describe("Programme Migration - JSON Import Path", () => {
-  test("should migrate imported v1 JSON to v4", async ({ page }) => {
+  test("should migrate imported v1 JSON to v5", async ({ page }) => {
     const v1Programme = {
       schemaVersion: 1,
       title: "Imported V1 Programme",
@@ -43,19 +43,74 @@ test.describe("Programme Migration - JSON Import Path", () => {
     await page.waitForTimeout(1000);
 
     const data = await getProgrammeData(page);
-    expect(data.schemaVersion).toBe(4);
+    expect(data.schemaVersion).toBe(5);
     expect(data.title).toBe("Imported V1 Programme");
-    // Should be migrated to arrays
+    // v1→v2: award standard converted to arrays
     expect(data.awardStandardIds).toEqual(["science"]);
     expect(data.awardStandardNames).toEqual(["Science"]);
-    // Delivery modality should be converted
+    // v1→v2: delivery modality converted from array to single value
     expect(data.versions[0].deliveryModality).toBe("Blended");
     expect(data.versions[0].deliveryModalities).toBeUndefined();
-    // Should have ploToMimlos initialized
+    // v3→v4: ploToMimlos initialized
     expect(data.ploToMimlos).toEqual({});
+    // v4→v5: teachingWeeks added with default
+    expect(data.versions[0].teachingWeeks).toBe(12);
   });
 
-  test("should migrate imported v3 JSON to v4", async ({ page }) => {
+  test("should migrate imported v2 JSON to v5", async ({ page }) => {
+    const v2Programme = {
+      schemaVersion: 2,
+      title: "Imported V2 Programme",
+      awardStandardIds: ["qqi-computing-l6-9"],
+      awardStandardNames: ["QQI Computing"],
+      nfqLevel: 8,
+      totalCredits: 60,
+      modules: [
+        {
+          id: "m1",
+          title: "Test Module",
+          code: "TST001",
+          credits: 5,
+          mimlos: [{ id: "mim1" }],
+        },
+      ],
+      plos: [{ id: "p1", text: "Test PLO" }],
+      ploToModules: { p1: ["m1"] },
+      versions: [
+        {
+          id: "v2-v1",
+          label: "V2 Version",
+          deliveryModality: "Online",
+          deliveryPatterns: { Online: { weeks: 10 } },
+        },
+      ],
+    };
+
+    const fileInput = page.getByTestId("import-input");
+
+    await fileInput.setInputFiles({
+      name: "v2-import.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(v2Programme)),
+    });
+
+    await page.waitForTimeout(1000);
+
+    const data = await getProgrammeData(page);
+    expect(data.schemaVersion).toBe(5);
+    expect(data.title).toBe("Imported V2 Programme");
+    // v2→v3: old standard IDs migrated to new format
+    expect(data.awardStandardIds).toEqual(["computing"]);
+    expect(data.versions[0].deliveryModality).toBe("Online");
+    expect(data.modules.length).toBe(1);
+    // v3→v4: ploToModules converted to ploToMimlos
+    expect(data.ploToMimlos.p1).toEqual(["mim1"]);
+    expect(data.ploToModules).toBeUndefined();
+    // v4→v5: teachingWeeks added with default
+    expect(data.versions[0].teachingWeeks).toBe(12);
+  });
+
+  test("should migrate imported v3 JSON to v5", async ({ page }) => {
     const v3Programme = {
       schemaVersion: 3,
       title: "Imported V3 Programme",
@@ -95,16 +150,18 @@ test.describe("Programme Migration - JSON Import Path", () => {
     await page.waitForTimeout(1000);
 
     const data = await getProgrammeData(page);
-    expect(data.schemaVersion).toBe(4);
+    expect(data.schemaVersion).toBe(5);
     expect(data.awardStandardIds).toEqual(["computing", "science"]);
     expect(data.versions[0].deliveryModality).toBe("Online");
     expect(data.modules.length).toBe(1);
-    // ploToModules should be converted to ploToMimlos
+    // v3→v4: ploToModules should be converted to ploToMimlos
     expect(data.ploToMimlos.p1).toEqual(["mim1"]);
     expect(data.ploToModules).toBeUndefined();
+    // v4→v5: teachingWeeks added with default
+    expect(data.versions[0].teachingWeeks).toBe(12);
   });
 
-  test("should accept and preserve imported v4 JSON unchanged", async ({ page }) => {
+  test("should migrate imported v4 JSON to v5", async ({ page }) => {
     const v4Programme = {
       schemaVersion: 4,
       title: "Imported V4 Programme",
@@ -144,11 +201,14 @@ test.describe("Programme Migration - JSON Import Path", () => {
     await page.waitForTimeout(1000);
 
     const data = await getProgrammeData(page);
-    expect(data.schemaVersion).toBe(4);
+    expect(data.schemaVersion).toBe(5);
     expect(data.title).toBe("Imported V4 Programme");
+    // v4 fields preserved through migration
     expect(data.awardStandardIds).toEqual(["computing"]);
     expect(data.ploToMimlos.p1).toEqual(["mim1"]);
     expect(data.modules.length).toBe(1);
+    // v4→v5: teachingWeeks added with default
+    expect(data.versions[0].teachingWeeks).toBe(12);
   });
 });
 
