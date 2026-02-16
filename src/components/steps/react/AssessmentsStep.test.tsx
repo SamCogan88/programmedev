@@ -7,7 +7,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AssessmentsStep } from "./AssessmentsStep";
-import type { Module, Programme, Stage } from "../../../types";
+import type { ModuleAssessment, Module, Programme, Stage } from "../../../types";
 
 // Mock programme data
 const mockProgramme = {
@@ -45,7 +45,7 @@ const mockProgramme = {
           mimloIds: ["mimlo_test2"],
           notes: "",
         },
-      ],
+      ] as ModuleAssessment[],
     },
     {
       id: "mod_test2",

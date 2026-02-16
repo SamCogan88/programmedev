@@ -9,6 +9,7 @@ import type {
   ElectiveGroup,
   MIMLO,
   Module,
+  ModuleAssessment,
   PLO,
   Programme,
   ProgrammeVersion,
