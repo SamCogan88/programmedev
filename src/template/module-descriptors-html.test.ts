@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { renderModuleDescriptor, renderAllModuleDescriptors } from "./module-descriptors-html";
+
+import { renderAllModuleDescriptors, renderModuleDescriptor } from "./module-descriptors-html";
 
 function makeProgramme(overrides: Partial<Programme> = {}): Programme {
   return {

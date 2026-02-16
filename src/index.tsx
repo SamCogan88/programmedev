@@ -9,15 +9,15 @@ import { createRoot } from "react-dom/client";
 
 // Import Bootstrap and styles
 import * as bootstrap from "bootstrap";
-import "@phosphor-icons/web/regular";
-import "@phosphor-icons/web/bold";
-import "./style.css";
-
-// Import state management
-import { load } from "./state/store";
 
 // Import App component
 import { App } from "./App";
+// Import state management
+import { load } from "./state/store";
+
+import "@phosphor-icons/web/regular";
+import "@phosphor-icons/web/bold";
+import "./style.css";
 
 // Store bootstrap reference to avoid tree-shaking
 (window as Window & { bootstrap?: typeof bootstrap }).bootstrap = bootstrap;

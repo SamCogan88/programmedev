@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
+
 import {
   ASSESSMENT_REPORT_TYPES,
-  reportByStageType,
-  reportByModule,
-  reportCoverage,
   buildAssessmentReportHtml,
   openReportInNewTab,
+  reportByModule,
+  reportByStageType,
+  reportCoverage,
 } from "./assessment-reports";
 
 /** Minimal programme fixture for testing. */

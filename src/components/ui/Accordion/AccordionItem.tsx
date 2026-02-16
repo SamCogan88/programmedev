@@ -5,12 +5,13 @@
  * @module components/ui/Accordion/AccordionItem
  */
 
-import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { useEffect } from "react";
+
+import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Accordion as BsAccordion } from "react-bootstrap";
 
-import { useAccordion } from "./Accordion";
 import Icon from "../Icon";
+import { useAccordion } from "./Accordion";
 
 export interface AccordionItemProps {
   /** Unique key for this item */

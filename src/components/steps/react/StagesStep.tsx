@@ -5,11 +5,13 @@
  */
 
 import React, { useCallback, useState } from "react";
-import { Button, Card, Form, Row, Col } from "react-bootstrap";
-import { Accordion, AccordionControls, AccordionItem, Alert, HeaderAction, Icon } from "../../ui";
+
+import { Button, Card, Col, Form, Row } from "react-bootstrap";
+
 import { notifyStateChange, useProgramme, useSaveDebounced } from "../../../hooks/useStore";
 import { defaultStage, state } from "../../../state/store";
 import { sumStageCredits } from "../../../utils/helpers";
+import { Accordion, AccordionControls, AccordionItem, Alert, HeaderAction, Icon } from "../../ui";
 
 // ============================================================================
 // Types (local aliases to avoid conflicts with global types)

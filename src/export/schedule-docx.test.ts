@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import { Packer } from "docx";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("docx", async () => {
   const actual = await vi.importActual<typeof import("docx")>("docx");

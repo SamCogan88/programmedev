@@ -4,14 +4,14 @@
 
 export {
   Accordion,
-  useAccordion,
-  type AccordionProps,
   type AccordionContextValue,
+  type AccordionProps,
+  useAccordion,
 } from "./Accordion";
+export { AccordionControls, type AccordionControlsProps } from "./AccordionControls";
 export {
   AccordionItem,
-  HeaderAction,
   type AccordionItemProps,
+  HeaderAction,
   type HeaderActionProps,
 } from "./AccordionItem";
-export { AccordionControls, type AccordionControlsProps } from "./AccordionControls";

@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { validateProgramme, completionPercent, type ValidationFlag } from "./validation";
+import { describe, expect, it } from "vitest";
+
+import { completionPercent, validateProgramme, type ValidationFlag } from "./validation";
 
 /** Helper to create a minimal valid programme for testing. */
 function baseProgramme(overrides: Partial<Programme> = {}): Programme {

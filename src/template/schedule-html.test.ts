@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { renderScheduleTable, renderAllSchedules } from "./schedule-html";
+
+import { renderAllSchedules, renderScheduleTable } from "./schedule-html";
 
 function makeProgramme(overrides: Partial<Programme> = {}): Programme {
   return {
