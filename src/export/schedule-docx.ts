@@ -26,6 +26,8 @@ import {
   getAssessmentFlags,
   getAssessmentPercentages,
 } from "../utils/assessments";
+import { downloadBlob } from "../utils/dom";
+import { resolveEffortHours } from "../utils/helpers";
 
 const HEADER_SHADING = "D9E1F2";
 const LABEL_SHADING = "E7E6E6";
@@ -440,10 +442,7 @@ function generateScheduleTable(
       return;
     }
 
-    const effort =
-      mod.effortHours?.[deliveryKey] ??
-      mod.effortHours?.[Object.keys(mod.effortHours ?? {})[0]] ??
-      {};
+    const effort = resolveEffortHours(mod, deliveryKey);
     const totalHours = (mod.credits ?? 0) * 25;
 
     const asmPcts = getAssessmentPercentages(mod);
@@ -575,13 +574,5 @@ export async function downloadScheduleDocx(
   });
 
   const blob = await Packer.toBlob(doc);
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, filename);
 }
