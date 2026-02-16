@@ -340,27 +340,32 @@ function renderSummativeTable(mod: Module): string {
       .filter((n) => n !== "")
       .join(", ");
 
+    const weekText = a.indicativeWeek ? `Week ${a.indicativeWeek}` : "";
+
     rows += `<tr>
       <td>${mimloNums}</td>
       <td>${escapeHtml(a.title ?? a.type ?? "")}</td>
       <td>${a.weighting ?? ""}%</td>
+      <td>${escapeHtml(weekText)}</td>
     </tr>`;
   });
 
   return `
 <table class="summative-table" aria-label="Summative Assessment Strategy">
   <colgroup>
-    <col style="width: 35%">
-    <col style="width: 40%">
     <col style="width: 25%">
+    <col style="width: 35%">
+    <col style="width: 20%">
+    <col style="width: 20%">
   </colgroup>
   <tr>
-    <th colspan="3" class="grey">7.7 &nbsp;&nbsp;Summative Assessment Strategy for this module</th>
+    <th colspan="4" class="grey">7.7 &nbsp;&nbsp;Summative Assessment Strategy for this module</th>
   </tr>
   <tr class="blue">
     <th>MIMLOs</th>
     <th>Technique(s)</th>
     <th>Weighting</th>
+    <th>Indicative Week</th>
   </tr>
   ${rows}
 </table>`;
