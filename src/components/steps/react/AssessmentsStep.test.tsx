@@ -150,6 +150,9 @@ vi.mock("../../../utils/helpers.js", () => ({
         ? ((x as { text?: string }).text ?? "")
         : "",
   ),
+  findVersion: vi.fn((versions: { id: string }[], id: string) =>
+    (versions ?? []).find((v) => v.id === id),
+  ),
 }));
 
 vi.mock("../../../utils/dom.js", () => ({

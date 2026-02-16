@@ -11,7 +11,7 @@ import { Badge, Button, ButtonGroup, Card, Form, Table } from "react-bootstrap";
 import { useProgramme, useSaveDebounced, useUpdateProgramme } from "../../../hooks/useStore";
 import { editableModuleIds, getSelectedModuleId, state } from "../../../state/store";
 import { escapeHtml } from "../../../utils/dom";
-import { ensureMimloObjects, formatPct, mimloText } from "../../../utils/helpers";
+import { ensureMimloObjects, findVersion, formatPct, mimloText } from "../../../utils/helpers";
 import { uid } from "../../../utils/uid";
 import { Accordion, AccordionControls, AccordionItem, Alert, HeaderAction, Icon } from "../../ui";
 import type { MIMLO, Module, ModuleAssessment, ProgrammeVersion, Stage } from "../../../types";
@@ -96,7 +96,7 @@ function getVersionById(
   versions: ProgrammeVersion[] | undefined,
   versionId: string,
 ): ProgrammeVersion | null {
-  return (versions ?? []).find((v) => v.id === versionId) ?? (versions ?? [])[0] ?? null;
+  return findVersion(versions ?? [], versionId) ?? (versions ?? [])[0] ?? null;
 }
 
 /**
