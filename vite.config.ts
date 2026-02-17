@@ -3,7 +3,6 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: "/programmedev/",
   plugins: [
     react({
       // Use automatic JSX runtime for React 17+
