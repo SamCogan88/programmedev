@@ -2,6 +2,14 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
+ * Playwright Reporters Configuration
+ * @type {import("@playwright/test").ReporterDescription[] | undefined}
+ */
+const reporter = process.env.CI
+  ? [["html"], ["junit", { outputFile: "test-results/junit.xml" }]]
+  : [["html"], ["json", { outputFile: "test-results/results.json" }]];
+
+/**
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
@@ -10,9 +18,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   // workers: 8,
-  reporter: process.env.CI
-    ? [["html"], ["junit", { outputFile: "test-results/junit.xml" }], ["list"]]
-    : "html",
+  reporter,
   timeout: 30 * 1000,
   quiet: false,
 
