@@ -29,6 +29,8 @@ jobs:
 
       - name: Build and run unit tests
         uses: ./.github/actions/build-and-test
+        with:
+          base-path: /programmedev/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
