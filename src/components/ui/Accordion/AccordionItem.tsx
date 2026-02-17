@@ -130,9 +130,11 @@ export function AccordionItem({
           </div>
         </button>
       </h2>
-      <BsAccordion.Collapse eventKey={eventKey}>
-        <BsAccordion.Body>{children}</BsAccordion.Body>
-      </BsAccordion.Collapse>
+      <div id={collapseId}>
+        <BsAccordion.Collapse eventKey={eventKey}>
+          <BsAccordion.Body>{children}</BsAccordion.Body>
+        </BsAccordion.Collapse>
+      </div>
     </BsAccordion.Item>
   );
 }
