@@ -1,7 +1,9 @@
 /**
  * AccordionItem component.
  * Individual accordion item with header actions support.
- * Uses <span role="button"> pattern for header actions per AGENTS.md guidelines.
+ * The expand/collapse chevron is placed on the left of the header button.
+ * Header actions sit outside the <button> as sibling elements on the right
+ * to avoid nested-interactive a11y violations while remaining keyboard-accessible.
  * @module components/ui/Accordion/AccordionItem
  */
 
@@ -24,7 +26,7 @@ export interface AccordionItemProps {
   subtitlePosition?: "below" | "right";
   /** Item content */
   children: ReactNode;
-  /** Optional actions to render in the header (use span with role="button") */
+  /** Optional actions to render in the header (use HeaderAction) */
   headerActions?: ReactNode;
   /** Additional CSS classes for the item */
   className?: string;
@@ -34,6 +36,11 @@ export interface AccordionItemProps {
 
 /**
  * AccordionItem component with support for header actions.
+ *
+ * The header is a flex row: [button (chevron-left + title)] [actions].
+ * The button's ::after chevron is moved to the left via CSS (order: -1).
+ * Header actions sit outside the button as siblings to satisfy a11y rules,
+ * with background colours matched via CSS custom properties.
  *
  * @example
  * ```tsx
@@ -67,20 +74,11 @@ export function AccordionItem({
     registerItem(eventKey);
   }, [eventKey, registerItem]);
 
-  const handleHeaderClick = (e: MouseEvent) => {
-    // Don't toggle if clicking on header actions
-    const target = e.target as HTMLElement;
-    if (target.closest(".header-actions")) {
-      return;
-    }
+  const handleToggle = () => {
     toggleItem(eventKey);
   };
 
   const handleHeaderKeyDown = (e: KeyboardEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest(".header-actions")) {
-      return;
-    }
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       toggleItem(eventKey);
@@ -97,16 +95,16 @@ export function AccordionItem({
       data-testid={testId}
     >
       <h2 className="accordion-header" id={headingId}>
-        <button
-          className={`accordion-button w-100${isExpanded ? "" : " collapsed"}`}
-          type="button"
-          aria-expanded={isExpanded}
-          aria-controls={collapseId}
-          onClick={handleHeaderClick}
-          onKeyDown={handleHeaderKeyDown}
-          data-testid={testId ? `${testId}-header` : undefined}
-        >
-          <div className="d-flex w-100 align-items-center gap-2">
+        <div className="d-flex align-items-stretch">
+          <button
+            className={`accordion-button accordion-button--chevron-left flex-grow-1${isExpanded ? "" : " collapsed"}`}
+            type="button"
+            aria-expanded={isExpanded}
+            aria-controls={collapseId}
+            onClick={handleToggle}
+            onKeyDown={handleHeaderKeyDown}
+            data-testid={testId ? `${testId}-header` : undefined}
+          >
             <div
               className={
                 subtitlePosition === "right"
@@ -122,13 +120,13 @@ export function AccordionItem({
                 <div className="small text-secondary me-2">{subtitle}</div>
               )}
             </div>
-            {headerActions && (
-              <div className="header-actions d-flex align-items-center gap-2 me-2">
-                {headerActions}
-              </div>
-            )}
-          </div>
-        </button>
+          </button>
+          {headerActions && (
+            <div className="header-actions d-flex align-items-center gap-2 px-2">
+              {headerActions}
+            </div>
+          )}
+        </div>
       </h2>
       <div id={collapseId}>
         <BsAccordion.Collapse eventKey={eventKey}>
@@ -141,7 +139,9 @@ export function AccordionItem({
 
 /**
  * HeaderAction component for use inside accordion headers.
- * Uses <span role="button"> to avoid nested button issues.
+ * Renders as a <span> with role="button" and tabIndex={0} for keyboard
+ * accessibility. Placed outside the accordion <button> as a sibling to
+ * avoid nested-interactive violations.
  */
 export interface HeaderActionProps {
   /** Click handler */
@@ -169,8 +169,9 @@ export interface HeaderActionProps {
 }
 
 /**
- * Header action button for accordion items.
- * Uses span with role="button" to avoid nested button HTML issues.
+ * Header action for accordion items.
+ * Uses span with role="button" for keyboard accessibility.
+ * Lives outside the accordion <button> element to satisfy a11y rules.
  *
  * @example
  * ```tsx
