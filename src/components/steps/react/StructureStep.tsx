@@ -340,8 +340,11 @@ export const StructureStep: React.FC = () => {
     >
       <Row className="g-3 mb-3">
         <Col md={3}>
-          <Form.Label className="fw-semibold">Total programme credits</Form.Label>
+          <Form.Label className="fw-semibold" htmlFor="total-credits-display">
+            Total programme credits
+          </Form.Label>
           <Form.Control
+            id="total-credits-display"
             type="number"
             value={Number(programme.totalCredits ?? 0)}
             disabled

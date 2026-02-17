@@ -320,7 +320,10 @@ describe("StructureStep", () => {
           title: "Module 1",
           credits: 10,
           isElective: false,
-          mimlos: [{ id: "mimlo_1", text: "" }, { id: "mimlo_2", text: "" }],
+          mimlos: [
+            { id: "mimlo_1", text: "" },
+            { id: "mimlo_2", text: "" },
+          ],
         },
       ];
       state.programme.ploToMimlos = {
