@@ -34,6 +34,16 @@
   --muted-text: #9ca3af;
 }
 
+/* Invert .text-dark on badges in dark mode for proper contrast */
+[data-bs-theme="dark"] .text-dark {
+  color: var(--bs-body-color) !important;
+}
+
+/* Invert .bg-light on badges in dark mode */
+[data-bs-theme="dark"] .bg-light {
+  background-color: var(--bs-tertiary-bg) !important;
+}
+
 body {
   background-color: var(--bs-body-bg);
   color: var(--bs-body-color);
