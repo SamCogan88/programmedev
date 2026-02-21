@@ -104,12 +104,8 @@ function renderMiploRows(ploIndex: number, plo: PLO, moduleRows: MiploModuleRow[
     const mimloText = row.mimloNumbers.map((n) => `MIMLO${n}`).join(", ");
     const moduleMimloCell = `${escapeHtml(moduleLabel)}-${escapeHtml(mimloText)}`;
 
-    const techniquesCell = row.assessments
-      .map((a) => escapeHtml(a.title))
-      .join("<br><br>");
-    const weightingsCell = row.assessments
-      .map((a) => `${a.weighting}%`)
-      .join("<br><br>");
+    const techniquesCell = row.assessments.map((a) => escapeHtml(a.title)).join("<br><br>");
+    const weightingsCell = row.assessments.map((a) => `${a.weighting}%`).join("<br><br>");
 
     if (idx === 0) {
       const rowspan = moduleRows.length > 1 ? ` rowspan="${moduleRows.length}"` : "";
