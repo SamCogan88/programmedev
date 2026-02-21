@@ -31,7 +31,7 @@ npm run template:tag -- --dry-run
 
 ## Adding a new template field
 
-1. Add the `{field_name}` tag to the template (in Word or via `scripts/tag-template.ts`)
+1. Add the `{field_name}` tag to the template (in Word or via `scripts/tag-template.py`)
 2. Add the field to `DescriptorData` in `src/export/descriptor-data.ts`
 3. Map it from `Programme` in `buildDescriptorData()`
 4. Write a test in `src/export/descriptor-data.test.ts`
@@ -42,5 +42,5 @@ npm run template:tag -- --dry-run
 - **Template**: `public/assets/programme_descriptor_template.docx` — externally owned, contains `{field}` and `{FOR}...{END-FOR}` tags
 - **Data mapper**: `src/export/descriptor-data.ts` — pure function, `Programme → DescriptorData`
 - **Export function**: `src/export/word.ts` — loads template, calls `createReport()` from `docx-templates`
-- **Tagging script**: `scripts/tag-template.ts` — programmatically inserts tags into the .docx XML
-- **Inspection script**: `scripts/inspect-template.ts` — reads and summarises template structure
+- **Tagging script**: `scripts/tag-template.py` — programmatically inserts tags into the .docx XML
+- **Inspection script**: `scripts/inspect-docx.py` — reads and summarises template structure

@@ -115,8 +115,8 @@ e2e/                           # Playwright end-to-end tests
     └── test-data.js           # Sample programme data
 
 scripts/                       # Utility scripts (run with tsx)
-├── inspect-template.ts        # Template structure inspector
-└── tag-template.ts            # Template tagging tool
+├── inspect-docx.py            # Template structure inspector (Python/lxml)
+└── tag-template.py            # Template tagging tool (Python/lxml)
 ```
 
 ## Coding Conventions
@@ -477,25 +477,53 @@ The app exports a QQI Programme Descriptor Word document using a **template-driv
 
 Run `npm run template:inspect` to see all current tags and template structure.
 
+### docx-templates Critical Rules
+
+- **Browser import**: Use `import createReport from "docx-templates/lib/browser.js"` (not the default entry)
+- **Sandbox**: Must use `noSandbox: true` — the default JS sandbox doesn't work in browser
+- **Variable prefix**: Inside a FOR loop, use `$` prefix to reference the loop variable: `{$module.code}`, `{$mimlo.text}`
+- **FOR loop row structure**: FOR and END-FOR commands **must** be in their own dedicated table rows. The data row between them is what gets duplicated. If FOR/END-FOR share a row with data fields, cells expand *horizontally* instead of rows duplicating *vertically* — this corrupts the table.
+- **Footnote references**: Any `<w:footnoteReference>` inside a FOR loop body gets duplicated N times. Strip them during template tagging to prevent Word repair errors.
+
+### Template Tagging Scripts
+
+Both scripts are Python-based and require `lxml` (`pip install lxml`):
+
+- **`scripts/tag-template.py`** — Inserts `{field}` and `{FOR}...{END-FOR}` tags into the template XML. Uses DOM manipulation to preserve all formatting. Key helpers:
+  - `set_cell_text(cell, text)` — Sets cell text, preserving `<w:rPr>` formatting
+  - `clone_row_as_command(row, cmd)` — Deep-copies a data row for FOR/END-FOR commands, preserving cell widths and gridSpan
+  - `make_paragraph(text, rpr)` — Creates standalone `<w:p>` for block-level FOR loops
+  - `merge_split_runs(body)` — Fixes template commands split across XML runs
+
+- **`scripts/inspect-docx.py`** — Reads and analyses `.docx` structure. Key commands:
+  - `overview <file>` — High-level summary
+  - `tables <file>` / `table <file> <idx>` — List/inspect tables
+  - `commands <file>` / `loops <file>` — Show template tags
+  - `compare <template> <output>` — Deep structural comparison (7 checks: grid widths, cell widths, footnotes, residual commands, FOR expansion, row anomalies)
+
+**Always tag from the clean original template** (commit `4804660`), never an already-tagged version. Running the tagger twice corrupts field references.
+
 ### When QQI Updates the Template
 
 1. Replace `public/assets/programme_descriptor_template.docx` with the new version
 2. Run `npm run template:inspect` to check which tags are missing
 3. Run `npm run template:tag` to re-insert tags (or add them manually in Word)
-4. If the template structure changed, update `scripts/tag-template.ts` accordingly
+4. If the template structure changed, update `scripts/tag-template.py` accordingly
 5. If new data fields are needed, add them to `descriptor-data.ts` and update tests
 
 ### Adding a New Template Field
 
-1. Add the tag `{field_name}` to the template (in Word or via `tag-template.ts`)
+1. Add the tag `{field_name}` to the template (via `tag-template.py`)
 2. Add the field to the `DescriptorData` interface in `descriptor-data.ts`
 3. Map it from `Programme` in `buildDescriptorData()`
 4. Write a test in `descriptor-data.test.ts`
 
+For mapping an entire new table, see the `map-template-table` prompt in `.github/prompts/`.
+
 ### Separate Exports
 
 - **Programme Descriptor** (`word.ts`): Template-driven, uses `docx-templates`
-- **Programme Schedule** (`schedule-docx.ts`): Programmatic, uses `docx` — appropriate for its complex 29-column layout with vertical text
+- **Programme Schedule** (`schedule-docx.ts`): Programmatic, uses `docx` — appropriate for its complex 29-column layout with vertical text and per-semester weekly tables
 
 ## Planning Large Changes
 
@@ -516,6 +544,9 @@ When a task spans multiple files or introduces a new subsystem:
 - **Test selector conflicts:** Use `data-testid` attributes rather than labels — the flags panel can cause duplicate label matches.
 - **File extensions in imports:** Never use `.js` or `.ts` extensions in import paths — use extensionless imports with bundler resolution.
 - **Store mock paths in tests:** When mocking the store in tests with `vi.mock(...)`, use the extensionless path (e.g., `"../../../state/store"` not `"../../../state/store.js"`).
+- **docx-templates FOR loop structure:** FOR and END-FOR must be in their own dedicated table rows — never in the same row as data fields, or cells expand horizontally instead of rows duplicating vertically.
+- **Template tagging order:** Always restore the clean original template (commit `4804660`) before running `tag-template.py`. Never tag an already-tagged template.
+- **Footnotes in FOR loops:** `<w:footnoteReference>` elements inside FOR loop bodies get duplicated N times. Strip them during tagging to prevent Word repair errors.
 
 ## Dependencies Policy
 
