@@ -14,6 +14,7 @@
     "test:coverage": "vitest run --coverage",
     "format": "prettier --write \"src/**/*.{js,ts,tsx}\" \"e2e/**/*.js\" \"*.{js,ts}\"",
     "format:check": "prettier --check \"src/**/*.{js,ts,tsx}\" \"e2e/**/*.js\" \"*.{js,ts}\"",
+    "schema:generate": "tsx scripts/generate-schema.ts",
     "template:inspect": "python scripts/inspect-docx.py overview public/assets/programme_descriptor_template.docx",
     "template:tag": "python scripts/tag-template.py"
   },
@@ -33,6 +34,7 @@
     "jsdom": "^28.0.0",
     "prettier": "^3.8.1",
     "sass-embedded": "^1.97.3",
+    "ts-json-schema-generator": "^2.5.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.55.0",
