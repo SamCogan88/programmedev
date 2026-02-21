@@ -1,36 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockSetData = vi.fn();
-const mockRender = vi.fn();
-const mockGenerate = vi.fn().mockReturnValue(new Blob());
-const mockGetZip = vi.fn().mockReturnValue({ generate: mockGenerate });
+import type { Programme } from "../types";
 
-vi.mock("docxtemplater", () => {
-  const DocxtemplaterMock = vi.fn(function (this: Record<string, unknown>) {
-    this.setData = mockSetData;
-    this.render = mockRender;
-    this.getZip = mockGetZip;
-  });
-  return { default: DocxtemplaterMock };
-});
+// Mock docx-templates createReport
+const mockCreateReport = vi.fn().mockResolvedValue(new Uint8Array(8));
 
-vi.mock("pizzip", () => {
-  const PizZipMock = vi.fn(function () {
-    /* empty zip */
-  });
-  return { default: PizZipMock };
-});
+vi.mock("docx-templates", () => ({
+  createReport: (...args: unknown[]) => mockCreateReport(...args),
+}));
 
 vi.mock("file-saver", () => ({
   saveAs: vi.fn(),
 }));
 
-import Docxtemplater from "docxtemplater";
-import { saveAs } from "file-saver";
-import PizZip from "pizzip";
+vi.mock("./descriptor-data", () => ({
+  buildDescriptorData: vi.fn().mockReturnValue({ programme_title: "Test" }),
+}));
 
+import { saveAs } from "file-saver";
+
+import { buildDescriptorData } from "./descriptor-data";
 import { exportProgrammeDescriptorWord, exportProgrammeToWord } from "./word";
-import type { PLO, Programme } from "../types";
 
 function makeProgramme(overrides: Partial<Programme> = {}): Programme {
   return { title: "Test Programme", totalCredits: 60, ...overrides } as Programme;
@@ -46,10 +36,7 @@ function mockFetchSuccess(): void {
 describe("exportProgrammeDescriptorWord", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    mockSetData.mockClear();
-    mockRender.mockClear();
-    mockGenerate.mockClear().mockReturnValue(new Blob());
-    mockGetZip.mockClear().mockReturnValue({ generate: mockGenerate });
+    mockCreateReport.mockClear().mockResolvedValue(new Uint8Array(8));
   });
 
   it("fetches the Word template", async () => {
@@ -59,35 +46,33 @@ describe("exportProgrammeDescriptorWord", () => {
     expect(globalThis.fetch).toHaveBeenCalledWith("./assets/programme_descriptor_template.docx");
   });
 
-  it("creates a document with programme data", async () => {
+  it("calls buildDescriptorData with the programme", async () => {
     mockFetchSuccess();
-    const p = makeProgramme({
-      title: "Higher Diploma",
-      nfqLevel: 8,
-      awardType: "Major",
-      totalCredits: 120,
-    });
+    const p = makeProgramme({ title: "Higher Diploma" });
 
     await exportProgrammeDescriptorWord(p);
 
-    expect(PizZip).toHaveBeenCalled();
-    expect(Docxtemplater).toHaveBeenCalled();
-    expect(mockSetData).toHaveBeenCalledWith(
+    expect(buildDescriptorData).toHaveBeenCalledWith(p);
+  });
+
+  it("calls createReport with template, data, and correct options", async () => {
+    mockFetchSuccess();
+    await exportProgrammeDescriptorWord(makeProgramme());
+
+    expect(mockCreateReport).toHaveBeenCalledWith(
       expect.objectContaining({
-        programme_title: "Higher Diploma",
-        nfq_level: 8,
-        award_class: "Major",
-        ects: "120",
+        template: expect.any(Uint8Array),
+        data: { programme_title: "Test" },
+        cmdDelimiter: ["{", "}"],
+        processLineBreaks: true,
+        failFast: false,
       }),
     );
-    expect(mockRender).toHaveBeenCalled();
   });
 
   it("saves with a sanitized filename", async () => {
     mockFetchSuccess();
-    const p = makeProgramme({ title: "Test / Programme (v2)" });
-
-    await exportProgrammeDescriptorWord(p);
+    await exportProgrammeDescriptorWord(makeProgramme({ title: "Test / Programme (v2)" }));
 
     expect(saveAs).toHaveBeenCalledWith(
       expect.any(Blob),
@@ -97,9 +82,7 @@ describe("exportProgrammeDescriptorWord", () => {
 
   it("uses default filename when title is empty", async () => {
     mockFetchSuccess();
-    const p = makeProgramme({ title: "" });
-
-    await exportProgrammeDescriptorWord(p);
+    await exportProgrammeDescriptorWord(makeProgramme({ title: "" }));
 
     expect(saveAs).toHaveBeenCalledWith(expect.any(Blob), "programme_programme_descriptor.docx");
   });
@@ -114,33 +97,12 @@ describe("exportProgrammeDescriptorWord", () => {
       "Failed to load Word template",
     );
   });
-
-  it("includes PLO data in the template", async () => {
-    mockFetchSuccess();
-    const p = makeProgramme({
-      plos: [
-        { id: "plo1", text: "Outcome 1", standardMappings: [{ thread: "T1", criteria: "C1" }] },
-        { id: "plo2", text: "Outcome 2" },
-      ],
-    });
-
-    await exportProgrammeDescriptorWord(p);
-
-    expect(mockSetData).toHaveBeenCalledWith(
-      expect.objectContaining({
-        miplos: "1. Outcome 1\n2. Outcome 2",
-      }),
-    );
-  });
 });
 
 describe("exportProgrammeToWord", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    mockSetData.mockClear();
-    mockRender.mockClear();
-    mockGenerate.mockClear().mockReturnValue(new Blob());
-    mockGetZip.mockClear().mockReturnValue({ generate: mockGenerate });
+    mockCreateReport.mockClear().mockResolvedValue(new Uint8Array(8));
   });
 
   it("delegates to exportProgrammeDescriptorWord on success", async () => {
