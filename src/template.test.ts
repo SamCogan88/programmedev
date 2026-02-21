@@ -13,6 +13,10 @@ vi.mock("./template/schedule-html", () => ({
   renderAllSchedules: vi.fn().mockReturnValue("<div>schedules</div>"),
 }));
 
+vi.mock("./utils/migrate-programme", () => ({
+  migrateProgramme: vi.fn().mockImplementation((p: unknown) => p),
+}));
+
 import { downloadScheduleDocx } from "./export/schedule-docx";
 import { renderAllModuleDescriptors } from "./template/module-descriptors-html";
 import { renderAllSchedules } from "./template/schedule-html";
@@ -54,6 +58,7 @@ function setupDOM(): Record<string, HTMLElement> {
     "copy-schedules-btn": createMockElement(),
     "copy-module-descriptors-btn": createMockElement(),
     "download-docx-btn": createMockElement(),
+    "load-from-app-btn": createMockElement(),
   };
 
   vi.spyOn(document, "getElementById").mockImplementation((id: string) => elements[id] ?? null);
@@ -432,6 +437,123 @@ describe("template entry point", () => {
       });
       expect(elements["upload-status"].textContent).toContain("DOCX generation failed");
       expect(downloadDocxBtn.textContent).toBe("Download DOCX");
+    });
+  });
+
+  describe("load from app storage", () => {
+    it("should register click handler on load-from-app button", async () => {
+      await loadTemplate();
+      const elements = setupDOM();
+      domContentLoadedHandler(new Event("DOMContentLoaded"));
+
+      const loadFromAppBtn = elements["load-from-app-btn"];
+      expect(loadFromAppBtn.addEventListener).toHaveBeenCalledWith("click", expect.any(Function));
+    });
+
+    it("should load and render programme data from localStorage", async () => {
+      await loadTemplate();
+      const elements = setupDOM();
+      domContentLoadedHandler(new Event("DOMContentLoaded"));
+
+      const programme = makeProgramme({ title: "Stored Programme" });
+      vi.spyOn(Storage.prototype, "getItem").mockReturnValue(JSON.stringify(programme));
+
+      const loadFromAppBtn = elements["load-from-app-btn"];
+      const clickCall = (
+        loadFromAppBtn.addEventListener as ReturnType<typeof vi.fn>
+      ).mock.calls.find((c: unknown[]) => c[0] === "click");
+      (clickCall![1] as () => void)();
+
+      expect(localStorage.getItem).toHaveBeenCalledWith("nci_pds_mvp_programme_v1");
+      expect(elements["upload-status"].textContent).toContain("Loaded from app: Stored Programme");
+      expect(elements["upload-status"].className).toBe("success");
+      expect(renderAllSchedules).toHaveBeenCalled();
+      expect(renderAllModuleDescriptors).toHaveBeenCalled();
+      expect(elements["schedules-header"].style.display).toBe("flex");
+      expect(elements["module-descriptors-header"].style.display).toBe("flex");
+    });
+
+    it("should show error when no data exists in localStorage", async () => {
+      await loadTemplate();
+      const elements = setupDOM();
+      domContentLoadedHandler(new Event("DOMContentLoaded"));
+
+      vi.spyOn(Storage.prototype, "getItem").mockReturnValue(null);
+
+      const loadFromAppBtn = elements["load-from-app-btn"];
+      const clickCall = (
+        loadFromAppBtn.addEventListener as ReturnType<typeof vi.fn>
+      ).mock.calls.find((c: unknown[]) => c[0] === "click");
+      (clickCall![1] as () => void)();
+
+      expect(elements["upload-status"].textContent).toContain("No programme found in app storage");
+      expect(elements["upload-status"].className).toBe("error");
+    });
+
+    it("should show error when stored data is invalid", async () => {
+      await loadTemplate();
+      const elements = setupDOM();
+      domContentLoadedHandler(new Event("DOMContentLoaded"));
+
+      vi.spyOn(Storage.prototype, "getItem").mockReturnValue(
+        JSON.stringify({ title: "No modules" }),
+      );
+
+      const loadFromAppBtn = elements["load-from-app-btn"];
+      const clickCall = (
+        loadFromAppBtn.addEventListener as ReturnType<typeof vi.fn>
+      ).mock.calls.find((c: unknown[]) => c[0] === "click");
+      (clickCall![1] as () => void)();
+
+      expect(elements["upload-status"].textContent).toContain("missing required fields");
+      expect(elements["upload-status"].className).toBe("error");
+    });
+
+    it("should never modify or delete localStorage data", async () => {
+      await loadTemplate();
+      const elements = setupDOM();
+      domContentLoadedHandler(new Event("DOMContentLoaded"));
+
+      const programme = makeProgramme();
+      const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
+      const removeItemSpy = vi.spyOn(Storage.prototype, "removeItem");
+      vi.spyOn(Storage.prototype, "getItem").mockReturnValue(JSON.stringify(programme));
+
+      const loadFromAppBtn = elements["load-from-app-btn"];
+      const clickCall = (
+        loadFromAppBtn.addEventListener as ReturnType<typeof vi.fn>
+      ).mock.calls.find((c: unknown[]) => c[0] === "click");
+      (clickCall![1] as () => void)();
+
+      expect(setItemSpy).not.toHaveBeenCalled();
+      expect(removeItemSpy).not.toHaveBeenCalled();
+    });
+
+    it("should enable DOCX download after loading from app", async () => {
+      await loadTemplate();
+      const elements = setupDOM();
+      domContentLoadedHandler(new Event("DOMContentLoaded"));
+
+      const programme = makeProgramme();
+      vi.spyOn(Storage.prototype, "getItem").mockReturnValue(JSON.stringify(programme));
+
+      // Load from app
+      const loadFromAppBtn = elements["load-from-app-btn"];
+      const loadClick = (
+        loadFromAppBtn.addEventListener as ReturnType<typeof vi.fn>
+      ).mock.calls.find((c: unknown[]) => c[0] === "click");
+      (loadClick![1] as () => void)();
+
+      // Click download
+      const downloadDocxBtn = elements["download-docx-btn"];
+      const downloadClick = (
+        downloadDocxBtn.addEventListener as ReturnType<typeof vi.fn>
+      ).mock.calls.find((c: unknown[]) => c[0] === "click");
+      (downloadClick![1] as () => void)();
+
+      await vi.waitFor(() => {
+        expect(downloadScheduleDocx).toHaveBeenCalled();
+      });
     });
   });
 

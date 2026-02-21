@@ -1,17 +1,24 @@
 /**
- * Word document export using docxtemplater.
- * Generates QQI-compatible programme descriptor documents.
+ * Word document export using docx-templates.
+ * Generates QQI-compatible programme descriptor documents from a tagged template.
+ *
+ * The template (`public/assets/programme_descriptor_template.docx`) contains
+ * `{field}` and `{FOR}...{END-FOR}` commands processed by docx-templates.
+ * The data is built by {@link buildDescriptorData} in `descriptor-data.ts`.
+ *
  * @module export/word
  */
 
-import Docxtemplater from "docxtemplater";
+import { createReport } from "docx-templates/lib/browser.js";
 import { saveAs } from "file-saver";
-import PizZip from "pizzip";
-import type { PLO, Programme } from "../types";
+
+import type { Programme } from "../types";
+import { buildDescriptorData } from "./descriptor-data";
 
 /**
  * Exports programme descriptor as a Word document.
- * Uses a template file and populates it with programme data.
+ * Loads the tagged template, builds data from programme state,
+ * and generates the output document.
  *
  * @throws {Error} If template loading fails
  */
@@ -22,61 +29,26 @@ export async function exportProgrammeDescriptorWord(p: Programme): Promise<void>
   }
   const tplBuf = await tplRes.arrayBuffer();
 
-  const zip = new PizZip(tplBuf);
-  const doc = new Docxtemplater(zip, {
-    paragraphLoop: true,
-    linebreaks: true,
+  const data = buildDescriptorData(p);
+
+  const output = await createReport({
+    template: new Uint8Array(tplBuf),
+    data,
+    cmdDelimiter: ["{", "}"],
+    processLineBreaks: true,
+    failFast: false,
+    noSandbox: true,
   });
 
-  const plos: PLO[] = Array.isArray(p.plos) ? p.plos : [];
-  const miplosText = plos.length ? plos.map((o, i) => `${i + 1}. ${o.text || ""}`).join("\n") : "";
-
-  const mappingSnapshot = plos.length
-    ? plos
-        .map((o, i) => {
-          const mappings = o.standardMappings ?? [];
-          const mapStr = mappings.length
-            ? mappings.map((m) => `${m.thread}: ${m.criteria}`).join("; ")
-            : "No mappings";
-          return `PLO ${i + 1}: ${o.text ?? ""}\n  → ${mapStr}`;
-        })
-        .join("\n\n")
-    : "";
-
-  const awardStandardName = (p.awardStandardNames ?? [])[0] ?? (p.awardStandardIds ?? [])[0] ?? "";
-
-  const data = {
-    provider_name: "",
-    programme_title: p.title || "",
-    nfq_level: p.nfqLevel ?? "",
-    award_class: p.awardType || "",
-    ects: String(p.totalCredits || ""),
-    programme_synopsis: "",
-    graduate_attributes: "",
-    award_standard_name: awardStandardName,
-    miplos: miplosText,
-    programme_rationale: "",
-    atp: "",
-    tla_strategy: "",
-    assessment_integrity: "",
-    resources: "",
-    programme_management: "",
-    plo_standard_mapping_snapshot: mappingSnapshot,
-  };
-
-  doc.setData(data);
-  doc.render();
-
-  const out = doc.getZip().generate({
-    type: "blob",
-    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  const blob = new Blob([output as BlobPart], {
+    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   });
 
   const safeTitle = (p.title || "programme")
     .replace(/[^a-z0-9\-\s]/gi, "")
     .trim()
     .replace(/\s+/g, "_");
-  saveAs(out, `${safeTitle || "programme"}_programme_descriptor.docx`);
+  saveAs(blob, `${safeTitle || "programme"}_programme_descriptor.docx`);
 }
 
 /** Export programme to Word (alias with fallback). */
