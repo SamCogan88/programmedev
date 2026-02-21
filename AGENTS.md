@@ -30,6 +30,10 @@ npm run format         # Format code with Prettier
 npm run format:check   # Check formatting without changes
 npx tsc --noEmit       # TypeScript type checking
 npx eslint "src/**/*.{ts,tsx}" "e2e/**/*.js"  # Lint checking
+
+# Word template utilities
+npm run template:inspect  # Show template structure and tags
+npm run template:tag      # Re-tag template with field/loop commands
 ```
 
 ## Directory Structure
@@ -86,14 +90,15 @@ src/
 │   ├── assessments.ts         # Assessment type classification utilities
 │   ├── validation.ts          # Programme validation rules
 │   ├── helpers.ts             # Formatting, delivery patterns, entity lookups
-│   ├── migrate-programme.ts   # Schema migration (v1→v2→v3→v4)
+│   ├── migrate-programme.ts   # Schema migration (v1→v2→v3→v4→v5)
 │   ├── dom.ts                 # escapeHtml, tagHtml, downloadBlob
 │   └── uid.ts                 # Unique ID generation
 ├── lib/
 │   └── lo-lint.ts             # Learning outcome linter (vague verb detection)
 ├── export/
 │   ├── json.ts                # Import/export programme JSON
-│   ├── word.ts                # Word document export (docxtemplater)
+│   ├── word.ts                # Word document export (docx-templates)
+│   ├── descriptor-data.ts     # Programme-to-template data mapper
 │   └── schedule-docx.ts       # Schedule DOCX export (docx.js)
 ├── reports/
 │   └── assessment-reports.ts  # Assessment report HTML generation
@@ -108,6 +113,10 @@ e2e/                           # Playwright end-to-end tests
 └── fixtures/                  # Test data and helpers
     ├── test-fixtures.js       # Custom test helpers (loadProgrammeData, getProgrammeData)
     └── test-data.js           # Sample programme data
+
+scripts/                       # Utility scripts (run with tsx)
+├── inspect-template.ts        # Template structure inspector
+└── tag-template.ts            # Template tagging tool
 ```
 
 ## Coding Conventions
@@ -448,6 +457,45 @@ setMode("PROGRAMME_OWNER"); // Full access
 setMode("MODULE_EDITOR", ["mod_abc", "mod_def"]); // Restricted
 const steps = activeSteps(); // Returns filtered step list for current mode
 ```
+
+## Word Document Export
+
+The app exports a QQI Programme Descriptor Word document using a **template-driven** approach.
+
+### How It Works
+
+1. The `.docx` template (`public/assets/programme_descriptor_template.docx`) contains `{field}` and `{FOR}...{END-FOR}` command tags processed by [docx-templates](https://github.com/guigrpa/docx-templates)
+2. `buildDescriptorData()` in `src/export/descriptor-data.ts` transforms `Programme` state into a flat data object matching the template tags
+3. `exportProgrammeDescriptorWord()` in `src/export/word.ts` loads the template, builds the data, and calls `createReport()` to generate the output
+
+### Template Tags
+
+- **Simple fields**: `{programme_title}`, `{nfq_level}`, `{award_class}`, `{ects}`, `{miplos}`, `{award_standard_name}`
+- **Module loop**: `{FOR module IN modules}...{END-FOR module}` wraps the entire Section 7 block (tables T60-T70), with nested `{FOR mimlo}` and `{FOR asmt}` loops
+- **PLO assessment map**: `{FOR plo IN ploAssessmentMap}` for Section 6.8
+- **Appendix 1**: `{mapping_knowledge_breadth_plos}`, `{mapping_competence_insight_evidence}`, etc.
+
+Run `npm run template:inspect` to see all current tags and template structure.
+
+### When QQI Updates the Template
+
+1. Replace `public/assets/programme_descriptor_template.docx` with the new version
+2. Run `npm run template:inspect` to check which tags are missing
+3. Run `npm run template:tag` to re-insert tags (or add them manually in Word)
+4. If the template structure changed, update `scripts/tag-template.ts` accordingly
+5. If new data fields are needed, add them to `descriptor-data.ts` and update tests
+
+### Adding a New Template Field
+
+1. Add the tag `{field_name}` to the template (in Word or via `tag-template.ts`)
+2. Add the field to the `DescriptorData` interface in `descriptor-data.ts`
+3. Map it from `Programme` in `buildDescriptorData()`
+4. Write a test in `descriptor-data.test.ts`
+
+### Separate Exports
+
+- **Programme Descriptor** (`word.ts`): Template-driven, uses `docx-templates`
+- **Programme Schedule** (`schedule-docx.ts`): Programmatic, uses `docx` — appropriate for its complex 29-column layout with vertical text
 
 ## Planning Large Changes
 
