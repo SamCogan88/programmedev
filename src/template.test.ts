@@ -67,6 +67,7 @@ function setupDOM(): Record<string, HTMLElement> {
     "copy-module-descriptors-btn": createMockElement(),
     "download-docx-btn": createMockElement(),
     "load-from-app-btn": createMockElement(),
+    toc: createMockElement(),
   };
 
   vi.spyOn(document, "getElementById").mockImplementation((id: string) => elements[id] ?? null);

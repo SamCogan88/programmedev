@@ -76,10 +76,11 @@ async function handleFileUpload(
     miploAssessmentContainer.innerHTML = renderAllMiploAssessments(data);
     moduleDescriptorsContainer.innerHTML = renderAllModuleDescriptors(data);
 
-    // Show section headers
+    // Show section headers and TOC
     schedulesHeader.style.display = "flex";
     miploAssessmentHeader.style.display = "flex";
     moduleDescriptorsHeader.style.display = "flex";
+    document.getElementById("toc")!.style.display = "block";
   } catch (error) {
     const err = error as Error;
     statusEl.textContent = `✗ Error: ${err.message}`;
@@ -145,6 +146,7 @@ function loadFromAppStorage(
     schedulesHeader.style.display = "flex";
     miploAssessmentHeader.style.display = "flex";
     moduleDescriptorsHeader.style.display = "flex";
+    document.getElementById("toc")!.style.display = "block";
   } catch (error) {
     const err = error as Error;
     statusEl.textContent = `✗ Error loading from app: ${err.message}`;
@@ -177,6 +179,7 @@ function init(): void {
   ) as HTMLButtonElement;
   const downloadDocxBtn = document.getElementById("download-docx-btn") as HTMLButtonElement;
   const loadFromAppBtn = document.getElementById("load-from-app-btn") as HTMLButtonElement;
+  const toc = document.getElementById("toc") as HTMLElement;
 
   // Wire up event handlers
   loadFromAppBtn?.addEventListener("click", () => {
