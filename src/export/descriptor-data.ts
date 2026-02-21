@@ -28,6 +28,7 @@ export interface DescriptorMimlo {
 /** Assessment data for the {FOR asmt IN module.assessments} loop. */
 export interface DescriptorAssessment {
   mimloText: string;
+  title: string;
   type: string;
   weighting: number;
 }
@@ -40,6 +41,8 @@ export interface DescriptorModule {
   semester: string;
   credits: number;
   mandatoryElective: string;
+  durationWeeks: string;
+  hoursPerWeek: string;
 
   // Effort hours
   effortOnsite: string;
@@ -48,6 +51,7 @@ export interface DescriptorModule {
   effortAsync: string;
   effortIndependent: string;
   effortWorkBased: string;
+  effortOther: string;
   effortTotal: string;
 
   // Assessment percentages
@@ -172,7 +176,7 @@ function getAssessmentMimloText(assessment: ModuleAssessment, mod: Module): stri
 function findModuleStage(
   moduleId: string,
   versions: ProgrammeVersion[],
-): { stageName: string; semester: string } {
+): { stageName: string; semester: string; durationWeeks: number } {
   for (const v of versions) {
     for (const stage of v.stages ?? []) {
       const stageModule = (stage.modules ?? []).find((sm) => sm.moduleId === moduleId);
@@ -180,11 +184,12 @@ function findModuleStage(
         return {
           stageName: stage.name ?? String(stage.sequence ?? ""),
           semester: stageModule.semester ?? "",
+          durationWeeks: v.teachingWeeks ?? v.durationWeeks ?? 0,
         };
       }
     }
   }
-  return { stageName: "", semester: "" };
+  return { stageName: "", semester: "", durationWeeks: 0 };
 }
 
 // ============================================================================
@@ -270,7 +275,7 @@ export function buildDescriptorData(p: Programme): DescriptorData {
   // --- Modules ---
   const descriptorModules: DescriptorModule[] = modules.map((mod) => {
     const effort = resolveEffort(mod);
-    const { stageName, semester } = findModuleStage(mod.id, versions);
+    const { stageName, semester, durationWeeks } = findModuleStage(mod.id, versions);
     const mimlos = mod.mimlos ?? [];
     const assessments = mod.assessments ?? [];
 
@@ -290,11 +295,12 @@ export function buildDescriptorData(p: Programme): DescriptorData {
 
     // Effort field mapping
     const effortOnsite = (effort.classroomHours ?? 0) as number;
-    const effortSyncOnline = 0; // Not separately tracked in current schema
-    const effortSyncHybrid = 0; // Not separately tracked in current schema
+    const effortSyncOnline = (effort.mentoringHours ?? 0) as number;
+    const effortSyncHybrid = (effort.otherContactHours ?? 0) as number;
     const effortAsync = (effort.directedElearningHours ?? 0) as number;
     const effortIndependent = (effort.independentLearningHours ?? 0) as number;
     const effortWorkBased = (effort.workBasedHours ?? 0) as number;
+    const effortOther = (effort.otherHours ?? 0) as number;
     const effortTotal =
       effortOnsite +
       effortSyncOnline +
@@ -302,9 +308,10 @@ export function buildDescriptorData(p: Programme): DescriptorData {
       effortAsync +
       effortIndependent +
       effortWorkBased +
-      ((effort.mentoringHours ?? 0) as number) +
-      ((effort.otherContactHours ?? 0) as number) +
-      ((effort.otherHours ?? 0) as number);
+      effortOther;
+
+    const hoursPerWeek =
+      effortTotal > 0 && durationWeeks > 0 ? Math.round(effortTotal / durationWeeks) : 0;
 
     // Reading list
     const readingItems = mod.readingList ?? [];
@@ -323,6 +330,8 @@ export function buildDescriptorData(p: Programme): DescriptorData {
       semester: mod.semester != null ? String(mod.semester) : semester,
       credits: mod.credits ?? 0,
       mandatoryElective: mod.isElective ? "E" : "M",
+      durationWeeks: fmtNum(durationWeeks),
+      hoursPerWeek: fmtNum(hoursPerWeek),
 
       effortOnsite: fmtNum(effortOnsite),
       effortSyncOnline: fmtNum(effortSyncOnline),
@@ -330,6 +339,7 @@ export function buildDescriptorData(p: Programme): DescriptorData {
       effortAsync: fmtNum(effortAsync),
       effortIndependent: fmtNum(effortIndependent),
       effortWorkBased: fmtNum(effortWorkBased),
+      effortOther: fmtNum(effortOther),
       effortTotal: fmtNum(effortTotal),
 
       assessContinuous: fmtPct(pcts.continuous),
@@ -347,6 +357,7 @@ export function buildDescriptorData(p: Programme): DescriptorData {
 
       assessments: assessments.map((a) => ({
         mimloText: getAssessmentMimloText(a, mod),
+        title: a.title ?? a.type ?? "",
         type: a.type ?? "",
         weighting: a.weighting ?? 0,
       })),
