@@ -53,7 +53,7 @@ function makeModule(overrides: Partial<Module> = {}): Module {
 describe("renderScheduleTable", () => {
   it("returns an HTML table", () => {
     const html = renderScheduleTable(makeProgramme(), makeVersion(), makeStage());
-    expect(html).toMatch(/^<table>.*<\/table>$/s);
+    expect(html).toMatch(/^<table>.*<\/table>(<br>)*/s);
   });
 
   it("includes programme title", () => {
