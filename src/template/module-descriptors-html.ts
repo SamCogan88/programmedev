@@ -247,12 +247,12 @@ function renderAssessmentTable(asmPcts: AssessmentPercentages): string {
     <col style="width: 12%">
   </colgroup>
   <tr>
-    <th colspan="6" class="grey center">Assessment Techniques ΓÇô percentage contribution</th>
+    <th colspan="6" class="grey center">Assessment Techniques – percentage contribution</th>
   </tr>
   <tr>
     <td class="blue">Continuous Assessment</td>
     <td>${asmPcts.continuous || ""}</td>
-    <td class="blue">Proctored Exam ΓÇô in person</td>
+    <td class="blue">Proctored Exam – in person</td>
     <td>${asmPcts.invigilated || ""}</td>
     <td class="blue">Practical Skills Based</td>
     <td>${asmPcts.practical || ""}</td>
