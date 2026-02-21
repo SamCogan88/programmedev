@@ -14,8 +14,8 @@
     "test:coverage": "vitest run --coverage",
     "format": "prettier --write \"src/**/*.{js,ts,tsx}\" \"e2e/**/*.js\" \"*.{js,ts}\"",
     "format:check": "prettier --check \"src/**/*.{js,ts,tsx}\" \"e2e/**/*.js\" \"*.{js,ts}\"",
-    "template:inspect": "tsx scripts/inspect-template.ts",
-    "template:tag": "tsx scripts/tag-template.ts"
+    "template:inspect": "python scripts/inspect-docx.py overview public/assets/programme_descriptor_template.docx",
+    "template:tag": "python scripts/tag-template.py"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
