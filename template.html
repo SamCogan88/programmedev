@@ -9,6 +9,9 @@
         --display-font-size: 9pt;
         --copy-font-size: 11pt;
       }
+      html {
+        scroll-behavior: smooth;
+      }
       body {
         font-family: Calibri, sans-serif;
         font-size: var(--display-font-size);
@@ -115,10 +118,15 @@
         font-weight: bold;
         margin: 0;
       }
-      .section-header .copy-btn {
+      .section-header .copy-btn,
+      .section-header .back-to-top-btn {
         padding: 4.5pt 9pt;
         cursor: pointer;
         font-size: 10pt;
+      }
+      .section-header .btn-group {
+        display: flex;
+        gap: 6pt;
       }
       .page-break {
         page-break-after: always;
@@ -209,6 +217,62 @@
       .content-area {
         min-height: 60px;
       }
+      /* MIPLO Assessment Strategy Table (Section 6.8) */
+      .miplo-assessment-table {
+        width: 650px;
+        max-width: 100%;
+        border-collapse: collapse;
+        font-family: Calibri, sans-serif;
+        font-size: var(--display-font-size);
+        color: #111;
+        margin-bottom: 15pt;
+        background-color: white;
+      }
+      .miplo-assessment-table th,
+      .miplo-assessment-table td {
+        border: 1px solid #333;
+        padding: 6px 8px;
+        vertical-align: top;
+      }
+      /* Table of Contents */
+      .toc-container {
+        background-color: white;
+        border: 1pt solid #ddd;
+        border-radius: 3pt;
+        margin-bottom: 15pt;
+        padding: 0;
+      }
+      .toc-container h2 {
+        color: #2e75b6;
+        font-size: 12pt;
+        font-weight: bold;
+        margin: 0;
+        padding: 9pt 11pt;
+        border-bottom: 1pt solid #ddd;
+      }
+      .toc-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .toc-list li {
+        border-bottom: 1pt solid #eee;
+      }
+      .toc-list li:last-child {
+        border-bottom: none;
+      }
+      .toc-list a {
+        display: block;
+        padding: 7pt 11pt;
+        color: #2e75b6;
+        text-decoration: none;
+        font-size: 10pt;
+        transition: background-color 0.15s;
+      }
+      .toc-list a:hover {
+        background-color: #f0f7ff;
+        text-decoration: underline;
+      }
       .placeholder-text {
         color: #666;
         font-style: italic;
@@ -260,19 +324,54 @@
       <span id="upload-status"></span>
     </div>
 
+    <!-- Table of Contents -->
+    <nav class="toc-container" id="toc" style="display: none">
+      <h2>Table of Contents</h2>
+      <ul class="toc-list">
+        <li><a href="#schedules-section">Section 2: Proposed Programme Schedule(s)</a></li>
+        <li>
+          <a href="#miplo-assessment-section">Section 6.8: Assessment Strategy aligned to MIPLOs</a>
+        </li>
+        <li><a href="#module-descriptors-section">Section 7: Module Descriptors</a></li>
+      </ul>
+    </nav>
+
     <!-- Section 2: Programme Schedules -->
+    <div id="schedules-section"></div>
     <div class="section-header" id="schedules-header" style="display: none">
       <h2>Section 2: Proposed Programme Schedule(s)</h2>
-      <button type="button" class="copy-btn" id="copy-schedules-btn">Copy All</button>
+      <div class="btn-group">
+        <button type="button" class="copy-btn" id="copy-schedules-btn">Copy All</button>
+        <a href="#toc" class="back-to-top-btn">Back to Top</a>
+      </div>
     </div>
     <div id="schedules-container">
       <p class="placeholder-text">Upload a programme JSON file to generate programme schedules.</p>
     </div>
 
+    <!-- Section 6.8: MIPLO Assessment Strategy -->
+    <div id="miplo-assessment-section"></div>
+    <div class="section-header" id="miplo-assessment-header" style="display: none">
+      <h2>Section 6.8: Assessment Strategy aligned to MIPLOs</h2>
+      <div class="btn-group">
+        <button type="button" class="copy-btn" id="copy-miplo-assessment-btn">Copy All</button>
+        <a href="#toc" class="back-to-top-btn">Back to Top</a>
+      </div>
+    </div>
+    <div id="miplo-assessment-container">
+      <p class="placeholder-text">
+        Upload a programme JSON file to generate the MIPLO assessment strategy table.
+      </p>
+    </div>
+
     <!-- Section 7: Module Descriptors -->
+    <div id="module-descriptors-section"></div>
     <div class="section-header" id="module-descriptors-header" style="display: none">
       <h2>Section 7: Module Descriptors</h2>
-      <button type="button" class="copy-btn" id="copy-module-descriptors-btn">Copy All</button>
+      <div class="btn-group">
+        <button type="button" class="copy-btn" id="copy-module-descriptors-btn">Copy All</button>
+        <a href="#toc" class="back-to-top-btn">Back to Top</a>
+      </div>
     </div>
     <div id="module-descriptors-container">
       <p class="placeholder-text">Upload a programme JSON file to generate module descriptors.</p>

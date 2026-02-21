@@ -4,10 +4,10 @@
  * @module template/module-descriptors-html
  */
 
-import { escapeHtml } from "../utils/dom";
+import type { Module, Programme, ProgrammeVersion, Stage } from "../types";
 import { type AssessmentPercentages, getAssessmentPercentages } from "../utils/assessments";
+import { escapeHtml } from "../utils/dom";
 import { resolveEffortHours } from "../utils/helpers";
-import type { MIMLO, Module, Programme, ProgrammeVersion, Stage } from "../types";
 
 interface EffortHoursResult {
   classroomHours: number;
@@ -140,7 +140,7 @@ function renderModuleOverviewTable(
   </tr>
   <tr>
     <th colspan="3" class="hdr tight">Teaching and Learning Modalities</th>
-    <th class="hdr tight">ΓêÜ if relevant to this module</th>
+    <th class="hdr tight">✓ if relevant to this module</th>
     <th colspan="2" class="hdr tight">Approx. proportion of total (hours)</th>
   </tr>
   <tr>
@@ -150,17 +150,17 @@ function renderModuleOverviewTable(
   </tr>
   <tr>
     <td colspan="3" class="tight">On-site face-to-face</td>
-    <td class="tight">${effort.classroomHours > 0 ? "Γ£ö" : ""}</td>
+    <td class="tight">${effort.classroomHours > 0 ? "✓" : ""}</td>
     <td colspan="2" class="tight">${effort.classroomHours || ""}</td>
   </tr>
   <tr>
     <td colspan="3" class="tight">Synchronous online</td>
-    <td class="tight">${effort.syncOnlineHours > 0 ? "Γ£ö" : ""}</td>
+    <td class="tight">${effort.syncOnlineHours > 0 ? "✓" : ""}</td>
     <td colspan="2" class="tight">${effort.syncOnlineHours || ""}</td>
   </tr>
   <tr>
     <td colspan="3" class="tight">Synchronous Hybrid</td>
-    <td class="tight">${effort.syncHybridHours > 0 ? "Γ£ö" : ""}</td>
+    <td class="tight">${effort.syncHybridHours > 0 ? "✓" : ""}</td>
     <td colspan="2" class="tight">${effort.syncHybridHours || ""}</td>
   </tr>
   <tr>
@@ -170,22 +170,22 @@ function renderModuleOverviewTable(
   </tr>
   <tr>
     <td colspan="3" class="tight">Asynchronous</td>
-    <td class="tight">${effort.asyncHours > 0 ? "Γ£ö" : ""}</td>
+    <td class="tight">${effort.asyncHours > 0 ? "✓" : ""}</td>
     <td colspan="2" class="tight">${effort.asyncHours || ""}</td>
   </tr>
   <tr>
     <td colspan="3" class="tight">Independent Learning</td>
-    <td class="tight">${effort.independentHours > 0 ? "Γ£ö" : ""}</td>
+    <td class="tight">${effort.independentHours > 0 ? "✓" : ""}</td>
     <td colspan="2" class="tight">${effort.independentHours || ""}</td>
   </tr>
   <tr>
     <td colspan="3" class="tight">Work Based</td>
-    <td class="tight">${effort.workBasedHours > 0 ? "Γ£ö" : ""}</td>
+    <td class="tight">${effort.workBasedHours > 0 ? "✓" : ""}</td>
     <td colspan="2" class="tight">${effort.workBasedHours || ""}</td>
   </tr>
   <tr>
     <td colspan="3" class="tight">Other (Identify)</td>
-    <td class="tight">${effort.otherHours > 0 ? "Γ£ö" : ""}</td>
+    <td class="tight">${effort.otherHours > 0 ? "✓" : ""}</td>
     <td colspan="2" class="tight">${effort.otherHours || ""}</td>
   </tr>
   <tr>
