@@ -263,12 +263,9 @@ export function buildDescriptorData(p: Programme): DescriptorData {
   const ploToMimlos: Record<string, string[]> = p.ploToMimlos ?? {};
 
   // --- Simple fields ---
-  const miplosText = plos.length
-    ? plos.map((o, i) => `${i + 1}. ${o.text ?? ""}`).join("\n")
-    : "";
+  const miplosText = plos.length ? plos.map((o, i) => `${i + 1}. ${o.text ?? ""}`).join("\n") : "";
 
-  const awardStandardName =
-    (p.awardStandardNames ?? [])[0] ?? (p.awardStandardIds ?? [])[0] ?? "";
+  const awardStandardName = (p.awardStandardNames ?? [])[0] ?? (p.awardStandardIds ?? [])[0] ?? "";
 
   // --- Modules ---
   const descriptorModules: DescriptorModule[] = modules.map((mod) => {

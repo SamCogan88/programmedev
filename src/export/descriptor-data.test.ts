@@ -157,10 +157,7 @@ describe("buildDescriptorData — modules", () => {
   it("maps mandatory/elective correctly", () => {
     const data = buildDescriptorData(
       makeProgramme({
-        modules: [
-          makeModule({ isElective: false }),
-          makeModule({ id: "mod-2", isElective: true }),
-        ],
+        modules: [makeModule({ isElective: false }), makeModule({ id: "mod-2", isElective: true })],
       }),
     );
     expect(data.modules[0].mandatoryElective).toBe("M");
@@ -272,9 +269,7 @@ describe("buildDescriptorData — assessment percentages", () => {
   });
 
   it("handles modules with no assessments", () => {
-    const data = buildDescriptorData(
-      makeProgramme({ modules: [makeModule({ assessments: [] })] }),
-    );
+    const data = buildDescriptorData(makeProgramme({ modules: [makeModule({ assessments: [] })] }));
     const mod = data.modules[0];
     expect(mod.assessContinuous).toBe("");
     expect(mod.assessExamInPerson).toBe("");
@@ -410,9 +405,7 @@ describe("buildDescriptorData — reading list", () => {
   });
 
   it("handles empty reading list", () => {
-    const data = buildDescriptorData(
-      makeProgramme({ modules: [makeModule({ readingList: [] })] }),
-    );
+    const data = buildDescriptorData(makeProgramme({ modules: [makeModule({ readingList: [] })] }));
     expect(data.modules[0].readingListText).toBe("");
   });
 });
@@ -429,9 +422,7 @@ describe("buildDescriptorData — PLO assessment map", () => {
         modules: [
           makeModule({
             mimlos: [{ id: "mimlo-1", text: "Describe" }],
-            assessments: [
-              { id: "a1", type: "CA", weighting: 60, mimloIds: ["mimlo-1"] },
-            ],
+            assessments: [{ id: "a1", type: "CA", weighting: 60, mimloIds: ["mimlo-1"] }],
           }),
         ],
         ploToMimlos: { "plo-1": ["mimlo-1"] },
@@ -449,6 +440,89 @@ describe("buildDescriptorData — PLO assessment map", () => {
   it("returns empty PLO map when no PLOs", () => {
     const data = buildDescriptorData(makeProgramme({ plos: [] }));
     expect(data.ploAssessmentMap).toEqual([]);
+  });
+
+  it("includes weightings with module code and assessment details", () => {
+    const data = buildDescriptorData(
+      makeProgramme({
+        plos: [makePlo({ id: "plo-1" })],
+        modules: [
+          makeModule({
+            code: "CS200",
+            mimlos: [{ id: "mimlo-1", text: "Outcome" }],
+            assessments: [
+              { id: "a1", type: "Exam", weighting: 70, mimloIds: ["mimlo-1"] },
+              { id: "a2", type: "CA", weighting: 30, mimloIds: ["mimlo-1"] },
+            ],
+          }),
+        ],
+        ploToMimlos: { "plo-1": ["mimlo-1"] },
+      }),
+    );
+    const plo = data.ploAssessmentMap[0];
+    expect(plo.assessmentTechniques).toContain("Exam");
+    expect(plo.assessmentTechniques).toContain("CA");
+    expect(plo.weightings).toContain("CS200: Exam 70%");
+    expect(plo.weightings).toContain("CS200: CA 30%");
+  });
+
+  it("falls back to module title when code is empty", () => {
+    const data = buildDescriptorData(
+      makeProgramme({
+        plos: [makePlo({ id: "plo-1" })],
+        modules: [
+          makeModule({
+            code: "",
+            title: "Databases",
+            mimlos: [{ id: "mimlo-1", text: "Outcome" }],
+            assessments: [{ id: "a1", type: "CA", weighting: 100, mimloIds: ["mimlo-1"] }],
+          }),
+        ],
+        ploToMimlos: { "plo-1": ["mimlo-1"] },
+      }),
+    );
+    const plo = data.ploAssessmentMap[0];
+    expect(plo.moduleMimloText).toContain("Databases");
+    expect(plo.weightings).toContain("Databases:");
+  });
+
+  it("skips assessments with no matching mimloIds", () => {
+    const data = buildDescriptorData(
+      makeProgramme({
+        plos: [makePlo({ id: "plo-1" })],
+        modules: [
+          makeModule({
+            mimlos: [{ id: "mimlo-1", text: "Outcome" }],
+            assessments: [
+              { id: "a1", type: "CA", weighting: 50 },
+              { id: "a2", type: "Exam", weighting: 50, mimloIds: ["mimlo-other"] },
+            ],
+          }),
+        ],
+        ploToMimlos: { "plo-1": ["mimlo-1"] },
+      }),
+    );
+    const plo = data.ploAssessmentMap[0];
+    expect(plo.assessmentTechniques).toBe("");
+    expect(plo.weightings).toBe("");
+  });
+
+  it("handles null assessment type and weighting", () => {
+    const data = buildDescriptorData(
+      makeProgramme({
+        plos: [makePlo({ id: "plo-1" })],
+        modules: [
+          makeModule({
+            mimlos: [{ id: "mimlo-1", text: "Outcome" }],
+            assessments: [{ id: "a1", mimloIds: ["mimlo-1"] } as never],
+          }),
+        ],
+        ploToMimlos: { "plo-1": ["mimlo-1"] },
+      }),
+    );
+    const plo = data.ploAssessmentMap[0];
+    expect(plo.assessmentTechniques).toBe("");
+    expect(plo.weightings).toContain("0%");
   });
 });
 
@@ -497,6 +571,69 @@ describe("buildDescriptorData — strand mappings", () => {
     const data = buildDescriptorData(makeProgramme({ plos: [] }));
     expect(data.mapping_knowledge_breadth_plos).toBe("");
     expect(data.mapping_competence_role_evidence).toBe("");
+  });
+
+  it("maps PLOs to multiple strands simultaneously", () => {
+    const data = buildDescriptorData(
+      makeProgramme({
+        plos: [
+          makePlo({
+            id: "plo-1",
+            text: "Multi-strand PLO",
+            standardMappings: [
+              { thread: "Knowledge: Breadth", criteria: "C1" },
+              { thread: "Competence: Role", criteria: "C2" },
+            ],
+          }),
+        ],
+        modules: [
+          makeModule({
+            mimlos: [{ id: "mimlo-1", text: "Outcome" }],
+          }),
+        ],
+        ploToMimlos: { "plo-1": ["mimlo-1"] },
+      }),
+    );
+    expect(data.mapping_knowledge_breadth_plos).toContain("PLO 1");
+    expect(data.mapping_competence_role_plos).toContain("PLO 1");
+    expect(data.mapping_knowledge_breadth_evidence).toContain("COMP101");
+    expect(data.mapping_competence_role_evidence).toContain("COMP101");
+  });
+
+  it("maps Know-how & Skill strand", () => {
+    const data = buildDescriptorData(
+      makeProgramme({
+        plos: [
+          makePlo({
+            id: "plo-1",
+            text: "Skill outcome",
+            standardMappings: [{ thread: "Know-How & Skill", criteria: "C1" }],
+          }),
+        ],
+      }),
+    );
+    expect(data.mapping_knowhow_skill_plos).toContain("PLO 1");
+  });
+
+  it("maps Context, Learning-to-Learn strands", () => {
+    const data = buildDescriptorData(
+      makeProgramme({
+        plos: [
+          makePlo({
+            id: "plo-1",
+            text: "Context outcome",
+            standardMappings: [{ thread: "Competence: Context", criteria: "C1" }],
+          }),
+          makePlo({
+            id: "plo-2",
+            text: "Learning outcome",
+            standardMappings: [{ thread: "Competence: Learning to Learn", criteria: "C1" }],
+          }),
+        ],
+      }),
+    );
+    expect(data.mapping_competence_context_plos).toContain("PLO 1");
+    expect(data.mapping_competence_learning_plos).toContain("PLO 2");
   });
 });
 

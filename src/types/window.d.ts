@@ -21,6 +21,11 @@ declare module "plotly.js-dist-min" {
   export function purge(root: string | HTMLElement): void;
 }
 
+// Module declaration for docx-templates browser bundle (re-exports same API)
+declare module "docx-templates/lib/browser.js" {
+  export { createReport, listCommands } from "docx-templates";
+}
+
 interface Window {
   /** Global render function for re-rendering the UI */
   render?: () => void | Promise<void>;

@@ -247,34 +247,35 @@ export function renderScheduleTable(
     // ROW 3: Column Headers
     html += `<tr>
       <td colspan="3" class="label-cell">Module Title</td>
-      ${Array.from({ length: numWeeks }, (_, i) => 
-        `<td class="form-section-title">W${i + 1}</td>`
-      ).join('')}
+      ${Array.from(
+        { length: numWeeks },
+        (_, i) => `<td class="form-section-title">W${i + 1}</td>`,
+      ).join("")}
     </tr>`;
 
     // ROW 4+: Module Rows
     semesterModules.forEach((module) => {
       const mod = (programme.modules ?? []).find((m) => m.id === module.moduleId);
       const moduleName = mod ? escapeHtml(mod.title ?? "Unknown Module") : "Unknown Module";
-      
+
       // Determine active weeks for this module based on assessment indicativeWeek values
       const activeWeeks = new Set<number>();
-      
+
       if (mod?.assessments && Array.isArray(mod.assessments)) {
         mod.assessments.forEach((assessment) => {
-          if (assessment.indicativeWeek && typeof assessment.indicativeWeek === 'number') {
+          if (assessment.indicativeWeek && typeof assessment.indicativeWeek === "number") {
             activeWeeks.add(assessment.indicativeWeek);
           }
         });
       }
-      
+
       html += `<tr>
         <td colspan="3" class="empty-data">${moduleName}</td>
         ${Array.from({ length: numWeeks }, (_, i) => {
           const weekNum = i + 1;
           const isActive = activeWeeks.has(weekNum);
-          return `<td class="empty-data">${isActive ? '✔' : ''}</td>`;
-        }).join('')}
+          return `<td class="empty-data">${isActive ? "✔" : ""}</td>`;
+        }).join("")}
       </tr>`;
     });
 

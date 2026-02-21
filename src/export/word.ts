@@ -9,7 +9,7 @@
  * @module export/word
  */
 
-import { createReport } from "docx-templates";
+import { createReport } from "docx-templates/lib/browser.js";
 import { saveAs } from "file-saver";
 
 import type { Programme } from "../types";
@@ -37,9 +37,10 @@ export async function exportProgrammeDescriptorWord(p: Programme): Promise<void>
     cmdDelimiter: ["{", "}"],
     processLineBreaks: true,
     failFast: false,
+    noSandbox: true,
   });
 
-  const blob = new Blob([output], {
+  const blob = new Blob([output as BlobPart], {
     type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   });
 

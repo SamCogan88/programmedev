@@ -47,6 +47,29 @@ test.describe("Step 14: QQI Snapshot", () => {
     }
   });
 
+  test("should export programme descriptor as Word document", async ({ page }) => {
+    const exportBtn = page.getByTestId("snapshot-export-word");
+    await expect(exportBtn).toBeVisible();
+
+    // Listen for download and console errors
+    const errors = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") {
+        errors.push(msg.text());
+      }
+    });
+
+    const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
+    await exportBtn.click();
+    const download = await downloadPromise;
+
+    expect(download.suggestedFilename()).toContain("programme_descriptor.docx");
+
+    // No export errors should appear in console
+    const exportErrors = errors.filter((e) => e.includes("Word export failed"));
+    expect(exportErrors).toHaveLength(0);
+  });
+
   test("should show version cards with stage and module details", async ({ page }) => {
     const hasCards = (await page.locator(".card").count()) > 0;
     const hasVersionText = (await page.getByText("Version", { exact: false }).count()) > 0;

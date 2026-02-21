@@ -5,7 +5,7 @@ import type { Programme } from "../types";
 // Mock docx-templates createReport
 const mockCreateReport = vi.fn().mockResolvedValue(new Uint8Array(8));
 
-vi.mock("docx-templates", () => ({
+vi.mock("docx-templates/lib/browser.js", () => ({
   createReport: (...args: unknown[]) => mockCreateReport(...args),
 }));
 
@@ -66,6 +66,7 @@ describe("exportProgrammeDescriptorWord", () => {
         cmdDelimiter: ["{", "}"],
         processLineBreaks: true,
         failFast: false,
+        noSandbox: true,
       }),
     );
   });
@@ -83,6 +84,13 @@ describe("exportProgrammeDescriptorWord", () => {
   it("uses default filename when title is empty", async () => {
     mockFetchSuccess();
     await exportProgrammeDescriptorWord(makeProgramme({ title: "" }));
+
+    expect(saveAs).toHaveBeenCalledWith(expect.any(Blob), "programme_programme_descriptor.docx");
+  });
+
+  it("uses fallback filename when title contains only special characters", async () => {
+    mockFetchSuccess();
+    await exportProgrammeDescriptorWord(makeProgramme({ title: "!@#$%^&*()" }));
 
     expect(saveAs).toHaveBeenCalledWith(expect.any(Blob), "programme_programme_descriptor.docx");
   });

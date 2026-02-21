@@ -192,33 +192,34 @@ function tagModuleDescriptorBlock(xml: string, tables: TableInfo[]): TagResult {
     let tblXml = t60.xml;
 
     // Row 1: C1=Module Number, C3=Module Title
-    if (rows[1]?.cells[1] && !rows[1].cells[1].text.includes("module.")) {
-      tblXml = tblXml.replace(rows[1].cells[1].xml, setCellText(rows[1].cells[1].xml, "{module.code}"));
-      changes.push("T60 R1C1: added {module.code}");
+    // Note: Loop variables use $ prefix in docx-templates (e.g. $module.code)
+    if (rows[1]?.cells[1] && !rows[1].cells[1].text.includes("$module.")) {
+      tblXml = tblXml.replace(rows[1].cells[1].xml, setCellText(rows[1].cells[1].xml, "{$module.code}"));
+      changes.push("T60 R1C1: added {$module.code}");
     }
-    if (rows[1]?.cells[3] && !rows[1].cells[3].text.includes("module.")) {
-      tblXml = tblXml.replace(rows[1].cells[3].xml, setCellText(rows[1].cells[3].xml, "{module.title}"));
-      changes.push("T60 R1C3: added {module.title}");
+    if (rows[1]?.cells[3] && !rows[1].cells[3].text.includes("$module.")) {
+      tblXml = tblXml.replace(rows[1].cells[3].xml, setCellText(rows[1].cells[3].xml, "{$module.title}"));
+      changes.push("T60 R1C3: added {$module.title}");
     }
 
     // Row 2: C1=Stage, C3=Semester, C7=ECTS
-    if (rows[2]?.cells[1] && !rows[2].cells[1].text.includes("module.")) {
-      tblXml = tblXml.replace(rows[2].cells[1].xml, setCellText(rows[2].cells[1].xml, "{module.stage}"));
-      changes.push("T60 R2C1: added {module.stage}");
+    if (rows[2]?.cells[1] && !rows[2].cells[1].text.includes("$module.")) {
+      tblXml = tblXml.replace(rows[2].cells[1].xml, setCellText(rows[2].cells[1].xml, "{$module.stage}"));
+      changes.push("T60 R2C1: added {$module.stage}");
     }
-    if (rows[2]?.cells[3] && !rows[2].cells[3].text.includes("module.")) {
-      tblXml = tblXml.replace(rows[2].cells[3].xml, setCellText(rows[2].cells[3].xml, "{module.semester}"));
-      changes.push("T60 R2C3: added {module.semester}");
+    if (rows[2]?.cells[3] && !rows[2].cells[3].text.includes("$module.")) {
+      tblXml = tblXml.replace(rows[2].cells[3].xml, setCellText(rows[2].cells[3].xml, "{$module.semester}"));
+      changes.push("T60 R2C3: added {$module.semester}");
     }
-    if (rows[2]?.cells[7] && !rows[2].cells[7].text.includes("module.")) {
-      tblXml = tblXml.replace(rows[2].cells[7].xml, setCellText(rows[2].cells[7].xml, "{module.credits}"));
-      changes.push("T60 R2C7: added {module.credits}");
+    if (rows[2]?.cells[7] && !rows[2].cells[7].text.includes("$module.")) {
+      tblXml = tblXml.replace(rows[2].cells[7].xml, setCellText(rows[2].cells[7].xml, "{$module.credits}"));
+      changes.push("T60 R2C7: added {$module.credits}");
     }
 
     // Row 3: C1=Mandatory/Elective
-    if (rows[3]?.cells[1] && !rows[3].cells[1].text.includes("module.")) {
-      tblXml = tblXml.replace(rows[3].cells[1].xml, setCellText(rows[3].cells[1].xml, "{module.mandatoryElective}"));
-      changes.push("T60 R3C1: added {module.mandatoryElective}");
+    if (rows[3]?.cells[1] && !rows[3].cells[1].text.includes("$module.")) {
+      tblXml = tblXml.replace(rows[3].cells[1].xml, setCellText(rows[3].cells[1].xml, "{$module.mandatoryElective}"));
+      changes.push("T60 R3C1: added {$module.mandatoryElective}");
     }
 
     // Effort hours rows
@@ -231,19 +232,19 @@ function tagModuleDescriptorBlock(xml: string, tables: TableInfo[]): TagResult {
       { row: 13, field: "effortWorkBased" },
     ];
     for (const { row, field } of effortRows) {
-      if (rows[row]?.cells[2] && !rows[row].cells[2].text.includes("module.")) {
+      if (rows[row]?.cells[2] && !rows[row].cells[2].text.includes("$module.")) {
         tblXml = tblXml.replace(
           rows[row].cells[2].xml,
-          setCellText(rows[row].cells[2].xml, `{module.${field}}`),
+          setCellText(rows[row].cells[2].xml, `{$module.${field}}`),
         );
-        changes.push(`T60 R${row}C2: added {module.${field}}`);
+        changes.push(`T60 R${row}C2: added {$module.${field}}`);
       }
     }
 
     // Row 15: Total hours
-    if (rows[15]?.cells[1] && !rows[15].cells[1].text.includes("module.")) {
-      tblXml = tblXml.replace(rows[15].cells[1].xml, setCellText(rows[15].cells[1].xml, "{module.effortTotal}"));
-      changes.push("T60 R15C1: added {module.effortTotal}");
+    if (rows[15]?.cells[1] && !rows[15].cells[1].text.includes("$module.")) {
+      tblXml = tblXml.replace(rows[15].cells[1].xml, setCellText(rows[15].cells[1].xml, "{$module.effortTotal}"));
+      changes.push("T60 R15C1: added {$module.effortTotal}");
     }
 
     if (tblXml !== t60.xml) {
@@ -266,12 +267,12 @@ function tagModuleDescriptorBlock(xml: string, tables: TableInfo[]): TagResult {
       { row: 2, col: 5, field: "assessWorkBased" },
     ];
     for (const { row, col, field } of assessCells) {
-      if (rows[row]?.cells[col] && !rows[row].cells[col].text.includes("module.")) {
+      if (rows[row]?.cells[col] && !rows[row].cells[col].text.includes("$module.")) {
         tblXml = tblXml.replace(
           rows[row].cells[col].xml,
-          setCellText(rows[row].cells[col].xml, `{module.${field}}`),
+          setCellText(rows[row].cells[col].xml, `{$module.${field}}`),
         );
-        changes.push(`T62 R${row}C${col}: added {module.${field}}`);
+        changes.push(`T62 R${row}C${col}: added {$module.${field}}`);
       }
     }
 
@@ -291,11 +292,11 @@ function tagModuleDescriptorBlock(xml: string, tables: TableInfo[]): TagResult {
       const forRow = templateRow
         .replace(
           rows[2].cells[0].xml,
-          setCellText(rows[2].cells[0].xml, "{FOR mimlo IN module.mimlos}{mimlo.index}. {mimlo.text}"),
+          setCellText(rows[2].cells[0].xml, "{FOR mimlo IN $module.mimlos}{$mimlo.index}. {$mimlo.text}"),
         )
         .replace(
           rows[2].cells[1].xml,
-          setCellText(rows[2].cells[1].xml, "{mimlo.relatedPlos}{END-FOR mimlo}"),
+          setCellText(rows[2].cells[1].xml, "{$mimlo.relatedPlos}{END-FOR mimlo}"),
         );
 
       tblXml = tblXml.replace(templateRow, forRow);
@@ -321,12 +322,12 @@ function tagModuleDescriptorBlock(xml: string, tables: TableInfo[]): TagResult {
       const forRow = templateRow
         .replace(
           rows[2].cells[0].xml,
-          setCellText(rows[2].cells[0].xml, "{FOR asmt IN module.assessments}{asmt.mimloText}"),
+          setCellText(rows[2].cells[0].xml, "{FOR asmt IN $module.assessments}{$asmt.mimloText}"),
         )
-        .replace(rows[2].cells[1].xml, setCellText(rows[2].cells[1].xml, "{asmt.type}"))
+        .replace(rows[2].cells[1].xml, setCellText(rows[2].cells[1].xml, "{$asmt.type}"))
         .replace(
           rows[2].cells[2].xml,
-          setCellText(rows[2].cells[2].xml, "{asmt.weighting}%{END-FOR asmt}"),
+          setCellText(rows[2].cells[2].xml, "{$asmt.weighting}%{END-FOR asmt}"),
         );
 
       tblXml = tblXml.replace(templateRow, forRow);
@@ -349,9 +350,9 @@ function tagModuleDescriptorBlock(xml: string, tables: TableInfo[]): TagResult {
     if (rows[1]?.cells[0]) {
       tblXml = tblXml.replace(
         rows[1].cells[0].xml,
-        setCellText(rows[1].cells[0].xml, "{module.readingListText}"),
+        setCellText(rows[1].cells[0].xml, "{$module.readingListText}"),
       );
-      changes.push("T70 R1C0: added {module.readingListText}");
+      changes.push("T70 R1C0: added {$module.readingListText}");
     }
 
     if (tblXml !== t70.xml) {
@@ -425,13 +426,13 @@ function tagAssessmentStrategy(xml: string, tables: TableInfo[]): TagResult {
     const forRow = templateRow
       .replace(
         rows[3].cells[0].xml,
-        setCellText(rows[3].cells[0].xml, "{FOR plo IN ploAssessmentMap}PLO {plo.index}"),
+        setCellText(rows[3].cells[0].xml, "{FOR plo IN ploAssessmentMap}PLO {$plo.index}"),
       )
-      .replace(rows[3].cells[1].xml, setCellText(rows[3].cells[1].xml, "{plo.moduleMimloText}"))
-      .replace(rows[3].cells[2].xml, setCellText(rows[3].cells[2].xml, "{plo.assessmentTechniques}"))
+      .replace(rows[3].cells[1].xml, setCellText(rows[3].cells[1].xml, "{$plo.moduleMimloText}"))
+      .replace(rows[3].cells[2].xml, setCellText(rows[3].cells[2].xml, "{$plo.assessmentTechniques}"))
       .replace(
         rows[3].cells[3].xml,
-        setCellText(rows[3].cells[3].xml, "{plo.weightings}{END-FOR plo}"),
+        setCellText(rows[3].cells[3].xml, "{$plo.weightings}{END-FOR plo}"),
       );
 
     tblXml = tblXml.replace(templateRow, forRow);
