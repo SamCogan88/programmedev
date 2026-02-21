@@ -228,10 +228,84 @@ describe("buildDescriptorData — effort hours", () => {
     );
     const mod = data.modules[0];
     expect(mod.effortOnsite).toBe("24");
+    expect(mod.effortSyncOnline).toBe("2");
+    expect(mod.effortSyncHybrid).toBe("");
     expect(mod.effortAsync).toBe("10");
     expect(mod.effortIndependent).toBe("50");
     expect(mod.effortWorkBased).toBe("");
+    expect(mod.effortOther).toBe("");
     expect(mod.effortTotal).toBe("86");
+  });
+
+  it("includes other effort hours in total and field", () => {
+    const data = buildDescriptorData(
+      makeProgramme({
+        modules: [
+          makeModule({
+            effortHours: {
+              "ver-1_On-site": {
+                classroomHours: 10,
+                otherHours: 5,
+              },
+            },
+          }),
+        ],
+      }),
+    );
+    const mod = data.modules[0];
+    expect(mod.effortOther).toBe("5");
+    expect(mod.effortTotal).toBe("15");
+  });
+
+  it("calculates durationWeeks and hoursPerWeek from version", () => {
+    const data = buildDescriptorData(
+      makeProgramme({
+        modules: [
+          makeModule({
+            id: "mod-1",
+            effortHours: {
+              "ver-1_On-site": {
+                classroomHours: 24,
+                independentLearningHours: 96,
+              },
+            },
+          }),
+        ],
+        versions: [
+          makeVersion({
+            teachingWeeks: 12,
+            stages: [{ id: "s1", name: "Stage 1", modules: [{ moduleId: "mod-1" }] }],
+          }),
+        ],
+      }),
+    );
+    const mod = data.modules[0];
+    expect(mod.durationWeeks).toBe("12");
+    expect(mod.hoursPerWeek).toBe("10"); // 120 / 12
+  });
+
+  it("falls back to durationWeeks when teachingWeeks is absent", () => {
+    const data = buildDescriptorData(
+      makeProgramme({
+        modules: [
+          makeModule({
+            id: "mod-1",
+            effortHours: {
+              "ver-1_On-site": { classroomHours: 60 },
+            },
+          }),
+        ],
+        versions: [
+          makeVersion({
+            durationWeeks: 15,
+            stages: [{ id: "s1", name: "Stage 1", modules: [{ moduleId: "mod-1" }] }],
+          }),
+        ],
+      }),
+    );
+    const mod = data.modules[0];
+    expect(mod.durationWeeks).toBe("15");
+    expect(mod.hoursPerWeek).toBe("4"); // 60 / 15
   });
 
   it("handles missing effort hours", () => {
@@ -343,6 +417,7 @@ describe("buildDescriptorData — nested assessments", () => {
     expect(data.modules[0].assessments).toHaveLength(2);
     expect(data.modules[0].assessments[0]).toEqual({
       mimloText: "",
+      title: "Continuous Assessment",
       type: "Continuous Assessment",
       weighting: 60,
     });
@@ -365,6 +440,24 @@ describe("buildDescriptorData — nested assessments", () => {
       }),
     );
     expect(data.modules[0].assessments[0].mimloText).toBe("MIMLO 1, MIMLO 2");
+  });
+
+  it("uses assessment title with fallback to type", () => {
+    const data = buildDescriptorData(
+      makeProgramme({
+        modules: [
+          makeModule({
+            assessments: [
+              { id: "a1", title: "Research Essay", type: "Continuous Assessment", weighting: 50 },
+              { id: "a2", type: "Project", weighting: 50 },
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(data.modules[0].assessments[0].title).toBe("Research Essay");
+    expect(data.modules[0].assessments[0].type).toBe("Continuous Assessment");
+    expect(data.modules[0].assessments[1].title).toBe("Project");
   });
 });
 

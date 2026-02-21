@@ -22,7 +22,7 @@ Follow these steps in order, committing atomically after each logical group:
 5. **Add validation rules** in `src/utils/validation.ts` (if applicable)
 
 6. **Update the Word export** (if the field should appear in the Programme Descriptor):
-   - Add tag to the template (via `scripts/tag-template.ts` or manually)
+   - Add tag to the template (via `scripts/tag-template.py` or manually)
    - Add to `DescriptorData` interface in `src/export/descriptor-data.ts`
    - Map from Programme in `buildDescriptorData()`
 

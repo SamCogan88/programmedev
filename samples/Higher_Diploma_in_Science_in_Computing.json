@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 5,
   "id": "hdip-computing-2026",
   "title": "Higher Diploma in Science in Computing",
   "awardType": "Higher Diploma",
@@ -7,7 +7,7 @@
   "nfqLevel": 8,
   "school": "Computing",
   "awardStandardIds": ["computing"],
-  "awardStandardNames": ["QQI Computing Awards Standards (Levels 6–9)"],
+  "awardStandardNames": ["QQI Computing Awards Standards (Levels 6ΓÇô9)"],
   "totalCredits": 85,
   "mode": "PROGRAMME_OWNER",
   "updatedAt": "2026-01-15T10:00:00.000Z",
@@ -1027,7 +1027,7 @@
       "readingList": [
         {
           "id": "reading_ml_1",
-          "author": "Aurélien Géron",
+          "author": "Aur├⌐lien G├⌐ron",
           "title": "Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow",
           "publisher": "O'Reilly Media",
           "year": "2022",
@@ -1400,15 +1400,42 @@
       ]
     }
   ],
-  "ploToModules": {
-    "plo_1": ["mod_sd", "mod_oop"],
-    "plo_2": ["mod_oop", "mod_agile"],
-    "plo_3": ["mod_db"],
-    "plo_4": ["mod_web"],
-    "plo_5": ["mod_os"],
-    "plo_6": ["mod_agile"],
-    "plo_7": ["mod_capstone"],
-    "plo_8": ["mod_sd", "mod_capstone"]
+  "ploToMimlos": {
+    "plo_1": [
+      "mimlo_sd_1",
+      "mimlo_sd_2",
+      "mimlo_sd_3",
+      "mimlo_sd_4",
+      "mimlo_oop_1",
+      "mimlo_oop_2",
+      "mimlo_oop_3",
+      "mimlo_oop_4"
+    ],
+    "plo_2": [
+      "mimlo_oop_1",
+      "mimlo_oop_2",
+      "mimlo_oop_3",
+      "mimlo_oop_4",
+      "mimlo_agile_1",
+      "mimlo_agile_2",
+      "mimlo_agile_3",
+      "mimlo_agile_4"
+    ],
+    "plo_3": ["mimlo_db_1", "mimlo_db_2", "mimlo_db_3"],
+    "plo_4": ["mimlo_web_1", "mimlo_web_2", "mimlo_web_3"],
+    "plo_5": ["mimlo_os_1", "mimlo_os_2", "mimlo_os_3"],
+    "plo_6": ["mimlo_agile_1", "mimlo_agile_2", "mimlo_agile_3", "mimlo_agile_4"],
+    "plo_7": ["mimlo_cap_1", "mimlo_cap_2", "mimlo_cap_3", "mimlo_cap_4"],
+    "plo_8": [
+      "mimlo_sd_1",
+      "mimlo_sd_2",
+      "mimlo_sd_3",
+      "mimlo_sd_4",
+      "mimlo_cap_1",
+      "mimlo_cap_2",
+      "mimlo_cap_3",
+      "mimlo_cap_4"
+    ]
   },
   "electiveDefinitions": [
     {
@@ -1525,7 +1552,8 @@
             }
           ]
         }
-      ]
+      ],
+      "teachingWeeks": 12
     },
     {
       "id": "ver_pt_blended",
@@ -1623,7 +1651,8 @@
             }
           ]
         }
-      ]
+      ],
+      "teachingWeeks": 12
     },
     {
       "id": "ver_pt_online",
@@ -1721,7 +1750,9 @@
             }
           ]
         }
-      ]
+      ],
+      "teachingWeeks": 12
     }
-  ]
+  ],
+  "intakeMonths": ["September"]
 }

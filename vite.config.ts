@@ -1,6 +1,20 @@
 import react from "@vitejs/plugin-react";
+import { execFileSync } from "node:child_process";
 import { resolve } from "path";
 import { defineConfig } from "vite";
+import type { Plugin } from "vite";
+
+function generateSchemaPlugin(): Plugin {
+  return {
+    name: "generate-programme-schema",
+    buildStart() {
+      execFileSync(process.execPath, ["--import", "tsx", "scripts/generate-schema.ts"], {
+        cwd: resolve(__dirname),
+        stdio: "inherit",
+      });
+    },
+  };
+}
 
 export default defineConfig({
   plugins: [
@@ -8,6 +22,7 @@ export default defineConfig({
       // Use automatic JSX runtime for React 17+
       jsxRuntime: "automatic",
     }),
+    generateSchemaPlugin(),
   ],
   css: {
     preprocessorOptions: {

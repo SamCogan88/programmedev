@@ -517,6 +517,105 @@ function generateScheduleTable(
   });
 }
 
+/** Generates weekly schedule tables for a version/stage, one per semester. */
+function generateWeeklyTables(
+  programme: Programme,
+  version: ProgrammeVersion,
+  stage: Stage,
+): Table[] {
+  const stageModules = stage.modules ?? [];
+  const numWeeks = version.teachingWeeks ?? version.durationWeeks ?? 12;
+
+  // Total columns: 3 (Module Title spans 3) + numWeeks
+  const totalCols = 3 + numWeeks;
+
+  // Group modules by semester
+  const semesterMap = new Map<string, Array<{ moduleId: string; semester?: string }>>();
+  stageModules.forEach((sm) => {
+    const semester = sm.semester ?? "Unknown";
+    if (!semesterMap.has(semester)) {
+      semesterMap.set(semester, []);
+    }
+    semesterMap.get(semester)!.push(sm);
+  });
+
+  const tables: Table[] = [];
+
+  semesterMap.forEach((semesterModules, semester) => {
+    const rows: TableRow[] = [];
+
+    // Row 1: Stage
+    rows.push(
+      row([
+        cell("Stage", { shading: LABEL_SHADING, bold: true }),
+        cell(stage.name ?? ""),
+        cell("", { columnSpan: totalCols - 2 }),
+      ]),
+    );
+
+    // Row 2: Semester
+    rows.push(
+      row([
+        cell("Semester", { shading: LABEL_SHADING, bold: true }),
+        cell(semester),
+        cell("", { columnSpan: totalCols - 2 }),
+      ]),
+    );
+
+    // Row 3: Column headers (Module Title + W1..Wn)
+    const headerCells: TableCell[] = [
+      cell("Module Title", {
+        columnSpan: 3,
+        shading: HEADER_SHADING,
+        bold: true,
+      }),
+    ];
+    for (let i = 1; i <= numWeeks; i++) {
+      headerCells.push(cell(`W${i}`, { shading: HEADER_SHADING, bold: true, small: true }));
+    }
+    rows.push(row(headerCells));
+
+    // Module rows
+    semesterModules.forEach((sm) => {
+      const mod = (programme.modules ?? []).find((m) => m.id === sm.moduleId);
+      if (!mod) {
+        return;
+      }
+
+      // Collect active weeks from assessment indicativeWeek
+      const activeWeeks = new Set<number>();
+      (mod.assessments ?? []).forEach((a) => {
+        if (a.indicativeWeek && typeof a.indicativeWeek === "number") {
+          activeWeeks.add(a.indicativeWeek);
+        }
+      });
+
+      const moduleCells: TableCell[] = [cell(mod.title ?? "", { columnSpan: 3 })];
+      for (let i = 1; i <= numWeeks; i++) {
+        moduleCells.push(cell(activeWeeks.has(i) ? "✔" : ""));
+      }
+      rows.push(row(moduleCells));
+    });
+
+    tables.push(
+      new Table({
+        rows,
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: {
+          top: { style: BorderStyle.SINGLE, size: 4 },
+          bottom: { style: BorderStyle.SINGLE, size: 4 },
+          left: { style: BorderStyle.SINGLE, size: 4 },
+          right: { style: BorderStyle.SINGLE, size: 4 },
+          insideHorizontal: { style: BorderStyle.SINGLE, size: 4 },
+          insideVertical: { style: BorderStyle.SINGLE, size: 4 },
+        },
+      }),
+    );
+  });
+
+  return tables;
+}
+
 /**
  * Generates and downloads a DOCX file for programme schedules.
  */
@@ -533,6 +632,13 @@ export async function downloadScheduleDocx(
         children.push(new Paragraph({ pageBreakBefore: true }));
       }
       children.push(generateScheduleTable(data, version, stage));
+
+      // Weekly schedule tables (one per semester)
+      const weeklyTables = generateWeeklyTables(data, version, stage);
+      weeklyTables.forEach((wt) => {
+        children.push(new Paragraph({ pageBreakBefore: true }));
+        children.push(wt);
+      });
     });
   });
 
