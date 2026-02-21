@@ -4,12 +4,9 @@ description: Prepare and make an atomic git commit following conventions
 
 Make an atomic git commit following the project's conventions.
 
-**Pre-commit checklist** (run all before committing):
+**Before committing**, run the validation checklist (use the `validate` prompt or run manually):
 ```bash
-npm run test:unit    # All tests must pass
-npm run build        # Must compile cleanly
-npm run format       # Fix formatting
-npx tsc --noEmit     # No type errors
+npm run test:unit && npm run build && npm run format && npx tsc --noEmit
 ```
 
 **Commit message format** (Conventional Commits):
