@@ -9,6 +9,10 @@ vi.mock("./template/module-descriptors-html", () => ({
   renderAllModuleDescriptors: vi.fn().mockReturnValue("<div>module descriptors</div>"),
 }));
 
+vi.mock("./template/miplo-assessment-html", () => ({
+  renderAllMiploAssessments: vi.fn().mockReturnValue("<div>miplo assessments</div>"),
+}));
+
 vi.mock("./template/schedule-html", () => ({
   renderAllSchedules: vi.fn().mockReturnValue("<div>schedules</div>"),
 }));
@@ -18,6 +22,7 @@ vi.mock("./utils/migrate-programme", () => ({
 }));
 
 import { downloadScheduleDocx } from "./export/schedule-docx";
+import { renderAllMiploAssessments } from "./template/miplo-assessment-html";
 import { renderAllModuleDescriptors } from "./template/module-descriptors-html";
 import { renderAllSchedules } from "./template/schedule-html";
 import type { Module, Programme, ProgrammeVersion } from "./types";
@@ -52,10 +57,13 @@ function setupDOM(): Record<string, HTMLElement> {
     "file-upload": createMockElement(),
     "upload-status": createMockElement(),
     "schedules-container": createMockElement(),
+    "miplo-assessment-container": createMockElement(),
     "module-descriptors-container": createMockElement(),
     "schedules-header": createMockElement(),
+    "miplo-assessment-header": createMockElement(),
     "module-descriptors-header": createMockElement(),
     "copy-schedules-btn": createMockElement(),
+    "copy-miplo-assessment-btn": createMockElement(),
     "copy-module-descriptors-btn": createMockElement(),
     "download-docx-btn": createMockElement(),
     "load-from-app-btn": createMockElement(),
@@ -191,8 +199,10 @@ describe("template entry point", () => {
 
       expect(elements["upload-status"].textContent).toContain("Loaded: Test Programme");
       expect(renderAllSchedules).toHaveBeenCalled();
+      expect(renderAllMiploAssessments).toHaveBeenCalled();
       expect(renderAllModuleDescriptors).toHaveBeenCalled();
       expect(elements["schedules-header"].style.display).toBe("flex");
+      expect(elements["miplo-assessment-header"].style.display).toBe("flex");
       expect(elements["module-descriptors-header"].style.display).toBe("flex");
     });
 
@@ -468,8 +478,10 @@ describe("template entry point", () => {
       expect(elements["upload-status"].textContent).toContain("Loaded from app: Stored Programme");
       expect(elements["upload-status"].className).toBe("success");
       expect(renderAllSchedules).toHaveBeenCalled();
+      expect(renderAllMiploAssessments).toHaveBeenCalled();
       expect(renderAllModuleDescriptors).toHaveBeenCalled();
       expect(elements["schedules-header"].style.display).toBe("flex");
+      expect(elements["miplo-assessment-header"].style.display).toBe("flex");
       expect(elements["module-descriptors-header"].style.display).toBe("flex");
     });
 

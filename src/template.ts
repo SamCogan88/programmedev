@@ -5,6 +5,7 @@
  */
 
 import { downloadScheduleDocx } from "./export/schedule-docx";
+import { renderAllMiploAssessments } from "./template/miplo-assessment-html";
 import { renderAllModuleDescriptors } from "./template/module-descriptors-html";
 import { renderAllSchedules } from "./template/schedule-html";
 import type { Programme } from "./types";
@@ -50,8 +51,10 @@ async function handleFileUpload(
   file: File,
   statusEl: HTMLElement,
   schedulesContainer: HTMLElement,
+  miploAssessmentContainer: HTMLElement,
   moduleDescriptorsContainer: HTMLElement,
   schedulesHeader: HTMLElement,
+  miploAssessmentHeader: HTMLElement,
   moduleDescriptorsHeader: HTMLElement,
 ): Promise<void> {
   statusEl.textContent = "Loading...";
@@ -70,10 +73,12 @@ async function handleFileUpload(
     statusEl.className = "success";
     currentProgrammeData = data;
     schedulesContainer.innerHTML = renderAllSchedules(data);
+    miploAssessmentContainer.innerHTML = renderAllMiploAssessments(data);
     moduleDescriptorsContainer.innerHTML = renderAllModuleDescriptors(data);
 
     // Show section headers
     schedulesHeader.style.display = "flex";
+    miploAssessmentHeader.style.display = "flex";
     moduleDescriptorsHeader.style.display = "flex";
   } catch (error) {
     const err = error as Error;
@@ -108,8 +113,10 @@ async function handleDownloadDocx(button: HTMLButtonElement, statusEl: HTMLEleme
 function loadFromAppStorage(
   statusEl: HTMLElement,
   schedulesContainer: HTMLElement,
+  miploAssessmentContainer: HTMLElement,
   moduleDescriptorsContainer: HTMLElement,
   schedulesHeader: HTMLElement,
+  miploAssessmentHeader: HTMLElement,
   moduleDescriptorsHeader: HTMLElement,
 ): void {
   try {
@@ -132,9 +139,11 @@ function loadFromAppStorage(
     statusEl.className = "success";
     currentProgrammeData = data;
     schedulesContainer.innerHTML = renderAllSchedules(data);
+    miploAssessmentContainer.innerHTML = renderAllMiploAssessments(data);
     moduleDescriptorsContainer.innerHTML = renderAllModuleDescriptors(data);
 
     schedulesHeader.style.display = "flex";
+    miploAssessmentHeader.style.display = "flex";
     moduleDescriptorsHeader.style.display = "flex";
   } catch (error) {
     const err = error as Error;
@@ -148,14 +157,21 @@ function init(): void {
   const fileUpload = document.getElementById("file-upload") as HTMLInputElement;
   const uploadStatus = document.getElementById("upload-status") as HTMLElement;
   const schedulesContainer = document.getElementById("schedules-container") as HTMLElement;
+  const miploAssessmentContainer = document.getElementById(
+    "miplo-assessment-container",
+  ) as HTMLElement;
   const moduleDescriptorsContainer = document.getElementById(
     "module-descriptors-container",
   ) as HTMLElement;
   const schedulesHeader = document.getElementById("schedules-header") as HTMLElement;
+  const miploAssessmentHeader = document.getElementById("miplo-assessment-header") as HTMLElement;
   const moduleDescriptorsHeader = document.getElementById(
     "module-descriptors-header",
   ) as HTMLElement;
   const copySchedulesBtn = document.getElementById("copy-schedules-btn") as HTMLButtonElement;
+  const copyMiploAssessmentBtn = document.getElementById(
+    "copy-miplo-assessment-btn",
+  ) as HTMLButtonElement;
   const copyModuleDescriptorsBtn = document.getElementById(
     "copy-module-descriptors-btn",
   ) as HTMLButtonElement;
@@ -167,14 +183,20 @@ function init(): void {
     loadFromAppStorage(
       uploadStatus,
       schedulesContainer,
+      miploAssessmentContainer,
       moduleDescriptorsContainer,
       schedulesHeader,
+      miploAssessmentHeader,
       moduleDescriptorsHeader,
     );
   });
 
   copySchedulesBtn?.addEventListener("click", () => {
     copyToClipboard(schedulesContainer, copySchedulesBtn, uploadStatus);
+  });
+
+  copyMiploAssessmentBtn?.addEventListener("click", () => {
+    copyToClipboard(miploAssessmentContainer, copyMiploAssessmentBtn, uploadStatus);
   });
 
   copyModuleDescriptorsBtn?.addEventListener("click", () => {
@@ -193,8 +215,10 @@ function init(): void {
         file,
         uploadStatus,
         schedulesContainer,
+        miploAssessmentContainer,
         moduleDescriptorsContainer,
         schedulesHeader,
+        miploAssessmentHeader,
         moduleDescriptorsHeader,
       );
     }
@@ -226,8 +250,10 @@ function init(): void {
           file,
           uploadStatus,
           schedulesContainer,
+          miploAssessmentContainer,
           moduleDescriptorsContainer,
           schedulesHeader,
+          miploAssessmentHeader,
           moduleDescriptorsHeader,
         );
       } else {

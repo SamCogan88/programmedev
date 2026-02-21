@@ -209,6 +209,23 @@
       .content-area {
         min-height: 60px;
       }
+      /* MIPLO Assessment Strategy Table (Section 6.8) */
+      .miplo-assessment-table {
+        width: 650px;
+        max-width: 100%;
+        border-collapse: collapse;
+        font-family: Calibri, sans-serif;
+        font-size: var(--display-font-size);
+        color: #111;
+        margin-bottom: 15pt;
+        background-color: white;
+      }
+      .miplo-assessment-table th,
+      .miplo-assessment-table td {
+        border: 1px solid #333;
+        padding: 6px 8px;
+        vertical-align: top;
+      }
       .placeholder-text {
         color: #666;
         font-style: italic;
@@ -267,6 +284,17 @@
     </div>
     <div id="schedules-container">
       <p class="placeholder-text">Upload a programme JSON file to generate programme schedules.</p>
+    </div>
+
+    <!-- Section 6.8: MIPLO Assessment Strategy -->
+    <div class="section-header" id="miplo-assessment-header" style="display: none">
+      <h2>Section 6.8: Assessment Strategy aligned to MIPLOs</h2>
+      <button type="button" class="copy-btn" id="copy-miplo-assessment-btn">Copy All</button>
+    </div>
+    <div id="miplo-assessment-container">
+      <p class="placeholder-text">
+        Upload a programme JSON file to generate the MIPLO assessment strategy table.
+      </p>
     </div>
 
     <!-- Section 7: Module Descriptors -->
