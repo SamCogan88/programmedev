@@ -8,6 +8,10 @@ import { downloadScheduleDocx } from "./export/schedule-docx";
 import { renderAllModuleDescriptors } from "./template/module-descriptors-html";
 import { renderAllSchedules } from "./template/schedule-html";
 import type { Programme } from "./types";
+import { migrateProgramme } from "./utils/migrate-programme";
+
+/** localStorage key used by the main app (read-only here). */
+const APP_STORAGE_KEY = "nci_pds_mvp_programme_v1";
 
 let currentProgrammeData: Programme | null = null;
 
@@ -97,6 +101,48 @@ async function handleDownloadDocx(button: HTMLButtonElement, statusEl: HTMLEleme
   }
 }
 
+/**
+ * Loads programme data from the main app's localStorage (read-only).
+ * The stored data is never modified or deleted — only read for rendering.
+ */
+function loadFromAppStorage(
+  statusEl: HTMLElement,
+  schedulesContainer: HTMLElement,
+  moduleDescriptorsContainer: HTMLElement,
+  schedulesHeader: HTMLElement,
+  moduleDescriptorsHeader: HTMLElement,
+): void {
+  try {
+    const raw = localStorage.getItem(APP_STORAGE_KEY);
+    if (!raw) {
+      statusEl.textContent =
+        "✗ No programme found in app storage. Open the main app and save a programme first.";
+      statusEl.className = "error";
+      return;
+    }
+
+    let data: Programme = JSON.parse(raw);
+    data = migrateProgramme(data) as Programme;
+
+    if (!data.modules || !data.versions) {
+      throw new Error("Programme in app storage is missing required fields (modules, versions)");
+    }
+
+    statusEl.textContent = `✓ Loaded from app: ${data.title || "Untitled Programme"}`;
+    statusEl.className = "success";
+    currentProgrammeData = data;
+    schedulesContainer.innerHTML = renderAllSchedules(data);
+    moduleDescriptorsContainer.innerHTML = renderAllModuleDescriptors(data);
+
+    schedulesHeader.style.display = "flex";
+    moduleDescriptorsHeader.style.display = "flex";
+  } catch (error) {
+    const err = error as Error;
+    statusEl.textContent = `✗ Error loading from app: ${err.message}`;
+    statusEl.className = "error";
+  }
+}
+
 function init(): void {
   const uploadSection = document.getElementById("upload-section") as HTMLElement;
   const fileUpload = document.getElementById("file-upload") as HTMLInputElement;
@@ -114,8 +160,19 @@ function init(): void {
     "copy-module-descriptors-btn",
   ) as HTMLButtonElement;
   const downloadDocxBtn = document.getElementById("download-docx-btn") as HTMLButtonElement;
+  const loadFromAppBtn = document.getElementById("load-from-app-btn") as HTMLButtonElement;
 
   // Wire up event handlers
+  loadFromAppBtn?.addEventListener("click", () => {
+    loadFromAppStorage(
+      uploadStatus,
+      schedulesContainer,
+      moduleDescriptorsContainer,
+      schedulesHeader,
+      moduleDescriptorsHeader,
+    );
+  });
+
   copySchedulesBtn?.addEventListener("click", () => {
     copyToClipboard(schedulesContainer, copySchedulesBtn, uploadStatus);
   });
