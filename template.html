@@ -13,6 +13,7 @@
         scroll-behavior: smooth;
       }
       body {
+        font-family: Calibri, sans-serif;
         font-size: var(--display-font-size);
         margin: 15pt;
         background-color: #f5f5f5;
@@ -117,10 +118,15 @@
         font-weight: bold;
         margin: 0;
       }
-      .section-header .copy-btn {
+      .section-header .copy-btn,
+      .section-header .back-to-top-btn {
         padding: 4.5pt 9pt;
         cursor: pointer;
         font-size: 10pt;
+      }
+      .section-header .btn-group {
+        display: flex;
+        gap: 6pt;
       }
       .page-break {
         page-break-after: always;
@@ -268,6 +274,7 @@
         text-decoration: underline;
       }
       .placeholder-text {
+        color: #666;
         font-style: italic;
         padding: 15pt;
         background-color: #f9f9f9;
@@ -333,7 +340,10 @@
     <div id="schedules-section"></div>
     <div class="section-header" id="schedules-header" style="display: none">
       <h2>Section 2: Proposed Programme Schedule(s)</h2>
-      <button type="button" class="copy-btn" id="copy-schedules-btn">Copy All</button>
+      <div class="btn-group">
+        <button type="button" class="copy-btn" id="copy-schedules-btn">Copy All</button>
+        <a href="#toc" class="back-to-top-btn">Back to Top</a>
+      </div>
     </div>
     <div id="schedules-container">
       <p class="placeholder-text">Upload a programme JSON file to generate programme schedules.</p>
@@ -343,7 +353,10 @@
     <div id="miplo-assessment-section"></div>
     <div class="section-header" id="miplo-assessment-header" style="display: none">
       <h2>Section 6.8: Assessment Strategy aligned to MIPLOs</h2>
-      <button type="button" class="copy-btn" id="copy-miplo-assessment-btn">Copy All</button>
+      <div class="btn-group">
+        <button type="button" class="copy-btn" id="copy-miplo-assessment-btn">Copy All</button>
+        <a href="#toc" class="back-to-top-btn">Back to Top</a>
+      </div>
     </div>
     <div id="miplo-assessment-container">
       <p class="placeholder-text">
@@ -355,7 +368,10 @@
     <div id="module-descriptors-section"></div>
     <div class="section-header" id="module-descriptors-header" style="display: none">
       <h2>Section 7: Module Descriptors</h2>
-      <button type="button" class="copy-btn" id="copy-module-descriptors-btn">Copy All</button>
+      <div class="btn-group">
+        <button type="button" class="copy-btn" id="copy-module-descriptors-btn">Copy All</button>
+        <a href="#toc" class="back-to-top-btn">Back to Top</a>
+      </div>
     </div>
     <div id="module-descriptors-container">
       <p class="placeholder-text">Upload a programme JSON file to generate module descriptors.</p>
